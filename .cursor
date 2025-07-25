@@ -1,0 +1,32 @@
+# Configuration Cursor
+
+# Paramètres d'éditeur
+editor:
+  tabSize: 2
+  formatOnSave: true
+  insertSpaces: true
+  wordWrap: "on"
+  rulers: [80, 120]
+
+# Paramètres AI
+ai:
+  model: "claude-3.5-sonnet"
+  temperature: 0.7
+  maxTokens: 4096
+
+# Exclusions
+exclude:
+  - node_modules
+  - .git
+  - dist
+  - build
+  - coverage
+  - .env.local
+  - .env.*.local
+
+# Extensions recommandées
+extensions:
+  - dbaeumer.vscode-eslint
+  - esbenp.prettier-vscode
+  - ms-vscode.vscode-typescript-next
+  - bradlc.vscode-tailwindcss 
