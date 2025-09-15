@@ -7,7 +7,7 @@ import Image from 'next/image'
 
 export function Navbar() {
   const { user, logout } = useAuth()
-
+  
   const handleLogout = async () => {
     try {
       await logout()
@@ -19,9 +19,12 @@ export function Navbar() {
   return (
     <nav className="bg-background border-b">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+        <div className='md:ml-[200px]'>
+    
         <Link href="/" className="text-xl font-bold">
           <Image src="/logo_add.png" alt="Logo" width={100} height={100} />
         </Link>
+        </div>
 
         <div className="flex items-center gap-4">
           {user ? (

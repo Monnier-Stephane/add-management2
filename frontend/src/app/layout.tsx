@@ -5,7 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { AuthProvider } from '@/lib/auth/AuthContext';
-import { QueryClient } from '@tanstack/react-query';
+
 import { ReactQueryProvider } from '@/lib/ReactQueryProvider';
 
 const geistSans = Geist({

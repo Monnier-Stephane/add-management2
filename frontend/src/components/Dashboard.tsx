@@ -1,76 +1,40 @@
-// frontend/src/components/Dashboard.tsx
 'use client'
-import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
-import { AnimatedContainer } from '@/components/ui/animated-container'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CsvUploader } from '@/components/CsvUploader';
-
-type UserRole = 'admin' | 'coach'
+import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar'
+import { AppSidebar } from '@/components/AppSidebar'
+import StatsDashboard from '@/components/admin/StatsDashboard'
+import CoachesList from '@/components/CoachesList'
 
 export function Dashboard() {
-  const { user } = useAuth()
-  const [userRole, setUserRole] = useState<UserRole>('admin')
-  
-  
-  useEffect(() => {
-    if (user) {
-     
-      const role: UserRole = user.email?.includes('admin') ? 'admin' : 'coach'
-      setUserRole(role)
-    }
-  }, [user])
-  
+  const { user, userRole } = useAuth()
+
   return (
-    <div className="container mx-auto p-4">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Tableau de bord</h1>
-      </div>
-      
-      <div className="mb-4">
-        <p>Bonjour {user?.email || 'Utilisateur'}</p>
-        <p>Rôle: {userRole}</p>
-      </div>
-      
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Common elements for admin and coach */}
-        <AnimatedContainer delay={0.1}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Statistiques personnelles</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>Informations visibles par tous les utilisateurs</p>
-            </CardContent>
-          </Card>
-        </AnimatedContainer>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-16 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <div className="text-sm text-gray-500">
+            {userRole === 'admin' ? 'Administrateur' : 'Coach'}
+          </div>
+        </header>
         
-        {/* Éléments administrateurs - maintenant visibles pour tous */}
-        <AnimatedContainer delay={0.2}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestion des utilisateurs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>Section réservée aux administrateurs</p>
-            </CardContent>
-          </Card>
-        </AnimatedContainer>
-        
-        <AnimatedContainer delay={0.3}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Rapports financiers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>Section réservée aux administrateurs</p>
-            </CardContent>
-          </Card>
-        </AnimatedContainer>
-      </div>
-      <div className="mt-6">
-        <CsvUploader />
-      </div>
-    </div>
+        <main className="p-4">
+          {userRole === 'admin' ? (
+            <>
+            <StatsDashboard />
+            <CoachesList />
+            </>
+          ) : (
+            <div className="text-center py-12">
+            <h2 className="text-xl font-semibold mb-4">Bienvenue sur votre tableau de bord</h2>
+            <p className="text-gray-600">
+              Utilisez la barre latérale pour naviguer dans les différentes sections.
+            </p>
+          </div>
+          )}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

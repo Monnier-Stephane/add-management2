@@ -43,4 +43,9 @@ export class SubscriptionsService {
     }
     return deletedSubscription;
   }
+
+  async getUniqueTarifs(): Promise<string[]> {
+    const tarifs = await this.subscriptionModel.distinct('tarif').exec();
+    return tarifs.filter(tarif => tarif && tarif.trim() !== '');
+  }
 } 

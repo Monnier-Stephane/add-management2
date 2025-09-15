@@ -13,6 +13,9 @@ export class Coach {
 
   @Prop()
   email: string;
+
+  @Prop({ type: String, enum: ['coach', 'admin'], default: 'coach' })
+  statut: 'coach' | 'admin';
 }
 
 export const CoachSchema = SchemaFactory.createForClass(Coach); 

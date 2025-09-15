@@ -43,4 +43,8 @@ export class CoachesService {
     }
     return deletedCoach;
   }
+
+  async findByEmail(email: string): Promise<Coach | null> {
+    return this.coachModel.findOne({ email }).exec();
+  }
 } 

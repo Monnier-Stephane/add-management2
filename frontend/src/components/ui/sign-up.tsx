@@ -13,8 +13,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AnimatedContainer, AnimatedFadeIn } from '@/components/ui/animated-container'
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from '@/lib/auth/firebase'
 
 function SignUpPage() {
   const [email, setEmail] = useState<string>('')

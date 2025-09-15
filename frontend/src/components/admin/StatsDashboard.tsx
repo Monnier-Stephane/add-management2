@@ -40,14 +40,14 @@ export default function StatsDashboard() {
   }, []);
 
   const paiementData = [
-    { name: 'Pending', value: stats.attente },
-    { name: 'Paid', value: stats.paye },
+    { name: 'En attente', value: stats.attente },
+    { name: 'Payé', value: stats.paye },
   ];
 
   const ageData = [
-    { name: 'Children', value: stats.enfants },
-    { name: 'Teenagers', value: stats.ados },
-    { name: 'Adults', value: stats.adultes },
+    { name: 'Enfants', value: stats.enfants },
+    { name: 'Adolescents', value: stats.ados },
+    { name: 'Adultes', value: stats.adultes },
   ];
 
   return (
@@ -56,7 +56,7 @@ export default function StatsDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Total registered</CardTitle>
+            <CardTitle className="text-center">Total d'adhérents</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-center text-4xl font-bold text-primary py-2">{stats.total}</div>
@@ -64,7 +64,7 @@ export default function StatsDashboard() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Children</CardTitle>
+            <CardTitle className="text-center">Enfants</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-center text-4xl font-bold text-green-500 py-2">{stats.enfants}</div>
@@ -72,7 +72,7 @@ export default function StatsDashboard() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Teenagers</CardTitle>
+            <CardTitle className="text-center">Adolescents</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-center text-4xl font-bold text-blue-500 py-2">{stats.ados}</div>
@@ -80,7 +80,7 @@ export default function StatsDashboard() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Adults</CardTitle>
+            <CardTitle className="text-center">Adultes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-center text-4xl font-bold text-yellow-500 py-2">{stats.adultes}</div>
@@ -93,7 +93,7 @@ export default function StatsDashboard() {
         {/* Payment status */}
         <Card>
           <CardHeader>
-            <CardTitle>Payment Status</CardTitle>
+            <CardTitle>Statut de paiement</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
@@ -122,7 +122,7 @@ export default function StatsDashboard() {
         {/* Distribution by category */}
         <Card>
           <CardHeader>
-            <CardTitle>Distribution by Category</CardTitle>
+            <CardTitle>Répartition par catégorie</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>

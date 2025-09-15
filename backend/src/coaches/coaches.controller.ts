@@ -22,6 +22,11 @@ export class CoachesController {
     return this.coachesService.findOne(id);
   }
 
+  @Get('by-email/:email')
+  findByEmail(@Param('email') email: string) {
+    return this.coachesService.findByEmail(email);
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateCoachDto: UpdateCoachDto) {
     return this.coachesService.update(id, updateCoachDto);

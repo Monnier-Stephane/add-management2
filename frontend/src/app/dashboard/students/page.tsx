@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useEffect, useState } from "react";
-
-// Sample mock data
-const students = [
-  { id: 1, nom: "Dupont", prenom: "Jean" },
-  { id: 2, nom: "Martin", prenom: "Claire" },
-  { id: 3, nom: "Durand", prenom: "Sophie" },
-];
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabList, TabPanel, Tab } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Pencil, Trash2 } from "lucide-react";
 
 interface Student {
   _id: string;
@@ -15,6 +16,7 @@ interface Student {
   prenom: string;
   email: string;
   telephone: string;
+  telephoneUrgence?: string;
   dateDeNaissance: string;
   adresse: string;
   ville: string;
@@ -29,128 +31,464 @@ const StudentsPage = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [uniqueTarifs, setUniqueTarifs] = useState<string[]>([]);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Student>>({});
 
   useEffect(() => {
-    const fetchStudents = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:3001/subscriptions');
         
-        if (!response.ok) {
-          throw new Error(`HTTP Error: ${response.status}`);
+        // Récupérer les élèves et les tarifs uniques en parallèle
+        const [studentsResponse, tarifsResponse] = await Promise.all([
+          fetch('http://localhost:3001/subscriptions'),
+          fetch('http://localhost:3001/subscriptions/tarifs/unique')
+        ]);
+        
+        if (!studentsResponse.ok || !tarifsResponse.ok) {
+          throw new Error(`HTTP Error: ${studentsResponse.status}`);
         }
         
-        const data = await response.json();
-        setStudents(data);
+        const [studentsData, tarifsData] = await Promise.all([
+          studentsResponse.json(),
+          tarifsResponse.json()
+        ]);
+        
+        setStudents(studentsData);
+        setUniqueTarifs(tarifsData);
       } catch (err) {
-        console.error('Error fetching students:', err);
+        console.error('Error fetching data:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStudents();
+    fetchData();
   }, []);
 
-  // Group students by pricing tier
-  const studentsByTarif = students.reduce((acc, student) => {
-    const tarif = student.tarif || 'Not defined';
-    if (!acc[tarif]) {
-      acc[tarif] = [];
+  // Function to calculate age from date of birth
+  const calculateAge = (dateOfBirth: string): number => {
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
     }
-    acc[tarif].push(student);
+    
+    return age;
+  };
+
+  // Function to categorize students by age
+  const categorizeByAge = (student: Student): string => {
+    const age = calculateAge(student.dateDeNaissance);
+    
+    if (age < 12) return 'enfants';
+    if (age < 18) return 'adolescents';
+    return 'adultes';
+  };
+
+  // Group students by age category and sort alphabetically by first name
+  const studentsByCategory = students.reduce((acc, student) => {
+    const category = categorizeByAge(student);
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(student);
     return acc;
   }, {} as Record<string, Student[]>);
 
-  // Get unique pricing tiers
-  const tarifs = Object.keys(studentsByTarif).sort();
+  // Sort each category alphabetically by first name (prenom)
+  Object.keys(studentsByCategory).forEach(category => {
+    studentsByCategory[category].sort((a, b) => 
+      a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })
+    );
+  });
+
+  // Define category order and labels
+  const categories = [
+    { key: 'enfants', label: 'Enfants (0-11 ans)' },
+    { key: 'adolescents', label: 'Adolescents (12-17 ans)' },
+    { key: 'adultes', label: 'Adultes (18+ ans)' }
+  ];
+
+  const filterStudents = (students: Student[], searchTerm: string) => {
+    if (!searchTerm) return students;
+    
+    const term = searchTerm.toLowerCase().trim();
+    return students.filter(student => 
+      student.nom.toLowerCase().includes(term) ||
+      student.prenom.toLowerCase().includes(term) ||
+      student.email.toLowerCase().includes(term)
+    );
+  };
+
+  // Fonction pour ouvrir le modal d'édition
+  const handleEdit = (student: Student) => {
+    setEditingStudent(student);
+    setEditForm({
+      nom: student.nom,
+      prenom: student.prenom,
+      email: student.email,
+      telephone: student.telephone,
+      telephoneUrgence: student.telephoneUrgence || '',
+      adresse: student.adresse,
+      ville: student.ville,
+      codePostal: student.codePostal,
+      tarif: student.tarif,
+      statutPaiement: student.statutPaiement,
+      remarques: student.remarques || ''
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // Fonction pour sauvegarder les modifications
+  const handleSave = async () => {
+    if (!editingStudent) return;
+
+    // Confirmation avant sauvegarde
+    const studentName = `${editingStudent.prenom} ${editingStudent.nom}`;
+    const confirmMessage = `Êtes-vous sûr de vouloir sauvegarder les modifications pour ${studentName} ?`;
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3001/subscriptions/${editingStudent._id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editForm),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`);
+      }
+
+      // Mettre à jour la liste des élèves
+      const updatedStudents = students.map(student => 
+        student._id === editingStudent._id 
+          ? { ...student, ...editForm }
+          : student
+      );
+      setStudents(updatedStudents);
+      
+      // Message de succès
+      alert(`✅ Les modifications pour ${studentName} ont été sauvegardées avec succès !`);
+      
+      setIsEditModalOpen(false);
+      setEditingStudent(null);
+    } catch (err) {
+      console.error('Error updating student:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      alert('❌ Erreur lors de la sauvegarde. Veuillez réessayer.');
+    }
+  };
+
+  // Fonction pour supprimer un élève
+  const handleDelete = async (studentId: string) => {
+    // Trouver l'élève à supprimer pour afficher son nom
+    const studentToDelete = students.find(student => student._id === studentId);
+    if (!studentToDelete) return;
+
+    const studentName = `${studentToDelete.prenom} ${studentToDelete.nom}`;
+    
+    // Double confirmation pour la suppression
+    const firstConfirm = confirm(`⚠️ ATTENTION ⚠️\n\nVous êtes sur le point de supprimer définitivement l'élève :\n${studentName}\n\nCette action est IRRÉVERSIBLE !\n\nVoulez-vous continuer ?`);
+    
+    if (!firstConfirm) {
+      return;
+    }
+
+    // Deuxième confirmation
+    const secondConfirm = confirm(`DERNIÈRE CONFIRMATION\n\nÊtes-vous ABSOLUMENT SÛR de vouloir supprimer ${studentName} ?\n\nToutes les données de cet élève seront perdues définitivement.`);
+    
+    if (!secondConfirm) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3001/subscriptions/${studentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`);
+      }
+
+      // Mettre à jour la liste des élèves
+      const updatedStudents = students.filter(student => student._id !== studentId);
+      setStudents(updatedStudents);
+      
+      // Message de confirmation
+      alert(`✅ L'élève ${studentName} a été supprimé avec succès.`);
+    } catch (err) {
+      console.error('Error deleting student:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      alert('❌ Erreur lors de la suppression. Veuillez réessayer.');
+    }
+  };
 
   if (loading) {
     return (
-      <div style={{ padding: 24 }}>
-        <h1>Loading students...</h1>
+      <div className="p-12 max-w-7xl mx-auto">
+        <h1>Chargement des élèves...</h1>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ padding: 24 }}>
-        <h1>Error</h1>
-        <p>Error loading students: {error}</p>
+      <div className="p-12 max-w-7xl mx-auto">
+        <h1>Erreur</h1>
+        <p>Erreur lors du chargement des élèves : {error}</p>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>Students list by pricing tier</h1>
+    <div className="p-12 max-w-7xl mx-auto">
+      <h1 className="text-3xl font-bold mb-8">
+        Liste des élèves par catégories
+      </h1>
       
-      {tarifs.map((tarif) => (
-        <div key={tarif} style={{ marginBottom: 32 }}>
-          <h2 style={{ 
-            fontSize: '1.5rem', 
-            fontWeight: 'bold', 
-            marginBottom: 16,
-            padding: '8px 16px',
-            backgroundColor: '#f3f4f6',
-            borderRadius: '8px'
-          }}>
-            Pricing: {tarif} ({studentsByTarif[tarif].length} student(s))
-          </h2>
+      <div className="mb-6">
+        <input
+          type="text"
+          placeholder="Rechercher un élève..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-4 py-2 border rounded-lg"
+        />
+      </div>
+
+      {students.length > 0 ? (
+        <Tabs defaultValue={categories[0].key}>
+          <TabList aria-label="Élèves par catégories d'âge" className="w-full">
+            {categories.map((category) => {
+              const categoryStudents = studentsByCategory[category.key] || [];
+              return (
+                <Tab key={category.key} id={category.key} value={category.key}>
+                  {category.label} ({categoryStudents.length})
+                </Tab>
+              );
+            })}
+          </TabList>
           
-          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f9fafb' }}>
-                <th style={{ border: "1px solid #ccc", padding: 8 }}>Last Name</th>
-                <th style={{ border: "1px solid #ccc", padding: 8 }}>First Name</th>
-                <th style={{ border: "1px solid #ccc", padding: 8 }}>Email</th>
-                <th style={{ border: "1px solid #ccc", padding: 8 }}>Phone</th>
-                <th style={{ border: "1px solid #ccc", padding: 8 }}>City</th>
-                <th style={{ border: "1px solid #ccc", padding: 8 }}>Status</th>
-                <th style={{ border: "1px solid #ccc", padding: 8 }}>Registration Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {studentsByTarif[tarif].map((eleve) => (
-                <tr key={eleve._id} style={{ backgroundColor: '#ffffff' }}>
-                  <td style={{ border: "1px solid #ccc", padding: 8 }}>{eleve.nom}</td>
-                  <td style={{ border: "1px solid #ccc", padding: 8 }}>{eleve.prenom}</td>
-                  <td style={{ border: "1px solid #ccc", padding: 8 }}>{eleve.email}</td>
-                  <td style={{ border: "1px solid #ccc", padding: 8 }}>{eleve.telephone}</td>
-                  <td style={{ border: "1px solid #ccc", padding: 8 }}>{eleve.ville}</td>
-                  <td style={{ border: "1px solid #ccc", padding: 8 }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      backgroundColor: 
-                        eleve.statutPaiement === 'payé' ? '#dcfce7' :
-                        eleve.statutPaiement === 'en attente' ? '#fef3c7' : '#fee2e2',
-                      color: 
-                        eleve.statutPaiement === 'payé' ? '#166534' :
-                        eleve.statutPaiement === 'en attente' ? '#92400e' : '#991b1b'
-                    }}>
-                      {eleve.statutPaiement}
-                    </span>
-                  </td>
-                  <td style={{ border: "1px solid #ccc", padding: 8 }}>
-                    {new Date(eleve.dateInscription).toLocaleDateString('fr-FR')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {categories.map((category) => {
+            const categoryStudents = studentsByCategory[category.key] || [];
+            const filteredStudents = filterStudents(categoryStudents, searchTerm);
+            
+            return (
+              <TabPanel key={category.key} id={category.key} value={category.key}>
+                <div className="bg-white rounded-lg shadow-sm border mt-4">
+                  <div className="p-6">
+                    <h2 className="text-xl font-semibold mb-4 text-gray-800">
+                      {category.label} ({filteredStudents.length} élève{filteredStudents.length > 1 ? 's' : ''})
+                    </h2>
+                    
+                    {filteredStudents.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nom</TableHead>
+                            <TableHead>Prénom</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredStudents.map((student) => (
+                            <TableRow key={student._id}>
+                              <TableCell className="font-medium">{student.nom}</TableCell>
+                              <TableCell>{student.prenom}</TableCell>
+                              <TableCell>{student.email}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEdit(student)}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDelete(student._id)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>Aucun élève dans cette catégorie</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabPanel>
+            );
+          })}
+        </Tabs>
+      ) : (
+        <div className="text-center py-16 bg-white rounded-lg shadow-sm border">
+          <p className="text-lg text-gray-500">
+            Aucun élève trouvé
+          </p>
         </div>
-      ))}
-      
-      {tarifs.length === 0 && (
-        <p style={{ textAlign: 'center', color: '#6b7280', padding: 32 }}>
-          No students found
-        </p>
       )}
+
+      {/* Modal d'édition */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Modifier l'élève</DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="nom">Nom</Label>
+              <Input
+                id="nom"
+                value={editForm.nom || ''}
+                onChange={(e) => setEditForm({...editForm, nom: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="prenom">Prénom</Label>
+              <Input
+                id="prenom"
+                value={editForm.prenom || ''}
+                onChange={(e) => setEditForm({...editForm, prenom: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={editForm.email || ''}
+                onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="telephone">Téléphone</Label>
+              <Input
+                id="telephone"
+                value={editForm.telephone || ''}
+                onChange={(e) => setEditForm({...editForm, telephone: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="telephoneUrgence">Téléphone d'urgence</Label>
+              <Input
+                id="telephoneUrgence"
+                value={editForm.telephoneUrgence || ''}
+                onChange={(e) => setEditForm({...editForm, telephoneUrgence: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="adresse">Adresse</Label>
+              <Input
+                id="adresse"
+                value={editForm.adresse || ''}
+                onChange={(e) => setEditForm({...editForm, adresse: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="ville">Ville</Label>
+              <Input
+                id="ville"
+                value={editForm.ville || ''}
+                onChange={(e) => setEditForm({...editForm, ville: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="codePostal">Code postal</Label>
+              <Input
+                id="codePostal"
+                value={editForm.codePostal || ''}
+                onChange={(e) => setEditForm({...editForm, codePostal: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="tarif">Tarif</Label>
+              <Select
+                value={editForm.tarif || ''}
+                onValueChange={(value: string) => setEditForm({...editForm, tarif: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un tarif" />
+                </SelectTrigger>
+                <SelectContent>
+                  {uniqueTarifs.map((tarif) => (
+                    <SelectItem key={tarif} value={tarif}>
+                      {tarif}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="statutPaiement">Statut de paiement</Label>
+              <Select
+                value={editForm.statutPaiement || ''}
+                onValueChange={(value: string) => setEditForm({...editForm, statutPaiement: value as 'payé' | 'en attente' | 'annulé'})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="payé">Payé</SelectItem>
+                  <SelectItem value="en attente">En attente</SelectItem>
+                  <SelectItem value="annulé">Annulé</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="mt-4">
+            <Label htmlFor="remarques">Remarques</Label>
+            <Input
+              id="remarques"
+              value={editForm.remarques || ''}
+              onChange={(e) => setEditForm({...editForm, remarques: e.target.value})}
+            />
+          </div>
+          
+          <div className="flex justify-end gap-2 mt-6">
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleSave}>
+              Sauvegarder
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

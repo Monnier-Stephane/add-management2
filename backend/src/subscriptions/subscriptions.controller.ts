@@ -82,4 +82,9 @@ export class SubscriptionsController {
       throw new BadRequestException(`Erreur lors du traitement: ${error.message}`);
     }
   }
+
+  @Get('tarifs/unique')
+  getUniqueTarifs() {
+    return this.subscriptionsService.getUniqueTarifs();
+  }
 } 
