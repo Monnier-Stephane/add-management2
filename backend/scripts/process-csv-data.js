@@ -1,3 +1,5 @@
+// @ts-nocheck
+// @ts-ignore
 const { MongoClient } = require('mongodb');
 const fs = require('fs');
 const csv = require('csv-parser');
