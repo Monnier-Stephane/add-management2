@@ -29,6 +29,7 @@ interface ProcessingResult {
   updatedRecords: number;
   errors: string[];
   summary: string;
+  newStudents: Array<{ nom: string; prenom: string; email: string }>;
 }
 
 @Injectable()
@@ -47,31 +48,31 @@ export class CsvProcessorService {
   // Clean and validate phone numbers
   private cleanTelephone(telephone: string): string {
     if (!telephone) return '';
-
+    
     let cleaned = telephone.replace(/\D/g, '');
-
+    
     // Convert international numbers
     if (cleaned.startsWith('33') && cleaned.length === 11) {
       cleaned = '0' + cleaned.substring(2);
     }
-
+    
     // Add 0 if needed
     if (cleaned.length === 9) {
       cleaned = '0' + cleaned;
     }
-
+    
     // Final validation
     if (cleaned.length !== 10 || !cleaned.startsWith('0')) {
       return '0000000000';
     }
-
+    
     return cleaned;
   }
 
   // Clean date strings
   private cleanDate(dateString: string): Date {
     if (!dateString) return new Date();
-
+    
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
@@ -96,6 +97,7 @@ export class CsvProcessorService {
       updatedRecords: 0,
       errors: [],
       summary: '',
+      newStudents: [],
     };
 
     try {
@@ -129,6 +131,7 @@ export class CsvProcessorService {
       }
 
       results.totalRecords = jsonData.length;
+      results.newStudents = [];
 
       // Process each record
       // Ligne 133
@@ -241,6 +244,12 @@ export class CsvProcessorService {
             // Create new record
             await this.subscriptionModel.create(cleanedData);
             results.newRecords++;
+            // Add to new students list
+            results.newStudents.push({
+              nom: cleanedData.nom,
+              prenom: cleanedData.prenom,
+              email: cleanedData.email
+            });
           }
         } catch (error) {
           results.errors.push(
@@ -266,11 +275,12 @@ export class CsvProcessorService {
       updatedRecords: 0,
       errors: [],
       summary: '',
+      newStudents: [],
     };
 
     try {
       const csvData: CSVRecord[] = [];
-
+      
       // Parse CSV
       await new Promise<void>((resolve, reject) => {
         const stream = Readable.from(fileBuffer);
@@ -309,7 +319,7 @@ export class CsvProcessorService {
           }
 
           // Check if record already exists (by nom + prenom to avoid same person duplicates)
-          const existingRecord = await this.subscriptionModel.findOne({
+          const existingRecord = await this.subscriptionModel.findOne({ 
             nom: cleanedData.nom,
             prenom: cleanedData.prenom,
           });
@@ -326,6 +336,12 @@ export class CsvProcessorService {
             // Create new record
             await this.subscriptionModel.create(cleanedData);
             results.newRecords++;
+            // Add to new students list
+            results.newStudents.push({
+              nom: cleanedData.nom,
+              prenom: cleanedData.prenom,
+              email: cleanedData.email
+            });
           }
         } catch (error) {
           results.errors.push(`Error for ${record.email}: ${String(error)}`);

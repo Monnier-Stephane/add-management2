@@ -9,11 +9,7 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem
-} from '@/components/ui/sidebar'
+  SidebarMenuButton } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import {
@@ -29,15 +25,7 @@ import {
 } from 'lucide-react'
 
 export function AppSidebar() {
-  const { user, userRole, logout } = useAuth()
-
-  const handleLogout = async () => {
-    try {
-      await logout()
-    } catch (error) {
-      console.error('Erreur lors de la déconnexion', error)
-    }
-  }
+  const { userRole, logout, user } = useAuth()
 
   const menuItems = [
     {
@@ -95,7 +83,7 @@ export function AppSidebar() {
           <div>
             <h2 className="font-semibold text-sm">Académie</h2>
             <p className="text-xs text-gray-500">
-              {userRole === 'admin' ? 'Administrateur' : 'Coach'}
+              {user?.email || (userRole === 'admin' ? 'Administrateur' : 'Coach')}
             </p>
           </div>
         </div>
@@ -136,6 +124,12 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
       </SidebarContent>   
+      <SidebarFooter>
+        <Button variant="outline" onClick={logout} className="w-full">
+          <LogOut className="w-4 h-4 mr-2" />
+          Déconnexion
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   )
 }

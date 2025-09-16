@@ -6,7 +6,7 @@ import StatsDashboard from '@/components/admin/StatsDashboard'
 import CoachesList from '@/components/CoachesList'
 
 export function Dashboard() {
-  const { user, userRole } = useAuth()
+  const { userRole } = useAuth()
 
   return (
     <SidebarProvider>

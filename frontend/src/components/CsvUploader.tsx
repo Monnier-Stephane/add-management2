@@ -10,6 +10,7 @@ interface ProcessingResult {
   updatedRecords: number;
   errors: string[];
   summary: string;
+  newStudents: Array<{ nom: string; prenom: string; email: string }>;
 }
 
 export function CsvUploader() {
@@ -108,6 +109,23 @@ export function CsvUploader() {
               <p>📊 {result.summary}</p>
               <p>✅ Nouveaux enregistrements: {result.newRecords}</p>
               <p>🔄 Enregistrements mis à jour: {result.updatedRecords}</p>
+              
+              {result.newStudents.length > 0 && (
+                <div className="mt-4">
+                  <p className="font-semibold text-green-800 mb-2">🎉 Nouveaux élèves ajoutés ({result.newStudents.length}):</p>
+                  <div className="bg-white border border-green-300 rounded-md p-3 max-h-40 overflow-y-auto">
+                    <div className="grid grid-cols-1 gap-1">
+                      {result.newStudents.map((student, index) => (
+                        <div key={index} className="flex justify-between items-center py-1 px-2 bg-green-50 rounded">
+                          <span className="font-medium">{student.prenom} {student.nom}</span>
+                          <span className="text-xs text-gray-600">{student.email}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {result.errors.length > 0 && (
                 <div className="mt-2">
                   <p className="font-semibold">⚠️ Erreurs ({result.errors.length}):</p>

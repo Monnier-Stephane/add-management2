@@ -15,7 +15,7 @@ const CoachesList = () => {
    if(error) return <div>Erreur: {error.message}</div>
 
    return (
-	<Card>
+	<Card className="max-w-md my-5">
 	<CardHeader>
 	  <CardTitle>Liste des coaches</CardTitle>
 	</CardHeader>
@@ -27,13 +27,6 @@ const CoachesList = () => {
 	          <p className="font-medium">{coach.nom} {coach.prenom}</p>
 	          <p className="text-sm text-gray-600">{coach.email}</p>
 	        </div>
-	        <span className={`px-2 py-1 rounded text-xs ${
-	          coach.statut === 'admin' 
-	            ? 'bg-red-100 text-red-800' 
-	            : 'bg-blue-100 text-blue-800'
-	        }`}>
-	          {coach.statut}
-	        </span>
 	      </div>
 	    ))}
 	  </div>
