@@ -6,11 +6,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { CoachesModule } from './coaches/coaches.module';
 
 @Module({
-  imports: [
-    DatabaseModule,
-    SubscriptionsModule,
-    CoachesModule,
-  ],
+  imports: [DatabaseModule, SubscriptionsModule, CoachesModule],
   controllers: [AppController],
   providers: [AppService],
 })

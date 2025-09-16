@@ -1,14 +1,14 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
   Delete,
   UseInterceptors,
   UploadedFile,
-  BadRequestException
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SubscriptionsService } from './subscriptions.service';
@@ -47,7 +47,10 @@ export class SubscriptionsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateSubscriptionDto: UpdateSubscriptionDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateSubscriptionDto: UpdateSubscriptionDto,
+  ) {
     return this.subscriptionsService.update(id, updateSubscriptionDto);
   }
 
@@ -76,10 +79,59 @@ export class SubscriptionsController {
       return {
         success: true,
         message: 'Fichier CSV traité avec succès',
-        data: result
+        data: result,
+      };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erreur inconnue';
+      throw new BadRequestException(
+        `Erreur lors du traitement: ${errorMessage}`,
+      );
+    }
+  }
+
+  // Nouvel endpoint pour Excel
+  @Post('upload-excel')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadExcel(@UploadedFile() file: Express.Multer.File): Promise<{
+    success: boolean;
+    message: string;
+    data: ProcessingResult;
+  }> {
+    if (!file) {
+      throw new BadRequestException('Aucun fichier fourni');
+    }
+
+    const isExcel =
+      file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls');
+    const isCSV = file.originalname.endsWith('.csv');
+
+    if (!isExcel && !isCSV) {
+      throw new BadRequestException(
+        'Le fichier doit être au format CSV ou Excel',
+      );
+    }
+
+    try {
+      let result: ProcessingResult;
+
+      if (isExcel) {
+        result = await this.csvProcessorService.processExcelFile(file.buffer);
+      } else {
+        result = await this.csvProcessorService.processCSVFile(file.buffer);
+      }
+
+      return {
+        success: true,
+        message: isExcel
+          ? 'Fichier Excel traité avec succès'
+          : 'Fichier CSV traité avec succès',
+        data: result,
       };
     } catch (error) {
-      throw new BadRequestException(`Erreur lors du traitement: ${error.message}`);
+      throw new BadRequestException(
+        `Erreur lors du traitement: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+      );
     }
   }
 
@@ -87,4 +139,4 @@ export class SubscriptionsController {
   getUniqueTarifs() {
     return this.subscriptionsService.getUniqueTarifs();
   }
-} 
+}

@@ -18,4 +18,4 @@ export class Coach {
   statut: 'coach' | 'admin';
 }
 
-export const CoachSchema = SchemaFactory.createForClass(Coach); 
+export const CoachSchema = SchemaFactory.createForClass(Coach);

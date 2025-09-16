@@ -20,12 +20,14 @@ export function CsvUploader() {
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
-    if (selectedFile && selectedFile.type === 'text/csv') {
+    if (selectedFile && (selectedFile.type === 'text/csv' || 
+        selectedFile.name.endsWith('.xlsx') || 
+        selectedFile.name.endsWith('.xls'))) {
       setFile(selectedFile);
       setError(null);
       setResult(null);
     } else {
-      setError('Veuillez sélectionner un fichier CSV valide');
+      setError('Veuillez sélectionner un fichier CSV ou Excel valide');
       setFile(null);
     }
   };
@@ -41,7 +43,8 @@ export function CsvUploader() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://localhost:3001/subscriptions/upload-csv', {
+      // Utiliser le nouvel endpoint qui accepte Excel
+      const response = await fetch('http://localhost:3001/subscriptions/upload-excel', {
         method: 'POST',
         body: formData,
       });
@@ -62,17 +65,17 @@ export function CsvUploader() {
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Ajouter/Mettre à jour la base de données</CardTitle>
+        <CardTitle>Import de données (CSV ou Excel)</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <label htmlFor="csv-file" className="block text-sm font-medium mb-2">
-            Sélectionner un fichier CSV
+          <label htmlFor="file-upload" className="block text-sm font-medium mb-2">
+            Sélectionner un fichier CSV ou Excel
           </label>
           <input
-            id="csv-file"
+            id="file-upload"
             type="file"
-            accept=".csv"
+            accept=".csv,.xlsx,.xls"
             onChange={handleFileChange}
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
@@ -89,7 +92,7 @@ export function CsvUploader() {
           disabled={!file || isProcessing}
           className="w-full"
         >
-          {isProcessing ? 'Traitement en cours...' : 'Traiter le fichier CSV'}
+          {isProcessing ? 'Traitement en cours...' : 'Traiter le fichier'}
         </Button>
 
         {error && (
@@ -102,7 +105,7 @@ export function CsvUploader() {
           <div className="p-4 bg-green-50 border border-green-200 rounded-md">
             <h3 className="font-semibold text-green-800 mb-2">Résultat du traitement</h3>
             <div className="space-y-1 text-sm text-green-700">
-              <p>�� {result.summary}</p>
+              <p>📊 {result.summary}</p>
               <p>✅ Nouveaux enregistrements: {result.newRecords}</p>
               <p>🔄 Enregistrements mis à jour: {result.updatedRecords}</p>
               {result.errors.length > 0 && (

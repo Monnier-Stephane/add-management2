@@ -29,7 +29,9 @@ export class CoachesService {
   }
 
   async update(id: string, updateCoachDto: UpdateCoachDto): Promise<Coach> {
-    const updatedCoach = await this.coachModel.findByIdAndUpdate(id, updateCoachDto, { new: true }).exec();
+    const updatedCoach = await this.coachModel
+      .findByIdAndUpdate(id, updateCoachDto, { new: true })
+      .exec();
     if (!updatedCoach) {
       throw new NotFoundException(`Coach avec l'ID "${id}" non trouvé`);
     }
@@ -47,4 +49,4 @@ export class CoachesService {
   async findByEmail(email: string): Promise<Coach | null> {
     return this.coachModel.findOne({ email }).exec();
   }
-} 
+}

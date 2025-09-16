@@ -10,4 +10,4 @@ export class CreateSubscriptionDto {
   tarif: string;
   statutPaiement?: string;
   remarques?: string;
-} 
+}

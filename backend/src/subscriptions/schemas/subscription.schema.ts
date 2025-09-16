@@ -18,6 +18,9 @@ export class Subscription {
   telephone: string;
 
   @Prop()
+  telephoneUrgence: string;
+
+  @Prop()
   dateDeNaissance: Date;
 
   @Prop()
@@ -35,10 +38,10 @@ export class Subscription {
   @Prop({ default: Date.now })
   dateInscription: Date;
 
-  @Prop({ 
-    type: String, 
-    enum: ['payé', 'en attente', 'annulé'], 
-    default: 'en attente' 
+  @Prop({
+    type: String,
+    enum: ['payé', 'en attente', 'annulé'],
+    default: 'en attente',
   })
   statutPaiement: string;
 
@@ -46,4 +49,4 @@ export class Subscription {
   remarques: string;
 }
 
-export const SubscriptionSchema = SchemaFactory.createForClass(Subscription); 
+export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);

@@ -93,14 +93,18 @@ describe('SubscriptionsService', () => {
       exec: jest.fn().mockResolvedValue(null),
     });
 
-    await expect(service.findOne('123')).rejects.toThrow('Subscription avec l\'ID "123" non trouvée');
+    await expect(service.findOne('123')).rejects.toThrow(
+      'Subscription avec l\'ID "123" non trouvée',
+    );
   });
 
   it('should update a subscription', async () => {
     const fakeSubscription = { nom: 'Dupont', prenom: 'Jean' };
-    (mockSubscriptionModel as any).findByIdAndUpdate = jest.fn().mockReturnValueOnce({
-      exec: jest.fn().mockResolvedValue(fakeSubscription),
-    });
+    (mockSubscriptionModel as any).findByIdAndUpdate = jest
+      .fn()
+      .mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue(fakeSubscription),
+      });
 
     const result = await service.update('123', fakeSubscription);
     expect(result).toEqual(fakeSubscription);
@@ -108,19 +112,25 @@ describe('SubscriptionsService', () => {
 
   it('should delete a subscription', async () => {
     const fakeSubscription = { nom: 'Dupont', prenom: 'Jean' };
-    (mockSubscriptionModel as any).findByIdAndDelete = jest.fn().mockReturnValueOnce({
-      exec: jest.fn().mockResolvedValue(fakeSubscription),
-    });
+    (mockSubscriptionModel as any).findByIdAndDelete = jest
+      .fn()
+      .mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue(fakeSubscription),
+      });
 
     const result = await service.remove('123');
     expect(result).toEqual(fakeSubscription);
   });
 
   it('should throw NotFoundException if subscription not found for deletion', async () => {
-    (mockSubscriptionModel as any).findByIdAndDelete = jest.fn().mockReturnValueOnce({
-      exec: jest.fn().mockResolvedValue(null),
-    });
+    (mockSubscriptionModel as any).findByIdAndDelete = jest
+      .fn()
+      .mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
-    await expect(service.remove('123')).rejects.toThrow('Subscription avec l\'ID "123" non trouvée');
+    await expect(service.remove('123')).rejects.toThrow(
+      'Subscription avec l\'ID "123" non trouvée',
+    );
   });
 });

@@ -10,8 +10,6 @@ if (!mongoUri) {
 }
 
 @Module({
-  imports: [
-    MongooseModule.forRoot(mongoUri),
-  ],
+  imports: [MongooseModule.forRoot(mongoUri)],
 })
-export class DatabaseModule {} 
+export class DatabaseModule {}
