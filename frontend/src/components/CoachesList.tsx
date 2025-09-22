@@ -15,14 +15,14 @@ const CoachesList = () => {
    if(error) return <div>Erreur: {error.message}</div>
 
    return (
-	<Card className="max-w-md my-5">
+	<Card className="max-w-4xl my-5">
 	<CardHeader>
 	  <CardTitle>Liste des coaches</CardTitle>
 	</CardHeader>
 	<CardContent>
-	  <div className="space-y-2">
+	  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 	    {filteredCoaches?.map((coach) => (
-	      <div key={coach._id} className="flex justify-between items-center p-2 border rounded">
+	      <div key={coach._id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors">
 	        <div>
 	          <p className="font-medium">{coach.nom} {coach.prenom}</p>
 	          <p className="text-sm text-gray-600">{coach.email}</p>

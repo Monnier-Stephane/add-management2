@@ -61,4 +61,32 @@ export class SubscriptionsService {
     const tarifs = await this.subscriptionModel.distinct('tarif').exec();
     return tarifs.filter((tarif) => tarif && tarif.trim() !== '');
   }
+
+  async getStats() {
+    const subscriptions = await this.subscriptionModel.find().exec();
+    
+    let total = subscriptions.length;
+    let attente = 0, paye = 0, enfants = 0, ados = 0, adultes = 0;
+
+    subscriptions.forEach((item: any) => {
+      // Payment status
+      if (item.statutPaiement === 'en attente') attente++;
+      if (item.statutPaiement === 'payé') paye++;
+
+      // Categorization by pricing tier
+      const tarif = (item.tarif || '').toLowerCase();
+      if (tarif.includes('enfant')) enfants++;
+      else if (tarif.includes('ado')) ados++;
+      else if (tarif.includes('adulte')) adultes++;
+    });
+
+    return {
+      total,
+      attente,
+      paye,
+      enfants,
+      ados,
+      adultes
+    };
+  }
 }

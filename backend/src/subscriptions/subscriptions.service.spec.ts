@@ -94,7 +94,7 @@ describe('SubscriptionsService', () => {
     });
 
     await expect(service.findOne('123')).rejects.toThrow(
-      'Subscription avec l\'ID "123" non trouvée',
+      'Subscription with ID "123" not found',
     );
   });
 
@@ -130,7 +130,197 @@ describe('SubscriptionsService', () => {
       });
 
     await expect(service.remove('123')).rejects.toThrow(
-      'Subscription avec l\'ID "123" non trouvée',
+      'Subscription with ID "123" not found',
     );
+  });
+
+  it('should return unique tarifs', async () => {
+    const mockTarifs = ['LUNDI 19h30 Bercy ADULTES', 'MERCREDI 12h15 Paris Châtelet ENFANTS', ''];
+    (mockSubscriptionModel as any).distinct = jest.fn().mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue(mockTarifs),
+    });
+
+    const result = await service.getUniqueTarifs();
+    expect(result).toEqual(['LUNDI 19h30 Bercy ADULTES', 'MERCREDI 12h15 Paris Châtelet ENFANTS']);
+  });
+
+  it('should filter out empty and null tarifs', async () => {
+    const mockTarifs = ['Valid Tarif', '', null, 'Another Valid Tarif', '   '];
+    (mockSubscriptionModel as any).distinct = jest.fn().mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue(mockTarifs),
+    });
+
+    const result = await service.getUniqueTarifs();
+    expect(result).toEqual(['Valid Tarif', 'Another Valid Tarif']);
+  });
+
+  it('should return empty array when no tarifs found', async () => {
+    (mockSubscriptionModel as any).distinct = jest.fn().mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue([]),
+    });
+
+    const result = await service.getUniqueTarifs();
+    expect(result).toEqual([]);
+  });
+
+  it('should return statistics for subscriptions', async () => {
+    const mockSubscriptions = [
+      { statutPaiement: 'payé', tarif: 'LUNDI 19h30 Bercy ADULTES' },
+      { statutPaiement: 'en attente', tarif: 'MERCREDI 12h15 Paris Châtelet ENFANTS' },
+      { statutPaiement: 'payé', tarif: 'SAMEDI 10h00 Choisy ADOS' },
+      { statutPaiement: 'payé', tarif: 'DIMANCHE 11h30 Choisy ADULTES' },
+      { statutPaiement: 'en attente', tarif: 'TARIF ENFANT' },
+    ];
+    (mockSubscriptionModel as any).find.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue(mockSubscriptions),
+    });
+
+    const result = await service.getStats();
+    expect(result).toEqual({
+      total: 5,
+      attente: 2,
+      paye: 3,
+      enfants: 2,
+      ados: 1,
+      adultes: 2
+    });
+  });
+
+  it('should handle empty subscriptions array in getStats', async () => {
+    (mockSubscriptionModel as any).find.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue([]),
+    });
+
+    const result = await service.getStats();
+    expect(result).toEqual({
+      total: 0,
+      attente: 0,
+      paye: 0,
+      enfants: 0,
+      ados: 0,
+      adultes: 0
+    });
+  });
+
+  it('should handle subscriptions with missing fields in getStats', async () => {
+    const mockSubscriptions = [
+      { statutPaiement: 'payé', tarif: null },
+      { statutPaiement: null, tarif: 'TARIF ENFANT' },
+      { statutPaiement: 'payé', tarif: undefined },
+      { statutPaiement: 'en attente', tarif: '' },
+    ];
+    (mockSubscriptionModel as any).find.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue(mockSubscriptions),
+    });
+
+    const result = await service.getStats();
+    expect(result).toEqual({
+      total: 4,
+      attente: 1,
+      paye: 2,
+      enfants: 1,
+      ados: 0,
+      adultes: 0
+    });
+  });
+
+  it('should handle mixed case in tarif for getStats', async () => {
+    const mockSubscriptions = [
+      { statutPaiement: 'payé', tarif: 'TARIF ENFANT' },
+      { statutPaiement: 'payé', tarif: 'tarif ado' },
+      { statutPaiement: 'payé', tarif: 'Tarif Adulte' },
+    ];
+    (mockSubscriptionModel as any).find.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue(mockSubscriptions),
+    });
+
+    const result = await service.getStats();
+    expect(result).toEqual({
+      total: 3,
+      attente: 0,
+      paye: 3,
+      enfants: 1,
+      ados: 1,
+      adultes: 1
+    });
+  });
+
+  it('should handle partial matches in tarif for getStats', async () => {
+    const mockSubscriptions = [
+      { statutPaiement: 'payé', tarif: 'COURS ENFANT' },
+      { statutPaiement: 'payé', tarif: 'ADOLESCENT' },
+      { statutPaiement: 'payé', tarif: 'ADULTE' },
+    ];
+    (mockSubscriptionModel as any).find.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue(mockSubscriptions),
+    });
+
+    const result = await service.getStats();
+    expect(result).toEqual({
+      total: 3,
+      attente: 0,
+      paye: 3,
+      enfants: 1,
+      ados: 1,
+      adultes: 1
+    });
+  });
+
+  it('should handle subscriptions with empty objects in getStats', async () => {
+    const mockSubscriptions = [{}, {}, {}];
+    (mockSubscriptionModel as any).find.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue(mockSubscriptions),
+    });
+
+    const result = await service.getStats();
+    expect(result).toEqual({
+      total: 3,
+      attente: 0,
+      paye: 0,
+      enfants: 0,
+      ados: 0,
+      adultes: 0
+    });
+  });
+
+  it('should handle subscriptions with special characters in tarif for getStats', async () => {
+    const mockSubscriptions = [
+      { statutPaiement: 'payé', tarif: 'TARIF-ENFANT' },
+      { statutPaiement: 'payé', tarif: 'TARIF_ADO' },
+      { statutPaiement: 'payé', tarif: 'TARIF.ADULTE' },
+    ];
+    (mockSubscriptionModel as any).find.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue(mockSubscriptions),
+    });
+
+    const result = await service.getStats();
+    expect(result).toEqual({
+      total: 3,
+      attente: 0,
+      paye: 3,
+      enfants: 1,
+      ados: 1,
+      adultes: 1
+    });
+  });
+
+  it('should handle subscriptions with very long tarif strings in getStats', async () => {
+    const longTarif = 'A'.repeat(1000) + 'ENFANT' + 'B'.repeat(1000);
+    const mockSubscriptions = [
+      { statutPaiement: 'payé', tarif: longTarif },
+    ];
+    (mockSubscriptionModel as any).find.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue(mockSubscriptions),
+    });
+
+    const result = await service.getStats();
+    expect(result).toEqual({
+      total: 1,
+      attente: 0,
+      paye: 1,
+      enfants: 1,
+      ados: 0,
+      adultes: 0
+    });
   });
 });

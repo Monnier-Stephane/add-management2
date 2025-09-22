@@ -9,7 +9,7 @@ type UserRole = 'coach' | 'admin'
 
 type AuthContextType = {
   user: User | null
-  userProfile: any | null
+  userProfile: { statut: string; nom: string; prenom: string; email: string } | null
   userRole: UserRole | null
   loading: boolean
   logout: () => Promise<void> // 👈 Ajout de la fonction logout
@@ -31,24 +31,37 @@ export const useAuth = () => {
   return context
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { readonly children: React.ReactNode }) {
+  
   const [user, setUser] = useState<User | null>(null)
-  const [userProfile, setUserProfile] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<{ statut: string; nom: string; prenom: string; email: string } | null>(null)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+     
       setUser(firebaseUser)
       
       if (firebaseUser) {
         try {
           const response = await fetch(`http://localhost:3001/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`);
+          
           if (response.ok) {
-            const coach = await response.json();
-            setUserProfile(coach);
-            setUserRole(coach?.statut || 'coach');
+            const text = await response.text();
+           
+            if (text.trim()) {
+              const coach = JSON.parse(text);
+             
+              setUserProfile(coach);
+              setUserRole(coach?.statut || 'coach');
+            } else {
+              // Pas de coach trouvé, utiliser les valeurs par défaut
+              setUserProfile(null);
+              setUserRole('coach');
+            }
           } else {
             setUserRole('coach');
           }
@@ -66,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => unsubscribe()
   }, [])
+
 
   const logout = async () => {
     try {

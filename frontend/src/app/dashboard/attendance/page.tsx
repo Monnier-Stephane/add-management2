@@ -1,17 +1,17 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Users, Clock, MapPin } from 'lucide-react'
+import { Home } from 'lucide-react'
+import Link from 'next/link'
+import { CourseCard } from '@/components/attendance/CourseCard'
 
 interface Student {
   id: string
   nom: string
   prenom: string
   present: boolean
+  isTemporary?: boolean
 }
 
 interface Subscription {
@@ -131,6 +131,81 @@ const coursesStructure = [
   }
 ]
 
+// Interface pour le cours
+interface CourseData {
+  jour: string
+  heure: string
+  lieu: string
+}
+
+// Fonctions utilitaires pour réduire l'imbrication
+const hasAdultsInCourse = (course: CourseData, subscriptions: Subscription[]): boolean => {
+  return subscriptions.some((sub: Subscription) => {
+    const tarif = sub.tarif || ''
+    return (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))
+  })
+}
+
+const checkTimeMatch = (heure: string, tarif: string): boolean => {
+  const timeChecks: Record<string, () => boolean> = {
+    '12h15': () => tarif.includes('12h15') || tarif.includes('12H15'),
+    '16h15': () => tarif.includes('16h15'),
+    '18h00': () => tarif.includes('18h'),
+    '19h30': () => tarif.includes('19h30'),
+    '10h00': () => tarif.includes('10h') || tarif.includes('Paris châtelet 10h') || tarif.includes('Paris Châtelet 1Oh'),
+    '11h15': () => tarif.includes('11h15'),
+    '16h30': () => tarif.includes('16h30') && tarif.includes('Choisy'),
+    '17h45': () => tarif.includes('17h45'),
+    '11h30': () => tarif.includes('11h30')
+  }
+  
+  return timeChecks[heure]?.() || false
+}
+
+const checkCourseDayAndTime = (course: CourseData, tarif: string): boolean => {
+  const { jour, heure } = course
+  
+  const dayChecks: Record<string, () => boolean> = {
+    'Lundi': () => tarif.includes('LUNDI') && tarif.includes('Bercy'),
+    'Mercredi': () => tarif.includes('MERCREDI') && checkTimeMatch(heure, tarif),
+    'Jeudi': () => tarif.includes('JEUDI') && checkTimeMatch(heure, tarif),
+    'Samedi': () => tarif.includes('SAMEDI') && checkTimeMatch(heure, tarif),
+    'Dimanche': () => tarif.includes('DIMANCHE') && checkTimeMatch(heure, tarif)
+  }
+  
+  return dayChecks[jour]?.() || false
+}
+
+const isUnlimitedOr2Courses = (tarif: string): boolean => {
+  return tarif.includes('ADULTES COURS ILLIMITE/SEMAINE') || tarif.includes('ADULTES 2 COURS/SEMAINE')
+}
+
+const filterStudentsForCourse = (course: CourseData, subscriptions: Subscription[]): Student[] => {
+  const courseHasAdults = hasAdultsInCourse(course, subscriptions)
+  
+  const students = subscriptions.filter((sub: Subscription) => {
+    const tarif = sub.tarif || ''
+    const isUnlimited = isUnlimitedOr2Courses(tarif)
+    
+    // Pour les élèves illimité, ils peuvent aller à tous les cours adultes
+    if (isUnlimited && courseHasAdults) {
+      return true
+    }
+    
+    // Pour les autres élèves, vérifier la correspondance jour/heure
+    return checkCourseDayAndTime(course, tarif)
+  })
+  
+  return students.map((sub: Subscription, index: number) => ({
+    id: sub._id || `student-${index}`,
+    nom: sub.nom || '',
+    prenom: sub.prenom || '',
+    present: false
+  })).sort((a: Student, b: Student) => 
+    a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })
+  )
+}
+
 export default function AttendancePage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
@@ -148,86 +223,10 @@ export default function AttendancePage() {
         const subscriptions = await response.json()
         
         // Transformer les données MongoDB en cours avec élèves
-        const coursesWithStudents = coursesStructure.map(course => {
-          // Vérifier si ce cours contient déjà des adultes dans les tarifs
-          const courseHasAdults = subscriptions.some((sub: Subscription) => {
-            const tarif = sub.tarif || ''
-            return (
-              (course.jour === 'Lundi' && tarif.includes('LUNDI') && tarif.includes('Bercy') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))) ||
-              (course.jour === 'Mercredi' && tarif.includes('MERCREDI') && 
-               ((course.heure === '12h15' && tarif.includes('12h15') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))) ||
-                (course.heure === '16h15' && tarif.includes('16h15') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))))) ||
-              (course.jour === 'Jeudi' && tarif.includes('JEUDI') && 
-               ((course.heure === '18h00' && tarif.includes('18h') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))) ||
-                (course.heure === '19h30' && tarif.includes('19h30') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))))) ||
-              (course.jour === 'Samedi' && tarif.includes('SAMEDI') && 
-               ((course.heure === '10h00' && tarif.includes('10h') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))) ||
-                (course.heure === '11h15' && tarif.includes('11h15') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))) ||
-                (course.heure === '12h15' && tarif.includes('12H15') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))) ||
-                (course.heure === '16h30' && tarif.includes('16h30') && tarif.includes('Choisy') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))) ||
-                (course.heure === '17h45' && tarif.includes('17h45') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))))) ||
-              (course.jour === 'Dimanche' && tarif.includes('DIMANCHE') && 
-               ((course.heure === '10h00' && tarif.includes('10h') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))) ||
-                (course.heure === '11h30' && tarif.includes('11h30') && (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES')))))
-            )
-          })
-
-          // Filtrer les élèves selon le jour, heure et lieu
-          const students = subscriptions.filter((sub: Subscription) => {
-            const tarif = sub.tarif || ''
-            const isUnlimitedOr2Courses = tarif.includes('ADULTES COURS ILLIMITE/SEMAINE') || tarif.includes('ADULTES 2 COURS/SEMAINE')
-
-            return (
-              (course.jour === 'Lundi' && (
-                (tarif.includes('LUNDI') && tarif.includes('Bercy')) ||
-                (isUnlimitedOr2Courses && courseHasAdults)
-              )) ||
-              (course.jour === 'Mercredi' && (
-                (tarif.includes('MERCREDI') && 
-                 ((course.heure === '12h15' && tarif.includes('12h15')) ||
-                  (course.heure === '16h15' && tarif.includes('16h15')))) ||
-                (isUnlimitedOr2Courses && courseHasAdults)
-              )) ||
-              (course.jour === 'Jeudi' && (
-                (tarif.includes('JEUDI') && 
-                 ((course.heure === '18h00' && tarif.includes('18h')) ||
-                  (course.heure === '19h30' && tarif.includes('19h30')))) ||
-                (isUnlimitedOr2Courses && courseHasAdults)
-              )) ||
-              (course.jour === 'Samedi' && (
-                (tarif.includes('SAMEDI') && 
-                 ((course.heure === '10h00' && (tarif.includes('10h') || tarif.includes('Paris châtelet 10h') || tarif.includes('Paris Châtelet 1Oh'))) ||
-                  (course.heure === '11h15' && tarif.includes('11h15')) ||
-                  (course.heure === '12h15' && tarif.includes('12H15')) ||
-                  (course.heure === '16h30' && tarif.includes('16h30') && tarif.includes('Choisy')) ||
-                  (course.heure === '17h45' && tarif.includes('17h45')))) ||
-                (isUnlimitedOr2Courses && courseHasAdults) ||
-                (course.heure === '17h45' && isUnlimitedOr2Courses)
-              )) ||
-              (course.jour === 'Dimanche' && (
-                (tarif.includes('DIMANCHE') && 
-                 ((course.heure === '10h00' && tarif.includes('10h')) ||
-                  (course.heure === '11h30' && tarif.includes('11h30')))) ||
-                (isUnlimitedOr2Courses && courseHasAdults)
-              ))
-            )
-          }).map((sub: Subscription, index: number) => ({
-            id: sub._id || `student-${index}`,
-            nom: sub.nom || '',
-            prenom: sub.prenom || '',
-            present: false
-          }))
-
-          // Trier les élèves par prénom (ordre alphabétique)
-          const sortedStudents = students.sort((a: Student, b: Student) => 
-            a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })
-          )
-
-          return {
-            ...course,
-            eleves: sortedStudents
-          }
-        })
+        const coursesWithStudents = coursesStructure.map(course => ({
+          ...course,
+          eleves: filterStudentsForCourse(course, subscriptions)
+        }))
 
         setCourses(coursesWithStudents)
       } catch (err) {
@@ -275,14 +274,55 @@ export default function AttendancePage() {
     }
   }
 
+  const handleAddTemporaryStudent = (courseId: string, nom: string, prenom: string) => {
+    const newStudent: Student = {
+      id: `temp-${Date.now()}`,
+      nom: nom.trim(),
+      prenom: prenom.trim(),
+      present: false,
+      isTemporary: true
+    }
+
+    setCourses(prev => prev.map(course => 
+      course.id === courseId 
+        ? {
+            ...course,
+            eleves: [...course.eleves, newStudent]
+          }
+        : course
+    ))
+  }
+
+  const removeStudentFromCourse = (course: Course, studentId: string): Course => ({
+    ...course,
+    eleves: course.eleves.filter(eleve => eleve.id !== studentId)
+  })
+
+  const handleRemoveTemporaryStudent = (courseId: string, studentId: string) => {
+    setCourses(prev => prev.map(course => 
+      course.id === courseId ? removeStudentFromCourse(course, studentId) : course
+    ))
+  }
+
+
   if (loading) return <div className="container mx-auto p-4">Chargement...</div>
   if (error) return <div className="container mx-auto p-4">Erreur: {error}</div>
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Feuilles d&apos;appel</h1>
+    <div className="container mx-auto p-4 lg:max-w-7xl">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">
+            Feuilles d&apos;appel
+          </h1>
         <p className="text-gray-600">Gérez les présences des élèves par cours</p>
+        </div>
+        <Link href="/dashboard">
+          <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
+            <Home className="h-4 w-4" />
+            Retour au Dashboard
+          </Button>
+        </Link>
       </div>
 
       <Tabs defaultValue={Object.keys(coursesByDay)[0]} className="w-full">
@@ -297,66 +337,14 @@ export default function AttendancePage() {
         {Object.entries(coursesByDay).map(([day, dayCourses]) => (
           <TabsContent key={day} value={day} className="space-y-4">
             {dayCourses.map(course => (
-              <Card key={course.id} className="mb-4">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        {course.nom}
-                      </CardTitle>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          {course.lieu}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          {course.coach}
-                        </div>
-                      </div>
-                    </div>
-                    <Badge variant="outline">
-                      {course.eleves.length} élèves
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {course.eleves.map(eleve => (
-                      <div key={eleve.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            id={`${course.id}-${eleve.id}`}
-                            checked={eleve.present}
-                            onCheckedChange={(checked) => 
-                              handlePresenceChange(course.id, eleve.id, checked as boolean)
-                            }
-                          />
-                          <label 
-                            htmlFor={`${course.id}-${eleve.id}`}
-                            className="font-medium cursor-pointer"
-                          >
-                            {eleve.prenom} {eleve.nom}
-                          </label>
-                        </div>
-                        <Badge variant={eleve.present ? "default" : "secondary"}>
-                          {eleve.present ? "Présent" : "Absent"}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="flex justify-between items-center mt-4 pt-4 border-t">
-                    <div className="text-sm text-gray-600">
-                      {course.eleves.filter(e => e.present).length} / {course.eleves.length} présents
-                    </div>
-                    <Button onClick={() => handleSaveAttendance(course.id)} size="sm">
-                      Sauvegarder
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <CourseCard 
+                key={course.id} 
+                course={course}
+                onPresenceChange={handlePresenceChange}
+                onRemoveTemporaryStudent={handleRemoveTemporaryStudent}
+                onAddTemporaryStudent={handleAddTemporaryStudent}
+                onSaveAttendance={handleSaveAttendance}
+              />
             ))}
           </TabsContent>
         ))}

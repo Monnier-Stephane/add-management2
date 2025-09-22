@@ -1,0 +1,6 @@
+projectKey=add-management2
+serverUrl=http://localhost:9000
+serverVersion=25.9.0.112764
+dashboardUrl=http://localhost:9000/dashboard?id=add-management2
+ceTaskId=01157564-07fd-410e-8ddb-de98d094c235
+ceTaskUrl=http://localhost:9000/api/ce/task?id=01157564-07fd-410e-8ddb-de98d094c235

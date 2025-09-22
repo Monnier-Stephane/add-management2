@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabList, TabPanel, Tab } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,6 +81,13 @@ const StudentsPage = () => {
   const calculateAge = (dateOfBirth: string): number => {
     const today = new Date();
     const birthDate = new Date(dateOfBirth);
+    
+    // Vérifier si la date est valide
+    if (isNaN(birthDate.getTime())) {
+      
+      return 0; // Retourner 0 pour les dates invalides (sera classé comme enfant)
+    }
+    
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     
@@ -88,16 +95,41 @@ const StudentsPage = () => {
       age--;
     }
     
+    // Vérifier si l'âge est raisonnable (entre 0 et 120 ans)
+    if (age < 0 || age > 120) {
+     
+      return 0; // Retourner 0 pour les âges invalides
+    }
+    
     return age;
   };
 
   // Function to categorize students by age
   const categorizeByAge = (student: Student): string => {
+    // PRIORITÉ 1: Utiliser le tarif qui contient l'information d'âge
+    const tarif = (student.tarif || '').toLowerCase();
+    
+    // Logique basée sur le tarif (plus fiable que les dates corrompues)
+    if (tarif.includes('enfant') || tarif.includes('5 à 8') || tarif.includes('9 à 11') || tarif.includes('7 à 11')) {
+      return 'enfants';
+    }
+    if (tarif.includes('ado') || tarif.includes('10 à 17') || tarif.includes('11 à 17') || tarif.includes('12 à 17')) {
+      return 'adolescents';
+    }
+    if (tarif.includes('adulte') || tarif.includes('18 à 20') || tarif.includes('jeunes adultes')) {
+      return 'adultes';
+    }
+    
+    // FALLBACK: Essayer de calculer l'âge si le tarif n'est pas clair
     const age = calculateAge(student.dateDeNaissance);
     
-    if (age < 12) return 'enfants';
-    if (age < 18) return 'adolescents';
-    return 'adultes';
+    
+    if (age > 0 && age < 12) return 'enfants';
+    if (age >= 12 && age < 18) return 'adolescents';
+    if (age >= 18) return 'adultes';
+    
+    // Dernier recours: par défaut
+    return 'enfants';
   };
 
   // Function to get course key (jour + lieu + heure)
@@ -108,10 +140,24 @@ const StudentsPage = () => {
     return `${jour} - ${lieu} - ${heure}`;
   };
 
-  // Group students by course, then by age category within each course
+  const filterStudents = (students: Student[], searchTerm: string) => {
+    if (!searchTerm) return students;
+    
+    const term = searchTerm.toLowerCase().trim();
+    return students.filter(student => 
+      student.nom.toLowerCase().includes(term) ||
+      student.prenom.toLowerCase().includes(term) ||
+      student.email.toLowerCase().includes(term)
+    );
+  };
+
+  // Filter students first based on search term
+  const filteredStudents = filterStudents(students, searchTerm);
+  
+  // Group filtered students by course, then by age category within each course
   const studentsByCourse: Record<string, { enfants: Student[], adolescents: Student[], adultes: Student[] }> = {};
   
-  students.forEach(student => {
+  filteredStudents.forEach(student => {
     const courseKey = getCourseKey(student);
     const ageCategory = categorizeByAge(student);
     
@@ -145,17 +191,6 @@ const StudentsPage = () => {
     { key: 'adolescents', label: 'Adolescents (12-17 ans)', color: 'bg-green-50 border-green-200' },
     { key: 'adultes', label: 'Adultes (18+ ans)', color: 'bg-purple-50 border-purple-200' }
   ];
-
-  const filterStudents = (students: Student[], searchTerm: string) => {
-    if (!searchTerm) return students;
-    
-    const term = searchTerm.toLowerCase().trim();
-    return students.filter(student => 
-      student.nom.toLowerCase().includes(term) ||
-      student.prenom.toLowerCase().includes(term) ||
-      student.email.toLowerCase().includes(term)
-    );
-  };
 
   // Fonction pour ouvrir le modal d'informations
   const handleShowInfo = (student: Student) => {
@@ -317,7 +352,8 @@ const StudentsPage = () => {
 
       {students.length > 0 ? (
         <div className="space-y-6">
-          {Object.keys(studentsByCourse).map((courseKey) => {
+          {Object.keys(studentsByCourse).length > 0 ? (
+            Object.keys(studentsByCourse).map((courseKey) => {
             const courseStudents = studentsByCourse[courseKey];
             const totalStudents = courseStudents.enfants.length + courseStudents.adolescents.length + courseStudents.adultes.length;
             
@@ -334,32 +370,29 @@ const StudentsPage = () => {
                   </div>
                   
                   <Tabs defaultValue={ageCategories[0].key} className="w-full">
-                    <TabList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-3">
                       {ageCategories.map((ageCategory) => {
                         const studentsInCategory = courseStudents[ageCategory.key as keyof typeof courseStudents];
-                        const filteredStudents = filterStudents(studentsInCategory, searchTerm);
                         
                         return (
-                          <Tab 
+                          <TabsTrigger 
                             key={ageCategory.key} 
-                            id={ageCategory.key}
                             value={ageCategory.key}
                             className={`${ageCategory.color} border-2`}
                           >
-                            {ageCategory.label} ({filteredStudents.length})
-                          </Tab>
+                            {ageCategory.label} ({studentsInCategory.length})
+                          </TabsTrigger>
                         );
                       })}
-                    </TabList>
+                    </TabsList>
                     
                     {ageCategories.map((ageCategory) => {
                       const studentsInCategory = courseStudents[ageCategory.key as keyof typeof courseStudents];
-                      const filteredStudents = filterStudents(studentsInCategory, searchTerm);
                       
                       return (
-                        <TabPanel key={ageCategory.key} id={ageCategory.key} value={ageCategory.key}>
+                        <TabsContent key={ageCategory.key} value={ageCategory.key}>
                           <div className={`rounded-lg border-2 p-4 mt-4 ${ageCategory.color}`}>
-                            {filteredStudents.length > 0 ? (
+                            {studentsInCategory.length > 0 ? (
                               <>
                                 {/* Version desktop - Tableau */}
                                 <div className="hidden md:block">
@@ -372,7 +405,7 @@ const StudentsPage = () => {
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                      {filteredStudents.map((student) => (
+                                      {studentsInCategory.map((student) => (
                                         <TableRow key={student._id}>
                                           <TableCell 
                                             className="font-medium cursor-pointer hover:text-blue-600 hover:underline"
@@ -413,7 +446,7 @@ const StudentsPage = () => {
 
                                 {/* Version mobile - Cards */}
                                 <div className="md:hidden space-y-3">
-                                  {filteredStudents.map((student) => (
+                                  {studentsInCategory.map((student) => (
                                     <div 
                                       key={student._id}
                                       className="bg-white border rounded-lg p-4 shadow-sm"
@@ -453,14 +486,20 @@ const StudentsPage = () => {
                               </div>
                             )}
                           </div>
-                        </TabPanel>
+                        </TabsContent>
                       );
                     })}
                   </Tabs>
                 </div>
               </div>
             );
-          })}
+          })) : (
+            <div className="text-center py-16 bg-white rounded-lg shadow-sm border">
+              <p className="text-lg text-gray-500">
+                Aucun élève trouvé pour &quot;{searchTerm}&quot;
+              </p>
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-16 bg-white rounded-lg shadow-sm border">

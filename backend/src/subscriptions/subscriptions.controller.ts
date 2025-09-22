@@ -139,4 +139,9 @@ export class SubscriptionsController {
   getUniqueTarifs() {
     return this.subscriptionsService.getUniqueTarifs();
   }
+
+  @Get('stats')
+  async getStats() {
+    return this.subscriptionsService.getStats();
+  }
 }

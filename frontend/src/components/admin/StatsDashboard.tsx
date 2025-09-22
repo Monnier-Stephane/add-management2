@@ -2,9 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ChevronDown, ChevronUp, Users, AlertCircle } from 'lucide-react';
 
 const COLORS = ['#4ade80', '#60a5fa', '#fbbf24', '#f87171', '#a78bfa'];
+
+interface Student {
+  _id: string;
+  nom: string;
+  prenom: string;
+  statutPaiement: string;
+  tarif: string;
+  email?: string;
+  telephone?: string;
+}
 
 export default function StatsDashboard() {
   const [stats, setStats] = useState({
@@ -15,17 +28,36 @@ export default function StatsDashboard() {
     ados: 0,
     adultes: 0,
   });
+  const [students, setStudents] = useState<Student[]>([]);
+  const [pendingStudents, setPendingStudents] = useState<Student[]>([]);
+  const [showPendingDetails, setShowPendingDetails] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('http://localhost:3001/subscriptions')
-      .then(res => res.json())
-      .then(data => {
-        let total = data.length;
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        
+        const response = await fetch('http://localhost:3001/subscriptions');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP Error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setStudents(data);
+        
+        const total = data.length;
         let attente = 0, paye = 0, enfants = 0, ados = 0, adultes = 0;
+        const pendingList: Student[] = [];
 
-        data.forEach((item: any) => {
+        data.forEach((item: Student) => {
           // Payment status
-          if (item.statutPaiement === 'en attente') attente++;
+          if (item.statutPaiement === 'en attente') {
+            attente++;
+            pendingList.push(item);
+          }
           if (item.statutPaiement === 'payé') paye++;
 
           // Categorization by pricing tier
@@ -36,7 +68,17 @@ export default function StatsDashboard() {
         });
 
         setStats({ total, attente, paye, enfants, ados, adultes });
-      });
+        setPendingStudents(pendingList);
+        setError(null);
+      } catch (err) {
+        console.error('Erreur lors du chargement des statistiques:', err);
+        setError(err instanceof Error ? err.message : 'Erreur inconnue');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
   }, []);
 
   const paiementData = [
@@ -50,13 +92,36 @@ export default function StatsDashboard() {
     { name: 'Adultes', value: stats.adultes },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-lg">🔄 Chargement des statistiques...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-red-600">Erreur: {error}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
+      {/* Debug info */}
+      <div className="bg-blue-50 p-4 rounded-lg border">
+        <div className="text-sm text-blue-800">
+          <strong>Debug:</strong> Données reçues du backend - Total: {stats.total} | En attente: {stats.attente} | Payé: {stats.paye}
+        </div>
+      </div>
+      
       {/* Key metrics tiles */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Total d'adhérents</CardTitle>
+            <CardTitle className="text-center">Total d&lsquo;adhérents</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-center text-4xl font-bold text-primary py-2">{stats.total}</div>
@@ -87,6 +152,88 @@ export default function StatsDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pending payments section */}
+      {stats.attente > 0 && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-orange-800">
+                <AlertCircle className="h-5 w-5" />
+                Paiements en attente ({stats.attente})
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPendingDetails(!showPendingDetails)}
+                className="flex items-center gap-2 w-full sm:w-auto"
+              >
+                {showPendingDetails ? (
+                  <>
+                    <ChevronUp className="h-4 w-4" />
+                    <span className="hidden sm:inline">Masquer les détails</span>
+                    <span className="sm:hidden">Masquer</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    <span className="hidden sm:inline">Voir les détails</span>
+                    <span className="sm:hidden">Voir</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+          {showPendingDetails && (
+            <CardContent>
+              <div className="space-y-3">
+                {pendingStudents.map((student) => (
+                  <div
+                    key={student._id}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-white rounded-lg border border-orange-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Users className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-gray-900 truncate">
+                          {student.prenom} {student.nom}
+                        </div>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          {student.email && (
+                            <div className="truncate">📧 {student.email}</div>
+                          )}
+                          {student.telephone && (
+                            <div className="truncate">📞 {student.telephone}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2">
+                      <Badge 
+                        variant="outline" 
+                        className="text-orange-600 border-orange-300 text-xs sm:text-sm w-fit"
+                      >
+                        <span className="truncate max-w-[120px] sm:max-w-none">
+                          {student.tarif}
+                        </span>
+                      </Badge>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="w-full sm:w-auto text-xs sm:text-sm"
+                      >
+                        Marquer comme payé
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* Pie charts */}
       <div className="grid md:grid-cols-2 gap-6">

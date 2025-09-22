@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -8,7 +9,7 @@ import { Coach, CoachDocument } from './schemas/coach.schema';
 @Injectable()
 export class CoachesService {
   constructor(
-    @InjectModel(Coach.name) private coachModel: Model<CoachDocument>,
+    @InjectModel(Coach.name) private readonly coachModel: Model<CoachDocument>,
   ) {}
 
   async create(createCoachDto: CreateCoachDto): Promise<Coach> {

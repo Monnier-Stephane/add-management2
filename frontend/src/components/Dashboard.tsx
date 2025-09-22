@@ -7,6 +7,8 @@ import CoachesList from '@/components/CoachesList'
 
 export function Dashboard() {
   const { userRole } = useAuth()
+  
+  console.log(userRole);
 
   return (
     <SidebarProvider>
