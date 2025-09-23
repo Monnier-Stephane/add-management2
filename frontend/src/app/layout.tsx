@@ -7,6 +7,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { AuthProvider } from '@/lib/auth/AuthContext';
 
 import { ReactQueryProvider } from '@/lib/ReactQueryProvider';
+import { ScrollToTop } from '@/components/ui/ScrollToTop'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
@@ -40,6 +41,7 @@ export default function RootLayout({
           <AuthProvider>
             <Navbar />
             {children}
+            <ScrollToTop />
           </AuthProvider>
         </ReactQueryProvider>
       </body>

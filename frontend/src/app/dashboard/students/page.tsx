@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Pencil, Trash2, Home, Phone, MapPin, CreditCard } from "lucide-react";
+import { Pencil, Trash2, Home, Phone, MapPin, CreditCard, FileText } from "lucide-react";
 import Link from "next/link";
 
 interface Student {
@@ -43,6 +43,9 @@ const StudentsPage = () => {
   const [editForm, setEditForm] = useState<Partial<Student>>({});
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+
+  // Ajouter un état pour gérer l'onglet actif par cours
+  const [activeTabs, setActiveTabs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -151,9 +154,10 @@ const StudentsPage = () => {
     );
   };
 
+  // Ajouter cette logique après la ligne 155 (après filterStudents) :
   // Filter students first based on search term
   const filteredStudents = filterStudents(students, searchTerm);
-  
+
   // Group filtered students by course, then by age category within each course
   const studentsByCourse: Record<string, { enfants: Student[], adolescents: Student[], adultes: Student[] }> = {};
   
@@ -185,12 +189,30 @@ const StudentsPage = () => {
     );
   });
 
+  // Ajouter cette définition juste avant la fonction getActiveTabForCourse (vers la ligne 192)
   // Define age categories for display
   const ageCategories = [
     { key: 'enfants', label: 'Enfants (0-11 ans)', color: 'bg-blue-50 border-blue-200' },
     { key: 'adolescents', label: 'Adolescents (12-17 ans)', color: 'bg-green-50 border-green-200' },
     { key: 'adultes', label: 'Adultes (18+ ans)', color: 'bg-purple-50 border-purple-200' }
   ];
+
+  // Ajouter la fonction getActiveTabForCourse après la création de studentsByCourse
+  const getActiveTabForCourse = (courseKey: string) => {
+    if (!searchTerm) return ageCategories[0].key;
+    
+    const courseStudents = studentsByCourse[courseKey];
+    
+    // Vérifier dans quel ordre chercher les catégories
+    for (const category of ageCategories) {
+      const studentsInCategory = courseStudents[category.key as keyof typeof courseStudents];
+      if (studentsInCategory.length > 0) {
+        return category.key;
+      }
+    }
+    
+    return ageCategories[0].key;
+  };
 
   // Fonction pour ouvrir le modal d'informations
   const handleShowInfo = (student: Student) => {
@@ -355,22 +377,24 @@ const StudentsPage = () => {
           {Object.keys(studentsByCourse).length > 0 ? (
             Object.keys(studentsByCourse).map((courseKey) => {
             const courseStudents = studentsByCourse[courseKey];
-            const totalStudents = courseStudents.enfants.length + courseStudents.adolescents.length + courseStudents.adultes.length;
+            const activeTab = activeTabs[courseKey] || getActiveTabForCourse(courseKey);
+            const studentsInActiveCategory = courseStudents[activeTab as keyof typeof courseStudents].length;
             
             return (
               <div key={courseKey} className="bg-white rounded-lg shadow-sm border">
                 <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">
-                      {courseKey}
-                    </h2>
+                  <div className="flex items-center justify-end mb-6">
                     <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                      {totalStudents} élève{totalStudents > 1 ? 's' : ''}
+                      {studentsInActiveCategory} élève{studentsInActiveCategory > 1 ? 's' : ''} {searchTerm ? 'trouvé' + (studentsInActiveCategory > 1 ? 's' : '') : ''}
                     </span>
                   </div>
                   
-                  <Tabs defaultValue={ageCategories[0].key} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
+                  <Tabs 
+                    value={activeTabs[courseKey] || getActiveTabForCourse(courseKey)} 
+                    onValueChange={(value) => setActiveTabs(prev => ({ ...prev, [courseKey]: value }))}
+                    className="w-full"
+                  >
+                    <TabsList className="flex flex-col sm:grid sm:grid-cols-3 gap-2 mb-12">
                       {ageCategories.map((ageCategory) => {
                         const studentsInCategory = courseStudents[ageCategory.key as keyof typeof courseStudents];
                         
@@ -378,7 +402,7 @@ const StudentsPage = () => {
                           <TabsTrigger 
                             key={ageCategory.key} 
                             value={ageCategory.key}
-                            className={`${ageCategory.color} border-2`}
+                            className={`${ageCategory.color} border-2 w-full py-4 px-4 text-center`}
                           >
                             {ageCategory.label} ({studentsInCategory.length})
                           </TabsTrigger>
@@ -391,7 +415,7 @@ const StudentsPage = () => {
                       
                       return (
                         <TabsContent key={ageCategory.key} value={ageCategory.key}>
-                          <div className={`rounded-lg border-2 p-4 mt-4 ${ageCategory.color}`}>
+                          <div className={`rounded-lg border-2 p-4 mt-16 ${ageCategory.color}`}>
                             {studentsInCategory.length > 0 ? (
                               <>
                                 {/* Version desktop - Tableau */}
@@ -455,7 +479,7 @@ const StudentsPage = () => {
                                         className="cursor-pointer hover:text-blue-600"
                                         onClick={() => handleShowInfo(student)}
                                       >
-                                        <h4 className="font-semibold text-lg">
+                                        <h4 className="font-semibold text-sm">
                                           {student.prenom} {student.nom}
                                         </h4>
                                       </div>
@@ -602,6 +626,19 @@ const StudentsPage = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Remarques */}
+              {selectedStudent.remarques && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Remarques
+                  </Label>
+                  <div className="mt-1 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-gray-700">{selectedStudent.remarques}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           
@@ -622,7 +659,7 @@ const StudentsPage = () => {
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="nom">Nom</Label>
+              <Label htmlFor="nom" className="mb-2 block">Nom</Label>
               <Input
                 id="nom"
                 value={editForm.nom || ''}
@@ -631,7 +668,7 @@ const StudentsPage = () => {
             </div>
             
             <div>
-              <Label htmlFor="prenom">Prénom</Label>
+              <Label htmlFor="prenom" className="mb-2 block">Prénom</Label>
               <Input
                 id="prenom"
                 value={editForm.prenom || ''}
@@ -640,7 +677,7 @@ const StudentsPage = () => {
             </div>
             
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="mb-2 block">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -650,7 +687,7 @@ const StudentsPage = () => {
             </div>
             
             <div>
-              <Label htmlFor="telephone">Téléphone</Label>
+              <Label htmlFor="telephone" className="mb-2 block">Téléphone</Label>
               <Input
                 id="telephone"
                 value={editForm.telephone || ''}
@@ -659,7 +696,7 @@ const StudentsPage = () => {
             </div>
             
             <div>
-              <Label htmlFor="telephoneUrgence">Téléphone d&apos;urgence</Label>
+              <Label htmlFor="telephoneUrgence" className="mb-2 block">Téléphone d&apos;urgence</Label>
               <Input
                 id="telephoneUrgence"
                 value={editForm.telephoneUrgence || ''}
@@ -668,7 +705,7 @@ const StudentsPage = () => {
             </div>
             
             <div>
-              <Label htmlFor="adresse">Adresse</Label>
+              <Label htmlFor="adresse" className="mb-2 block">Adresse</Label>
               <Input
                 id="adresse"
                 value={editForm.adresse || ''}
@@ -677,7 +714,7 @@ const StudentsPage = () => {
             </div>
             
             <div>
-              <Label htmlFor="ville">Ville</Label>
+              <Label htmlFor="ville" className="mb-2 block">Ville</Label>
               <Input
                 id="ville"
                 value={editForm.ville || ''}
@@ -686,7 +723,7 @@ const StudentsPage = () => {
             </div>
             
             <div>
-              <Label htmlFor="codePostal">Code postal</Label>
+              <Label htmlFor="codePostal" className="mb-2 block">Code postal</Label>
               <Input
                 id="codePostal"
                 value={editForm.codePostal || ''}
@@ -695,7 +732,7 @@ const StudentsPage = () => {
             </div>
             
             <div>
-              <Label htmlFor="tarif">Tarif</Label>
+              <Label htmlFor="tarif" className="mb-2 block">Tarif</Label>
               <Select
                 value={editForm.tarif || ''}
                 onValueChange={(value: string) => setEditForm({...editForm, tarif: value})}
@@ -714,7 +751,7 @@ const StudentsPage = () => {
             </div>
             
             <div>
-              <Label htmlFor="statutPaiement">Statut de paiement</Label>
+              <Label htmlFor="statutPaiement" className="mb-2 block">Statut de paiement</Label>
               <Select
                 value={editForm.statutPaiement || ''}
                 onValueChange={(value: string) => setEditForm({...editForm, statutPaiement: value as 'payé' | 'en attente' | 'annulé'})}
@@ -728,46 +765,16 @@ const StudentsPage = () => {
                   <SelectItem value="annulé">Annulé</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="jour">Jour</Label>
-              <Input
-                id="jour"
-                value={editForm.jour || ''}
-                onChange={(e) => setEditForm({...editForm, jour: e.target.value})}
-                placeholder="Ex: Samedi"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="lieu">Lieu</Label>
-              <Input
-                id="lieu"
-                value={editForm.lieu || ''}
-                onChange={(e) => setEditForm({...editForm, lieu: e.target.value})}
-                placeholder="Ex: Châtelet"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="heure">Heure</Label>
-              <Input
-                id="heure"
-                value={editForm.heure || ''}
-                onChange={(e) => setEditForm({...editForm, heure: e.target.value})}
-                placeholder="Ex: 10h"
-              />
-            </div>
           </div>
           
           <div className="mt-4">
-            <Label htmlFor="remarques">Remarques</Label>
+              <Label htmlFor="remarques" className="mb-2 block">Remarques</Label>
             <Input
               id="remarques"
               value={editForm.remarques || ''}
               onChange={(e) => setEditForm({...editForm, remarques: e.target.value})}
             />
+            </div>
           </div>
           
           <div className="flex justify-end gap-2 mt-6">

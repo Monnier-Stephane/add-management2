@@ -7,6 +7,7 @@ interface Coach {
   nom: string;
   prenom: string;
   email: string;
+  telephone?: string;
   statut: 'coach' | 'admin';
 }
 

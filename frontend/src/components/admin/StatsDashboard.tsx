@@ -28,7 +28,6 @@ export default function StatsDashboard() {
     ados: 0,
     adultes: 0,
   });
-  const [students, setStudents] = useState<Student[]>([]);
   const [pendingStudents, setPendingStudents] = useState<Student[]>([]);
   const [showPendingDetails, setShowPendingDetails] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,7 +45,6 @@ export default function StatsDashboard() {
         }
         
         const data = await response.json();
-        setStudents(data);
         
         const total = data.length;
         let attente = 0, paye = 0, enfants = 0, ados = 0, adultes = 0;
@@ -113,7 +111,7 @@ export default function StatsDashboard() {
       {/* Debug info */}
       <div className="bg-blue-50 p-4 rounded-lg border">
         <div className="text-sm text-blue-800">
-          <strong>Debug:</strong> Données reçues du backend - Total: {stats.total} | En attente: {stats.attente} | Payé: {stats.paye}
+          Informations venant de la base de données - Total: {stats.total} | En attente: {stats.attente} | Payé: {stats.paye}
         </div>
       </div>
       

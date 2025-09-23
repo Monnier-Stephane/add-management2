@@ -14,6 +14,9 @@ export class Coach {
   @Prop()
   email: string;
 
+  @Prop()
+  telephone: string;
+
   @Prop({ type: String, enum: ['coach', 'admin'], default: 'coach' })
   statut: 'coach' | 'admin';
 }

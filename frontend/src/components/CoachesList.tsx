@@ -26,6 +26,9 @@ const CoachesList = () => {
 	        <div>
 	          <p className="font-medium">{coach.nom} {coach.prenom}</p>
 	          <p className="text-sm text-gray-600">{coach.email}</p>
+	          {coach.telephone && (
+	            <p className="text-sm text-gray-500">{coach.telephone}</p>
+	          )}
 	        </div>
 	      </div>
 	    ))}
