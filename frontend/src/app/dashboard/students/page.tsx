@@ -737,12 +737,16 @@ const StudentsPage = () => {
                 value={editForm.tarif || ''}
                 onValueChange={(value: string) => setEditForm({...editForm, tarif: value})}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner un tarif" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-w-[90vw] sm:max-w-none">
                   {uniqueTarifs.map((tarif) => (
-                    <SelectItem key={tarif} value={tarif}>
+                    <SelectItem 
+                      key={tarif} 
+                      value={tarif}
+                      className="text-xs sm:text-sm break-words whitespace-normal leading-relaxed"
+                    >
                       {tarif}
                     </SelectItem>
                   ))}

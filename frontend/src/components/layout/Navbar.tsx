@@ -22,7 +22,7 @@ export function Navbar() {
         <div className='md:ml-[200px]'>
     
         <Link href="/" className="text-xl font-bold">
-          <Image src="/logo_add.png" alt="Logo" width={100} height={100} />
+          <Image src="/logo_add.png" alt="Logo" width={100} height={100} priority />
         </Link>
         </div>
 

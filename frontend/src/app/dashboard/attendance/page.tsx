@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Home } from 'lucide-react'
 import Link from 'next/link'
 import { CourseCard } from '@/components/attendance/CourseCard'
+import { useSearchParams } from 'next/navigation'
 
 interface Student {
   id: string
@@ -210,6 +211,30 @@ export default function AttendancePage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedDay, setSelectedDay] = useState<string>('')
+  
+  const searchParams = useSearchParams()
+  const courseParam = searchParams.get('course')
+
+  // Fonction pour mapper le titre du cours du planning vers l'ID de la page d'attendance
+  const mapCourseTitleToId = (courseTitle: string): string => {
+    const title = courseTitle.toLowerCase()
+    
+    if (title.includes('lundi') && title.includes('19h30') && title.includes('bercy')) return 'lundi-bercy'
+    if (title.includes('mercredi') && title.includes('12h15')) return 'mercredi-12h15'
+    if (title.includes('mercredi') && title.includes('16h15')) return 'mercredi-16h15'
+    if (title.includes('jeudi') && title.includes('18h')) return 'jeudi-18h'
+    if (title.includes('jeudi') && title.includes('19h30')) return 'jeudi-19h30'
+    if (title.includes('samedi') && title.includes('10h') && title.includes('châtelet')) return 'samedi-10h'
+    if (title.includes('samedi') && title.includes('11h15')) return 'samedi-11h15'
+    if (title.includes('samedi') && title.includes('12h15')) return 'samedi-12h15'
+    if (title.includes('samedi') && title.includes('16h30')) return 'samedi-16h30'
+    if (title.includes('samedi') && title.includes('17h45')) return 'samedi-17h45'
+    if (title.includes('dimanche') && title.includes('10h')) return 'dimanche-10h'
+    if (title.includes('dimanche') && title.includes('11h30')) return 'dimanche-11h30'
+    
+    return ''
+  }
 
   // Charger les données depuis MongoDB
   useEffect(() => {
@@ -229,6 +254,7 @@ export default function AttendancePage() {
         }))
 
         setCourses(coursesWithStudents)
+        console.log('Cours chargés:', coursesWithStudents) // Debug
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erreur inconnue')
       } finally {
@@ -253,6 +279,37 @@ export default function AttendancePage() {
     coursesByDay[day].sort((a, b) => a.heure.localeCompare(b.heure))
   })
 
+  // Déterminer le jour par défaut basé sur le paramètre course
+  useEffect(() => {
+    if (courseParam && courses.length > 0) {
+      // Extraire le titre du cours depuis le paramètre (enlever le timestamp)
+      const courseTitle = courseParam.split('-').slice(0, -1).join('-')
+      const mappedId = mapCourseTitleToId(courseTitle)
+      
+      if (mappedId) {
+        const course = courses.find(c => c.id === mappedId)
+        if (course) {
+          setSelectedDay(course.jour)
+        }
+      }
+    } else if (courses.length > 0 && !selectedDay) {
+      // Seulement définir le jour par défaut si aucun jour n'est sélectionné
+      const coursesByDay = courses.reduce((acc, course) => {
+        if (!acc[course.jour]) {
+          acc[course.jour] = []
+        }
+        acc[course.jour].push(course)
+        return acc
+      }, {} as Record<string, Course[]>)
+      
+      setSelectedDay(Object.keys(coursesByDay)[0])
+    }
+  }, [courseParam, courses, selectedDay])
+
+  // Supprimer les console.log de debug
+  // console.log('Cours par jour:', coursesByDay)
+  // console.log('Jour sélectionné:', selectedDay)
+
   const handlePresenceChange = (courseId: string, eleveId: string, present: boolean) => {
     setCourses(prev => prev.map(course => 
       course.id === courseId 
@@ -266,13 +323,7 @@ export default function AttendancePage() {
     ))
   }
 
-  const handleSaveAttendance = (courseId: string) => {
-    const course = courses.find(c => c.id === courseId)
-    if (course) {
-      console.log('Sauvegarde des présences:', course)
-      alert(`Présences sauvegardées pour ${course.nom} !`)
-    }
-  }
+ 
 
   const handleAddTemporaryStudent = (courseId: string, nom: string, prenom: string) => {
     const newStudent: Student = {
@@ -325,7 +376,7 @@ export default function AttendancePage() {
         </Link>
       </div>
 
-      <Tabs defaultValue={Object.keys(coursesByDay)[0]} className="w-full">
+      <Tabs value={selectedDay} onValueChange={setSelectedDay} className="w-full">
         <TabsList className="grid w-full grid-cols-6">
           {Object.keys(coursesByDay).map(day => (
             <TabsTrigger key={day} value={day}>
@@ -336,16 +387,22 @@ export default function AttendancePage() {
 
         {Object.entries(coursesByDay).map(([day, dayCourses]) => (
           <TabsContent key={day} value={day} className="space-y-4">
-            {dayCourses.map(course => (
-              <CourseCard 
-                key={course.id} 
-                course={course}
-                onPresenceChange={handlePresenceChange}
-                onRemoveTemporaryStudent={handleRemoveTemporaryStudent}
-                onAddTemporaryStudent={handleAddTemporaryStudent}
-                onSaveAttendance={handleSaveAttendance}
-              />
-            ))}
+            {dayCourses.map(course => {
+              const courseTitle = courseParam ? courseParam.split('-').slice(0, -1).join('-') : ''
+              const mappedId = courseParam ? mapCourseTitleToId(courseTitle) : ''
+              const isHighlighted = Boolean(courseParam && course.id === mappedId)
+              
+              return (
+                <CourseCard 
+                  key={course.id} 
+                  course={course}
+                  onPresenceChange={handlePresenceChange}
+                  onRemoveTemporaryStudent={handleRemoveTemporaryStudent}
+                  onAddTemporaryStudent={handleAddTemporaryStudent}
+                  isHighlighted={isHighlighted}
+                />
+              )
+            })}
           </TabsContent>
         ))}
       </Tabs>

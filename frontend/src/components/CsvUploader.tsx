@@ -116,9 +116,11 @@ export function CsvUploader() {
                   <div className="bg-white border border-green-300 rounded-md p-3 max-h-40 overflow-y-auto">
                     <div className="grid grid-cols-1 gap-1">
                       {result.newStudents.map((student, index) => (
-                        <div key={index} className="flex justify-between items-center py-1 px-2 bg-green-50 rounded">
-                          <span className="font-medium">{student.prenom} {student.nom}</span>
-                          <span className="text-xs text-gray-600">{student.email}</span>
+                        <div key={index} className="py-1 px-2 bg-green-50 rounded">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm sm:text-base">{student.prenom} {student.nom}</span>
+                            <span className="text-xs text-gray-600">{student.email}</span>
+                          </div>
                         </div>
                       ))}
                     </div>

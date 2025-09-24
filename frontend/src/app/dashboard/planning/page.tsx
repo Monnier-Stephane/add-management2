@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import { Input } from '@/components/ui/input';
-import { Calendar as CalendarIcon, Grid3X3, List, Plus, X, Users, Home } from 'lucide-react';
+import { Calendar as CalendarIcon, Grid3X3, List, Plus, X, Users, Home, ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 import { useCoaches } from '@/lib/hooks/useCoaches';
 import moment from 'moment';
@@ -661,9 +661,25 @@ export default function PlanningPage() {
 
               {/* Bouton de fermeture */}
               <div className="flex-shrink-0 flex justify-end pt-2 border-t">
-                <Button onClick={() => setIsDialogOpen(false)} size="sm" className="h-8">
-                  Fermer
-                </Button>
+                <div className="flex gap-2">
+                  {/* Bouton pour accéder à la feuille d'appel */}
+                  <Link 
+                    href={`/dashboard/attendance?course=${selectedEvent.id}`}
+                    className="flex-1"
+                  >
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 w-full flex items-center gap-2"
+                    >
+                      <ClipboardList className="h-3 w-3" />
+                      Feuille d&apos;appel
+                    </Button>
+                  </Link>
+                  <Button onClick={() => setIsDialogOpen(false)} size="sm" className="h-8">
+                    Fermer
+                  </Button>
+                </div>
               </div>
             </div>
           )}
