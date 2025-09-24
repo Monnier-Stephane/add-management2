@@ -6,6 +6,7 @@ import { Home } from 'lucide-react'
 import Link from 'next/link'
 import { CourseCard } from '@/components/attendance/CourseCard'
 import { useSearchParams } from 'next/navigation'
+import { useSubscriptions } from '@/lib/hooks/useSubscriptions'
 
 interface Student {
   id: string
@@ -235,12 +236,13 @@ const filterStudentsForCourse = (course: CourseData, subscriptions: Subscription
 
 export default function AttendancePage() {
   const [courses, setCourses] = useState<Course[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<string>('')
   
   const searchParams = useSearchParams()
   const courseParam = searchParams.get('course')
+  
+  // Utiliser les hooks optimisés
+  const { data: subscriptions, isLoading, error } = useSubscriptions()
 
   // Fonction pour mapper le titre du cours du planning vers l'ID de la page d'attendance
   const mapCourseTitleToId = (courseTitle: string): string => {
@@ -262,83 +264,54 @@ export default function AttendancePage() {
     return ''
   }
 
-  // Charger les données depuis MongoDB
+  // Charger les cours quand les données sont disponibles
   useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        setLoading(true)
-        
-        // Récupérer les élèves et les tarifs uniques en parallèle
-        const [subscriptionsResponse, tarifsResponse] = await Promise.all([
-          fetch('http://localhost:3001/subscriptions'),
-          fetch('http://localhost:3001/subscriptions/tarifs/unique')
-        ])
-        
-        if (!subscriptionsResponse.ok || !tarifsResponse.ok) {
-          throw new Error('Erreur lors du chargement des données')
-        }
-        
-        const [subscriptions, uniqueTarifs] = await Promise.all([
-          subscriptionsResponse.json(),
-          tarifsResponse.json()
-        ])
-        
-        // Afficher les tarifs uniques pour debug
-        console.log('Tarifs uniques dans MongoDB:', uniqueTarifs)
-        
-        // Transformer les données MongoDB en cours avec élèves
-        const coursesWithStudents = coursesStructure.map(course => ({
-          ...course,
-          eleves: filterStudentsForCourse(course, subscriptions)
-        }))
+    if (subscriptions && Array.isArray(subscriptions) && subscriptions.length > 0) {
+      // Transformer les données MongoDB en cours avec élèves
+      const coursesWithStudents = coursesStructure.map(course => ({
+        ...course,
+        eleves: filterStudentsForCourse(course, subscriptions)
+      }))
 
-        // Charger les présences depuis localStorage avec vérification d'expiration
-        const savedAttendance = localStorage.getItem('attendanceData')
-        if (savedAttendance) {
-          try {
-            const attendanceData = JSON.parse(savedAttendance)
-            const now = Date.now()
-            const expirationTime = 3 * 60 * 60 * 1000 // 3 heures en millisecondes
-            
-            // Vérifier si les données ne sont pas expirées
-            if (attendanceData.timestamp && (now - attendanceData.timestamp) < expirationTime) {
-              const coursesWithSavedAttendance = coursesWithStudents.map(course => {
-                const savedCourse = attendanceData.data.find((saved: { courseId: string; students: { id: string; present: boolean }[] }) => saved.courseId === course.id)
-                if (savedCourse) {
-                  return {
-                    ...course,
-                    eleves: course.eleves.map(eleve => {
-                      const savedStudent = savedCourse.students.find((s: { id: string; present: boolean }) => s.id === eleve.id)
-                      return savedStudent ? { ...eleve, present: savedStudent.present } : eleve
-                    })
-                  }
+      // Charger les présences depuis localStorage avec vérification d'expiration
+      const savedAttendance = localStorage.getItem('attendanceData')
+      if (savedAttendance) {
+        try {
+          const attendanceData = JSON.parse(savedAttendance)
+          const now = Date.now()
+          const expirationTime = 3 * 60 * 60 * 1000 // 3 heures en millisecondes
+          
+          // Vérifier si les données ne sont pas expirées
+          if (attendanceData.timestamp && (now - attendanceData.timestamp) < expirationTime) {
+            const coursesWithSavedAttendance = coursesWithStudents.map(course => {
+              const savedCourse = attendanceData.data.find((saved: { courseId: string; students: { id: string; present: boolean }[] }) => saved.courseId === course.id)
+              if (savedCourse) {
+                return {
+                  ...course,
+                  eleves: course.eleves.map(eleve => {
+                    const savedStudent = savedCourse.students.find((s: { id: string; present: boolean }) => s.id === eleve.id)
+                    return savedStudent ? { ...eleve, present: savedStudent.present } : eleve
+                  })
                 }
-                return course
-              })
-              setCourses(coursesWithSavedAttendance)
-            } else {
-              // Données expirées, les supprimer
-              localStorage.removeItem('attendanceData')
-              setCourses(coursesWithStudents)
-            }
-          } catch (error) {
-            console.error('Erreur lors du chargement des présences:', error)
+              }
+              return course
+            })
+            setCourses(coursesWithSavedAttendance)
+          } else {
+            // Données expirées, les supprimer
             localStorage.removeItem('attendanceData')
             setCourses(coursesWithStudents)
           }
-        } else {
+        } catch (error) {
+          console.error('Erreur lors du chargement des présences:', error)
+          localStorage.removeItem('attendanceData')
           setCourses(coursesWithStudents)
         }
-        // Debug
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur inconnue')
-      } finally {
-        setLoading(false)
+      } else {
+        setCourses(coursesWithStudents)
       }
     }
-
-    fetchCourses()
-  }, [])
+  }, [subscriptions])
 
   // Grouper les cours par jour
   const coursesByDay = courses.reduce((acc, course) => {
@@ -449,8 +422,8 @@ export default function AttendancePage() {
   }
 
 
-  if (loading) return <div className="container mx-auto p-4">Chargement...</div>
-  if (error) return <div className="container mx-auto p-4">Erreur: {error}</div>
+  if (isLoading) return <div className="container mx-auto p-4">Chargement...</div>
+  if (error) return <div className="container mx-auto p-4">Erreur: {error.message}</div>
 
   return (
     <div className="container mx-auto p-4 lg:max-w-7xl">

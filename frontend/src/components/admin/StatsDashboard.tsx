@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChevronDown, ChevronUp, Users, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { useSubscriptions } from '@/lib/hooks/useSubscriptions';
 
 const COLORS = ['#4ade80', '#60a5fa', '#fbbf24', '#f87171', '#a78bfa'];
 
@@ -22,66 +23,38 @@ interface Student {
 
 export default function StatsDashboard() {
   const { userRole } = useAuth();
-  const [stats, setStats] = useState({
-    total: 0,
-    attente: 0,
-    paye: 0,
-    enfants: 0,
-    ados: 0,
-    adultes: 0,
-  });
-  const [pendingStudents, setPendingStudents] = useState<Student[]>([]);
   const [showPendingDetails, setShowPendingDetails] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+  
+  // Utiliser le hook optimisé
+  const { data: students, isLoading, error } = useSubscriptions();
+  
   const isAdmin = userRole === 'admin';
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        
-        const response = await fetch('http://localhost:3001/subscriptions');
-        
-        if (!response.ok) {
-          throw new Error(`HTTP Error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        const total = data.length;
-        let attente = 0, paye = 0, enfants = 0, ados = 0, adultes = 0;
-        const pendingList: Student[] = [];
+  // Calculer les statistiques à partir des données
+  const stats = students ? (() => {
+    const total = students.length;
+    let attente = 0, paye = 0, enfants = 0, ados = 0, adultes = 0;
+    const pendingList: Student[] = [];
 
-        data.forEach((item: Student) => {
-          // Payment status
-          if (item.statutPaiement === 'en attente') {
-            attente++;
-            pendingList.push(item);
-          }
-          if (item.statutPaiement === 'payé') paye++;
-
-          // Categorization by pricing tier
-          const tarif = (item.tarif || '').toLowerCase();
-          if (tarif.includes('enfant')) enfants++;
-          else if (tarif.includes('ado')) ados++;
-          else if (tarif.includes('adulte')) adultes++;
-        });
-
-        setStats({ total, attente, paye, enfants, ados, adultes });
-        setPendingStudents(pendingList);
-        setError(null);
-      } catch (err) {
-        console.error('Erreur lors du chargement des statistiques:', err);
-        setError(err instanceof Error ? err.message : 'Erreur inconnue');
-      } finally {
-        setLoading(false);
+    students.forEach((item: Student) => {
+      // Payment status
+      if (item.statutPaiement === 'en attente') {
+        attente++;
+        pendingList.push(item);
       }
-    };
+      if (item.statutPaiement === 'payé') paye++;
 
-    fetchStats();
-  }, []);
+      // Categorization by pricing tier
+      const tarif = (item.tarif || '').toLowerCase();
+      if (tarif.includes('enfant')) enfants++;
+      else if (tarif.includes('ado')) ados++;
+      else if (tarif.includes('adulte')) adultes++;
+    });
+
+    return { total, attente, paye, enfants, ados, adultes };
+  })() : { total: 0, attente: 0, paye: 0, enfants: 0, ados: 0, adultes: 0 };
+
+  const pendingStudents = students ? students.filter(item => item.statutPaiement === 'en attente') : [];
 
   const paiementData = [
     { name: 'En attente', value: stats.attente },
@@ -94,7 +67,7 @@ export default function StatsDashboard() {
     { name: 'Adultes', value: stats.adultes },
   ];
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-lg">🔄 Chargement des statistiques...</div>
@@ -105,7 +78,7 @@ export default function StatsDashboard() {
   if (error) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="text-red-600">Erreur: {error}</div>
+        <div className="text-red-600">Erreur: {error.message}</div>
       </div>
     );
   }
