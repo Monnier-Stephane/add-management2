@@ -143,7 +143,32 @@ interface CourseData {
 const hasAdultsInCourse = (course: CourseData, subscriptions: Subscription[]): boolean => {
   return subscriptions.some((sub: Subscription) => {
     const tarif = sub.tarif || ''
-    return (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))
+    // Vérifier s'il y a des adultes qui correspondent exactement à ce cours
+    return checkCourseDayAndTime(course, tarif) && 
+           (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))
+  })
+}
+
+// Fonction pour vérifier si un cours est un cours adultes (basé sur la structure des cours)
+const isAdultCourse = (course: CourseData): boolean => {
+  // Définir quels cours sont pour les adultes
+  const adultCourses = [
+    'Lundi 19h30 - Paris Bercy',
+    'Mercredi 16h15 - Paris Châtelet', 
+    'Jeudi 18h00 - Paris Châtelet',
+    'Jeudi 19h30 - Paris Châtelet',
+    'Samedi 10h00 - Paris Châtelet',
+    'Samedi 16h30 - Choisy le Roi',
+    'Samedi 17h45 - Choisy le Roi',
+    'Dimanche 10h00 - Choisy le Roi',
+    'Dimanche 11h30 - Choisy le Roi'
+  ]
+  
+  return adultCourses.some(adultCourse => {
+    const [dayTime, location] = adultCourse.split(' - ')
+    return course.jour === dayTime.split(' ')[0] && 
+           course.heure === dayTime.split(' ')[1] && 
+           course.lieu === location
   })
 }
 
@@ -183,13 +208,14 @@ const isUnlimitedOr2Courses = (tarif: string): boolean => {
 
 const filterStudentsForCourse = (course: CourseData, subscriptions: Subscription[]): Student[] => {
   const courseHasAdults = hasAdultsInCourse(course, subscriptions)
+  const isAdultCourseType = isAdultCourse(course)
   
   const students = subscriptions.filter((sub: Subscription) => {
     const tarif = sub.tarif || ''
     const isUnlimited = isUnlimitedOr2Courses(tarif)
     
     // Pour les élèves illimité, ils peuvent aller à tous les cours adultes
-    if (isUnlimited && courseHasAdults) {
+    if (isUnlimited && (courseHasAdults || isAdultCourseType)) {
       return true
     }
     
@@ -241,11 +267,24 @@ export default function AttendancePage() {
     const fetchCourses = async () => {
       try {
         setLoading(true)
-        const response = await fetch('http://localhost:3001/subscriptions')
-        if (!response.ok) {
+        
+        // Récupérer les élèves et les tarifs uniques en parallèle
+        const [subscriptionsResponse, tarifsResponse] = await Promise.all([
+          fetch('http://localhost:3001/subscriptions'),
+          fetch('http://localhost:3001/subscriptions/tarifs/unique')
+        ])
+        
+        if (!subscriptionsResponse.ok || !tarifsResponse.ok) {
           throw new Error('Erreur lors du chargement des données')
         }
-        const subscriptions = await response.json()
+        
+        const [subscriptions, uniqueTarifs] = await Promise.all([
+          subscriptionsResponse.json(),
+          tarifsResponse.json()
+        ])
+        
+        // Afficher les tarifs uniques pour debug
+        console.log('Tarifs uniques dans MongoDB:', uniqueTarifs)
         
         // Transformer les données MongoDB en cours avec élèves
         const coursesWithStudents = coursesStructure.map(course => ({
@@ -253,8 +292,44 @@ export default function AttendancePage() {
           eleves: filterStudentsForCourse(course, subscriptions)
         }))
 
-        setCourses(coursesWithStudents)
-        console.log('Cours chargés:', coursesWithStudents) // Debug
+        // Charger les présences depuis localStorage avec vérification d'expiration
+        const savedAttendance = localStorage.getItem('attendanceData')
+        if (savedAttendance) {
+          try {
+            const attendanceData = JSON.parse(savedAttendance)
+            const now = Date.now()
+            const expirationTime = 3 * 60 * 60 * 1000 // 3 heures en millisecondes
+            
+            // Vérifier si les données ne sont pas expirées
+            if (attendanceData.timestamp && (now - attendanceData.timestamp) < expirationTime) {
+              const coursesWithSavedAttendance = coursesWithStudents.map(course => {
+                const savedCourse = attendanceData.data.find((saved: { courseId: string; students: { id: string; present: boolean }[] }) => saved.courseId === course.id)
+                if (savedCourse) {
+                  return {
+                    ...course,
+                    eleves: course.eleves.map(eleve => {
+                      const savedStudent = savedCourse.students.find((s: { id: string; present: boolean }) => s.id === eleve.id)
+                      return savedStudent ? { ...eleve, present: savedStudent.present } : eleve
+                    })
+                  }
+                }
+                return course
+              })
+              setCourses(coursesWithSavedAttendance)
+            } else {
+              // Données expirées, les supprimer
+              localStorage.removeItem('attendanceData')
+              setCourses(coursesWithStudents)
+            }
+          } catch (error) {
+            console.error('Erreur lors du chargement des présences:', error)
+            localStorage.removeItem('attendanceData')
+            setCourses(coursesWithStudents)
+          }
+        } else {
+          setCourses(coursesWithStudents)
+        }
+        // Debug
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erreur inconnue')
       } finally {
@@ -311,16 +386,34 @@ export default function AttendancePage() {
   // console.log('Jour sélectionné:', selectedDay)
 
   const handlePresenceChange = (courseId: string, eleveId: string, present: boolean) => {
-    setCourses(prev => prev.map(course => 
-      course.id === courseId 
-        ? {
-            ...course,
-            eleves: course.eleves.map(eleve => 
-              eleve.id === eleveId ? { ...eleve, present } : eleve
-            )
-          }
-        : course
-    ))
+    setCourses(prev => {
+      const updatedCourses = prev.map(course => 
+        course.id === courseId 
+          ? {
+              ...course,
+              eleves: course.eleves.map(eleve => 
+                eleve.id === eleveId ? { ...eleve, present } : eleve
+              )
+            }
+          : course
+      )
+      
+      // Sauvegarder en localStorage avec timestamp
+      const attendanceData = {
+        timestamp: Date.now(),
+        data: updatedCourses.map(course => ({
+          courseId: course.id,
+          students: course.eleves.map(eleve => ({
+            id: eleve.id,
+            present: eleve.present
+          }))
+        }))
+      }
+      
+      localStorage.setItem('attendanceData', JSON.stringify(attendanceData))
+      
+      return updatedCourses
+    })
   }
 
  

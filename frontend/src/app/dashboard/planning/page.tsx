@@ -66,13 +66,27 @@ export default function PlanningPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [coachColors, setCoachColors] = useState<Record<string, string>>({});
   const [showSaturdayView, setShowSaturdayView] = useState(false);
+  const [showMyPlanning, setShowMyPlanning] = useState(false); // Nouveau state
 
   // Récupérer les coaches depuis MongoDB
   const { data: coaches, isLoading: coachesLoading } = useCoaches();
   
   // Récupérer les informations de l'utilisateur connecté
-  const { userRole } = useAuth();
+  const { userRole, userProfile } = useAuth();
   const isCoach = userRole === 'coach';
+
+  // Filtrer les événements pour le coach connecté
+  const getMyEvents = () => {
+    if (!userProfile || !isCoach) return events;
+    
+    const myName = `${userProfile.prenom} ${userProfile.nom}`;
+    return events.filter(event => 
+      event.resource?.coaches.includes(myName)
+    );
+  };
+
+  // Événements à afficher selon le mode
+  const displayEvents = showMyPlanning ? getMyEvents() : events;
 
   // Générer les événements récurrents pour chaque semaine
   const generateRecurringEvents = (): Event[] => {
@@ -151,29 +165,34 @@ export default function PlanningPage() {
     const loadAssignments = async () => {
       try {
         const response = await fetch('http://localhost:3001/planning/assignments');
-        const assignments = await response.json();
-        
-        // Vérifier que assignments est un tableau
-        if (Array.isArray(assignments)) {
-          // Appliquer les assignations aux événements
-          setEvents(prev => prev.map(event => {
-            const assignment = assignments.find((a: { eventId: string; coaches: string[] }) => a.eventId === event.id);
-            return assignment ? {
-              ...event,
-              resource: {
-                ...event.resource!,
-                coaches: assignment.coaches || []
-              }
-            } : event;
-          }));
+        if (response.ok) {
+          const assignments = await response.json();
+          
+          // Vérifier que assignments est un tableau
+          if (Array.isArray(assignments)) {
+            // Appliquer les assignations aux événements
+            setEvents(prev => prev.map(event => {
+              const assignment = assignments.find((a: { eventId: string; coaches: string[] }) => a.eventId === event.id);
+              return assignment ? {
+                ...event,
+                resource: {
+                  ...event.resource!,
+                  coaches: assignment.coaches || []
+                }
+              } : event;
+            }));
+          }
         }
       } catch (error) {
         console.error('Erreur lors du chargement des assignations:', error);
       }
     };
 
-    loadAssignments();
-  }, []);
+    // Charger les assignations après que les événements soient générés
+    if (events.length > 0) {
+      loadAssignments();
+    }
+  }, [events.length]); // Déclencher quand les événements sont générés
 
   const handleViewChange = (newView: typeof Views[keyof typeof Views]) => {
     setView(newView);
@@ -200,20 +219,32 @@ export default function PlanningPage() {
 
     const coachName = `${coach.prenom} ${coach.nom}`;
     
+    // Vérifier si le coach n'est pas déjà assigné
+    if (selectedEvent.resource?.coaches.includes(coachName)) {
+      return;
+    }
+    
     // Sauvegarder en base de données
     try {
-      await fetch('http://localhost:3001/planning/assign-coach', {
+      const response = await fetch('http://localhost:3001/planning/assign-coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventId: selectedEvent.id,
-          coachName: coachName  // Envoyer le nom au lieu de l'ID
+          coachName: coachName
         })
       });
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors de la sauvegarde');
+      }
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
+      alert('Erreur lors de la sauvegarde de l\'assignation');
+      return;
     }
     
+    // Mettre à jour l'état local seulement après la sauvegarde réussie
     setEvents(prev => prev.map(event => 
       event.id === selectedEvent.id 
         ? {
@@ -240,7 +271,7 @@ export default function PlanningPage() {
 
     // Sauvegarder en base de données
     try {
-      await fetch('http://localhost:3001/planning/remove-coach', {
+      const response = await fetch('http://localhost:3001/planning/remove-coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -248,10 +279,17 @@ export default function PlanningPage() {
           coachName: coachName
         })
       });
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors de la suppression');
+      }
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
+      alert('Erreur lors de la suppression de l\'assignation');
+      return;
     }
 
+    // Mettre à jour l'état local seulement après la sauvegarde réussie
     setEvents(prev => prev.map(event => 
       event.id === selectedEvent.id 
         ? {
@@ -330,26 +368,57 @@ export default function PlanningPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold mb-2">
-            Planning des cours
+            {showMyPlanning ? 'Mon Planning' : 'Planning des cours'}
           </h1>
           <p className="text-gray-600">
-            Gérez le planning des cours et événements
+            {showMyPlanning 
+              ? `Cours où vous êtes assigné (${getMyEvents().length} cours)`
+              : 'Gérez le planning des cours et événements'
+            }
           </p>
         </div>
-        <Link href="/dashboard">
-          <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
-            <Home className="h-4 w-4" />
-            Retour au Dashboard
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          {/* Bouton pour basculer entre vue complète et vue personnelle */}
+          {isCoach && (
+            <Button
+              variant={showMyPlanning ? "default" : "outline"}
+              onClick={() => setShowMyPlanning(!showMyPlanning)}
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              {showMyPlanning ? 'Voir tout le planning' : 'Mon planning'}
+            </Button>
+          )}
+          <Link href="/dashboard">
+            <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
+              <Home className="h-4 w-4" />
+              Retour au Dashboard
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      {/* Message informatif pour les coaches */}
+      {isCoach && showMyPlanning && getMyEvents().length === 0 && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-blue-600" />
+            <div>
+              <h3 className="font-medium text-blue-900">Aucun cours assigné</h3>
+              <p className="text-sm text-blue-700">
+                Vous n&apos;êtes pas encore assigné à des cours. Contactez un administrateur pour être ajouté aux cours.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5" />
-              Calendrier
+              {showMyPlanning ? 'Mon Calendrier' : 'Calendrier'}
             </CardTitle>
             
             {/* Boutons de vue */}
@@ -414,7 +483,7 @@ export default function PlanningPage() {
             `}</style>
             <Calendar
               localizer={localizer}
-              events={events}
+              events={displayEvents} // Utiliser les événements filtrés
               startAccessor="start"
               endAccessor="end"
               view={view}
@@ -516,8 +585,8 @@ export default function PlanningPage() {
         </CardContent>
       </Card>
 
-      {/* Vue spéciale pour les samedis */}
-      {showSaturdayView && (
+      {/* Vue spéciale pour les samedis - seulement si pas en mode "Mon planning" */}
+      {showSaturdayView && !showMyPlanning && (
         <Card className="mt-4">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -590,6 +659,10 @@ export default function PlanningPage() {
                             style={{ backgroundColor: getCoachColor(coach) }}
                           />
                           <span className="text-xs">{coach}</span>
+                          {/* Indicateur pour le coach connecté */}
+                          {isCoach && userProfile && `${userProfile.prenom} ${userProfile.nom}` === coach && (
+                            <span className="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">Vous</span>
+                          )}
                         </div>
                         {/* Bouton de suppression seulement pour les admins */}
                         {!isCoach && (

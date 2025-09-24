@@ -1,10 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Clock, MapPin, Users, Download, Eye } from 'lucide-react'
+import { Clock, MapPin, Users, Download, Eye, MessageCircle } from 'lucide-react'
 import { StudentItem } from './StudentItem'
 import { AddStudentDialog } from './AddStudentDialog'
 import { useState } from 'react'
+import { WHATSAPP_GROUPS, generateWhatsAppLink } from '@/lib/whatsapp-groups'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface Student {
   id: string
@@ -41,6 +43,8 @@ export const CourseCard = ({
 }: CourseCardProps) => {
   
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false)
+  const [selectedGroup, setSelectedGroup] = useState('')
   
   const generatePDF = async (action: 'preview' | 'download' = 'download') => {
     if (isGeneratingPDF) return // Éviter les clics multiples
@@ -302,63 +306,71 @@ export const CourseCard = ({
     }
   }
 
+  const handleWhatsAppSend = (groupPhoneNumber: string) => {
+    const message = `📋 Feuille d'appel générée pour le cours : ${course.nom}\n📅 Date : ${new Date().toLocaleDateString('fr-FR')}\n👥 Nombre d'élèves : ${course.eleves.length}\n\nVeuillez télécharger le PDF et l'envoyer dans le groupe.`
+    
+    const whatsappLink = generateWhatsAppLink(groupPhoneNumber, message)
+    window.open(whatsappLink, '_blank')
+    setShowWhatsAppModal(false)
+  }
+
   return (
     <Card className={`w-full ${isHighlighted ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              {course.nom}
-            </CardTitle>
-            <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-              <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                {course.lieu}
-              </div>
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                {course.coach}
-              </div>
+    <CardHeader>
+      <div className="flex items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            {course.nom}
+          </CardTitle>
+          <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+            <div className="flex items-center gap-1">
+              <MapPin className="w-4 h-4" />
+              {course.lieu}
+            </div>
+            <div className="flex items-center gap-1">
+              <Users className="w-4 h-4" />
+              {course.coach}
             </div>
           </div>
-          <Badge variant="outline">
-            {course.eleves.length} élèves
-          </Badge>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {course.eleves.map(eleve => (
-            <StudentItem 
-              key={eleve.id} 
-              eleve={eleve} 
-              course={course}
-              onPresenceChange={onPresenceChange}
-              onRemoveTemporaryStudent={onRemoveTemporaryStudent}
-            />
-          ))}
-        </div>
-        
-        {/* Bouton pour ajouter un élève temporaire */}
-        <div className="mt-4 pt-4 border-t">
-          <AddStudentDialog 
-            course={course} 
-            onAddStudent={onAddTemporaryStudent}
+        <Badge variant="outline">
+          {course.eleves.length} élèves
+        </Badge>
+      </div>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-3">
+        {course.eleves.map(eleve => (
+          <StudentItem 
+            key={eleve.id} 
+            eleve={eleve} 
+            course={course}
+            onPresenceChange={onPresenceChange}
+            onRemoveTemporaryStudent={onRemoveTemporaryStudent}
           />
+        ))}
+      </div>
+      
+      {/* Bouton pour ajouter un élève temporaire */}
+      <div className="mt-4 pt-4 border-t">
+        <AddStudentDialog 
+          course={course} 
+          onAddStudent={onAddTemporaryStudent}
+        />
+      </div>
+      
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-4 pt-4 border-t gap-3">
+        <div className="text-sm text-gray-600">
+          {course.eleves.filter(e => e.present).length} / {course.eleves.length} présents
         </div>
-        
-        <div className="flex justify-between items-center mt-4 pt-4 border-t">
-          <div className="text-sm text-gray-600">
-            {course.eleves.filter(e => e.present).length} / {course.eleves.length} présents
-          </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button 
               onClick={() => generatePDF('preview')} 
               size="sm" 
               variant="outline"
               disabled={isGeneratingPDF}
-              className="flex items-center gap-2"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <Eye className="h-4 w-4" />
               {isGeneratingPDF ? 'Génération...' : 'Visualiser'}
@@ -367,14 +379,85 @@ export const CourseCard = ({
               onClick={() => generatePDF('download')} 
               size="sm" 
               disabled={isGeneratingPDF}
-              className="flex items-center gap-2"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <Download className="h-4 w-4" />
               {isGeneratingPDF ? 'Génération...' : 'Télécharger'}
             </Button>
+            <Button
+              onClick={() => setShowWhatsAppModal(true)}
+              disabled={isGeneratingPDF}
+              variant="outline"
+              size="sm"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+        </Button>
           </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
+      </div>
+    </CardContent>
+
+      {/* Modal de sélection du groupe WhatsApp */}
+      <Dialog open={showWhatsAppModal} onOpenChange={setShowWhatsAppModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-green-600" />
+              Envoyer sur WhatsApp
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Sélectionnez le groupe WhatsApp où envoyer la feuille d&apos;appel :
+            </p>
+            
+            <div className="space-y-2">
+              {WHATSAPP_GROUPS.map((group) => (
+                <div
+                  key={group.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                  onClick={() => setSelectedGroup(group.id)}
+                >
+                  <div>
+                    <p className="font-medium">{group.name}</p>
+                    <p className="text-sm text-gray-600">{group.description}</p>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border-2 ${
+                    selectedGroup === group.id 
+                      ? 'border-green-500 bg-green-500' 
+                      : 'border-gray-300'
+                  }`} />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button
+                onClick={() => {
+                  const group = WHATSAPP_GROUPS.find(g => g.id === selectedGroup)
+                  if (group) {
+                    handleWhatsAppSend(group.phoneNumber)
+                  }
+                }}
+                disabled={!selectedGroup}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Envoyer
+              </Button>
+              <Button
+                onClick={() => setShowWhatsAppModal(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Annuler
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+  </Card>
+)
 }
