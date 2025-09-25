@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Home } from 'lucide-react'
@@ -19,7 +19,16 @@ interface Subscription {
   _id: string
   nom: string
   prenom: string
-  tarif: string
+  cours: string[]
+  telephone?: string
+  telephoneUrgence?: string
+  adresse?: string
+  dateInscription: string
+  statutPaiement: 'paye' | 'impaye' | 'partiel'
+  montantPaye: number
+  montantTotal: number
+  dateNaissance?: string
+  email?: string
 }
 
 interface Course {
@@ -32,211 +41,120 @@ interface Course {
   eleves: Student[]
 }
 
-// Structure des cours basée sur les données MongoDB
-const coursesStructure = [
-  {
-    id: "lundi-bercy",
-    nom: "Cours Lundi 19h30",
-    jour: "Lundi",
-    heure: "19h30",
-    lieu: "Paris Bercy",
-    coach: "Coach Bercy"
-  },
-  {
-    id: "mercredi-12h15",
-    nom: "Cours Mercredi 12h15",
-    jour: "Mercredi", 
-    heure: "12h15",
-    lieu: "Paris Châtelet",
-    coach: "Coach Châtelet"
-  },
-  {
-    id: "mercredi-16h15",
-    nom: "Cours Mercredi 16h15",
-    jour: "Mercredi",
-    heure: "16h15", 
-    lieu: "Paris Châtelet",
-    coach: "Coach Châtelet"
-  },
-  {
-    id: "jeudi-18h",
-    nom: "Cours Jeudi 18h",
-    jour: "Jeudi",
-    heure: "18h00",
-    lieu: "Paris Châtelet", 
-    coach: "Coach Châtelet"
-  },
-  {
-    id: "jeudi-19h30",
-    nom: "Cours Jeudi 19h30",
-    jour: "Jeudi",
-    heure: "19h30",
-    lieu: "Paris Châtelet",
-    coach: "Coach Châtelet"
-  },
-  {
-    id: "samedi-10h",
-    nom: "Cours Samedi 10h",
-    jour: "Samedi",
-    heure: "10h00",
-    lieu: "Paris Châtelet",
-    coach: "Coach Châtelet"
-  },
-  {
-    id: "samedi-11h15",
-    nom: "Cours Samedi 11h15", 
-    jour: "Samedi",
-    heure: "11h15",
-    lieu: "Paris Châtelet",
-    coach: "Coach Châtelet"
-  },
-  {
-    id: "samedi-12h15",
-    nom: "Cours Samedi 12h15",
-    jour: "Samedi", 
-    heure: "12h15",
-    lieu: "Paris Châtelet",
-    coach: "Coach Châtelet"
-  },
-  {
-    id: "samedi-16h30",
-    nom: "Cours Samedi 16h30",
-    jour: "Samedi",
-    heure: "16h30",
-    lieu: "Choisy le Roi",
-    coach: "Coach Choisy"
-  },
-  {
-    id: "samedi-17h45",
-    nom: "Cours Samedi 17h45",
-    jour: "Samedi",
-    heure: "17h45", 
-    lieu: "Choisy le Roi",
-    coach: "Coach Choisy"
-  },
-  {
-    id: "dimanche-10h",
-    nom: "Cours Dimanche 10h",
-    jour: "Dimanche",
-    heure: "10h00",
-    lieu: "Choisy le Roi",
-    coach: "Coach Choisy"
-  },
-  {
-    id: "dimanche-11h30",
-    nom: "Cours Dimanche 11h30",
-    jour: "Dimanche",
-    heure: "11h30",
-    lieu: "Choisy le Roi", 
-    coach: "Coach Choisy"
-  }
-]
-
-// Interface pour le cours
-interface CourseData {
-  jour: string
-  heure: string
-  lieu: string
-}
-
-// Fonctions utilitaires pour réduire l'imbrication
-const hasAdultsInCourse = (course: CourseData, subscriptions: Subscription[]): boolean => {
-  return subscriptions.some((sub: Subscription) => {
-    const tarif = sub.tarif || ''
-    return (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))
-  })
-}
-
-const checkTimeMatch = (heure: string, tarif: string): boolean => {
-  const timeChecks: Record<string, () => boolean> = {
-    '12h15': () => tarif.includes('12h15') || tarif.includes('12H15'),
-    '16h15': () => tarif.includes('16h15'),
-    '18h00': () => tarif.includes('18h'),
-    '19h30': () => tarif.includes('19h30'),
-    '10h00': () => tarif.includes('10h') || tarif.includes('Paris châtelet 10h') || tarif.includes('Paris Châtelet 1Oh'),
-    '11h15': () => tarif.includes('11h15'),
-    '16h30': () => tarif.includes('16h30') && tarif.includes('Choisy'),
-    '17h45': () => tarif.includes('17h45'),
-    '11h30': () => tarif.includes('11h30')
-  }
-  
-  return timeChecks[heure]?.() || false
-}
-
-const checkCourseDayAndTime = (course: CourseData, tarif: string): boolean => {
-  const { jour, heure } = course
-  
-  const dayChecks: Record<string, () => boolean> = {
-    'Lundi': () => tarif.includes('LUNDI') && tarif.includes('Bercy'),
-    'Mercredi': () => tarif.includes('MERCREDI') && checkTimeMatch(heure, tarif),
-    'Jeudi': () => tarif.includes('JEUDI') && checkTimeMatch(heure, tarif),
-    'Samedi': () => tarif.includes('SAMEDI') && checkTimeMatch(heure, tarif),
-    'Dimanche': () => tarif.includes('DIMANCHE') && checkTimeMatch(heure, tarif)
-  }
-  
-  return dayChecks[jour]?.() || false
-}
-
-const isUnlimitedOr2Courses = (tarif: string): boolean => {
-  return tarif.includes('ADULTES COURS ILLIMITE/SEMAINE') || tarif.includes('ADULTES 2 COURS/SEMAINE')
-}
-
-const filterStudentsForCourse = (course: CourseData, subscriptions: Subscription[]): Student[] => {
-  const courseHasAdults = hasAdultsInCourse(course, subscriptions)
-  
-  const students = subscriptions.filter((sub: Subscription) => {
-    const tarif = sub.tarif || ''
-    const isUnlimited = isUnlimitedOr2Courses(tarif)
-    
-    // Pour les élèves illimité, ils peuvent aller à tous les cours adultes
-    if (isUnlimited && courseHasAdults) {
-      return true
-    }
-    
-    // Pour les autres élèves, vérifier la correspondance jour/heure
-    return checkCourseDayAndTime(course, tarif)
-  })
-  
-  return students.map((sub: Subscription, index: number) => ({
-    id: sub._id || `student-${index}`,
-    nom: sub.nom || '',
-    prenom: sub.prenom || '',
-    present: false
-  })).sort((a: Student, b: Student) => 
-    a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })
-  )
-}
-
-export default function AttendancePage() {
+function AttendancePageContent() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const [selectedDay, setSelectedDay] = useState<string>('')
-  
   const searchParams = useSearchParams()
-  const courseParam = searchParams.get('course')
 
-  // Fonction pour mapper le titre du cours du planning vers l'ID de la page d'attendance
-  const mapCourseTitleToId = (courseTitle: string): string => {
-    const title = courseTitle.toLowerCase()
-    
-    if (title.includes('lundi') && title.includes('19h30') && title.includes('bercy')) return 'lundi-bercy'
-    if (title.includes('mercredi') && title.includes('12h15')) return 'mercredi-12h15'
-    if (title.includes('mercredi') && title.includes('16h15')) return 'mercredi-16h15'
-    if (title.includes('jeudi') && title.includes('18h')) return 'jeudi-18h'
-    if (title.includes('jeudi') && title.includes('19h30')) return 'jeudi-19h30'
-    if (title.includes('samedi') && title.includes('10h') && title.includes('châtelet')) return 'samedi-10h'
-    if (title.includes('samedi') && title.includes('11h15')) return 'samedi-11h15'
-    if (title.includes('samedi') && title.includes('12h15')) return 'samedi-12h15'
-    if (title.includes('samedi') && title.includes('16h30')) return 'samedi-16h30'
-    if (title.includes('samedi') && title.includes('17h45')) return 'samedi-17h45'
-    if (title.includes('dimanche') && title.includes('10h')) return 'dimanche-10h'
-    if (title.includes('dimanche') && title.includes('11h30')) return 'dimanche-11h30'
-    
-    return ''
+  // Structure des cours avec leurs élèves
+  const coursesStructure: Course[] = [
+    {
+      id: 'karate-enfants',
+      nom: 'Karaté Enfants',
+      jour: 'Lundi',
+      heure: '17h00',
+      lieu: 'Dojo Principal',
+      coach: 'Sensei Martin',
+      eleves: []
+    },
+    {
+      id: 'karate-adultes',
+      nom: 'Karaté Adultes',
+      jour: 'Lundi',
+      heure: '19h00',
+      lieu: 'Dojo Principal',
+      coach: 'Sensei Martin',
+      eleves: []
+    },
+    {
+      id: 'karate-enfants-mardi',
+      nom: 'Karaté Enfants',
+      jour: 'Mardi',
+      heure: '17h00',
+      lieu: 'Dojo Principal',
+      coach: 'Sensei Dubois',
+      eleves: []
+    },
+    {
+      id: 'karate-adultes-mardi',
+      nom: 'Karaté Adultes',
+      jour: 'Mardi',
+      heure: '19h00',
+      lieu: 'Dojo Principal',
+      coach: 'Sensei Dubois',
+      eleves: []
+    },
+    {
+      id: 'karate-enfants-mercredi',
+      nom: 'Karaté Enfants',
+      jour: 'Mercredi',
+      heure: '17h00',
+      lieu: 'Dojo Principal',
+      coach: 'Sensei Martin',
+      eleves: []
+    },
+    {
+      id: 'karate-adultes-mercredi',
+      nom: 'Karaté Adultes',
+      jour: 'Mercredi',
+      heure: '19h00',
+      lieu: 'Dojo Principal',
+      coach: 'Sensei Martin',
+      eleves: []
+    },
+    {
+      id: 'karate-enfants-jeudi',
+      nom: 'Karaté Enfants',
+      jour: 'Jeudi',
+      heure: '17h00',
+      lieu: 'Dojo Principal',
+      coach: 'Sensei Dubois',
+      eleves: []
+    },
+    {
+      id: 'karate-adultes-jeudi',
+      nom: 'Karaté Adultes',
+      jour: 'Jeudi',
+      heure: '19h00',
+      lieu: 'Dojo Principal',
+      coach: 'Sensei Dubois',
+      eleves: []
+    },
+    {
+      id: 'karate-enfants-vendredi',
+      nom: 'Karaté Enfants',
+      jour: 'Vendredi',
+      heure: '17h00',
+      lieu: 'Dojo Principal',
+      coach: 'Sensei Martin',
+      eleves: []
+    },
+    {
+      id: 'karate-adultes-vendredi',
+      nom: 'Karaté Adultes',
+      jour: 'Vendredi',
+      heure: '19h00',
+      lieu: 'Dojo Principal',
+      coach: 'Sensei Martin',
+      eleves: []
+    }
+  ]
+
+  // Fonction pour filtrer les élèves selon le cours
+  const filterStudentsForCourse = (course: Course, subscriptions: Subscription[]): Student[] => {
+    return subscriptions
+      .filter(sub => sub.cours.includes(course.nom))
+      .map(sub => ({
+        id: sub._id,
+        nom: sub.nom,
+        prenom: sub.prenom,
+        present: false,
+        isTemporary: false
+      }))
   }
 
-  // Charger les données depuis MongoDB
   useEffect(() => {
     const fetchCourses = async () => {
       try {
@@ -253,10 +171,46 @@ export default function AttendancePage() {
           eleves: filterStudentsForCourse(course, subscriptions)
         }))
 
-        setCourses(coursesWithStudents)
-        console.log('Cours chargés:', coursesWithStudents) // Debug
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur inconnue')
+        // Charger les présences depuis localStorage avec vérification d'expiration
+        const savedAttendance = localStorage.getItem('attendanceData')
+        if (savedAttendance) {
+          try {
+            const attendanceData = JSON.parse(savedAttendance)
+            const now = Date.now()
+            const expirationTime = 3 * 60 * 60 * 1000 // 3 heures en millisecondes
+            
+            // Vérifier si les données ne sont pas expirées
+            if (attendanceData.timestamp && (now - attendanceData.timestamp) < expirationTime) {
+              const coursesWithSavedAttendance = coursesWithStudents.map(course => {
+                const savedCourse = attendanceData.data.find((saved: { courseId: string; students: { id: string; present: boolean }[] }) => saved.courseId === course.id)
+                if (savedCourse) {
+                  return {
+                    ...course,
+                    eleves: course.eleves.map(eleve => {
+                      const savedStudent = savedCourse.students.find((s: { id: string; present: boolean }) => s.id === eleve.id)
+                      return savedStudent ? { ...eleve, present: savedStudent.present } : eleve
+                    })
+                  }
+                }
+                return course
+              })
+              setCourses(coursesWithSavedAttendance)
+            } else {
+              // Données expirées, les supprimer
+              localStorage.removeItem('attendanceData')
+              setCourses(coursesWithStudents)
+            }
+          } catch (error) {
+            console.error('Erreur lors du chargement des présences:', error)
+            localStorage.removeItem('attendanceData')
+            setCourses(coursesWithStudents)
+          }
+        } else {
+          setCourses(coursesWithStudents)
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des cours:', error)
+        setCourses(coursesStructure.map(course => ({ ...course, eleves: [] })))
       } finally {
         setLoading(false)
       }
@@ -265,8 +219,83 @@ export default function AttendancePage() {
     fetchCourses()
   }, [])
 
+  const handlePresenceChange = (courseId: string, studentId: string, present: boolean) => {
+    setCourses(prevCourses => {
+      const updatedCourses = prevCourses.map(course => 
+        course.id === courseId 
+          ? {
+              ...course,
+              eleves: course.eleves.map(eleve => 
+                eleve.id === studentId 
+                  ? { ...eleve, present }
+                  : eleve
+              )
+            }
+          : course
+      )
+      
+      // Sauvegarder en localStorage avec timestamp
+      const attendanceData = {
+        timestamp: Date.now(),
+        data: updatedCourses.map(course => ({
+          courseId: course.id,
+          students: course.eleves.map(eleve => ({
+            id: eleve.id,
+            present: eleve.present
+          }))
+        }))
+      }
+      
+      localStorage.setItem('attendanceData', JSON.stringify(attendanceData))
+      
+      return updatedCourses
+    })
+  }
+
+  const handleRemoveTemporaryStudent = (courseId: string, studentId: string) => {
+    setCourses(prevCourses => 
+      prevCourses.map(course => 
+        course.id === courseId 
+          ? {
+              ...course,
+              eleves: course.eleves.filter(eleve => eleve.id !== studentId)
+            }
+          : course
+      )
+    )
+  }
+
+  const handleAddTemporaryStudent = (courseId: string, nom: string, prenom: string) => {
+    const newStudent: Student = {
+      id: `temp-${Date.now()}`,
+      nom,
+      prenom,
+      present: false,
+      isTemporary: true
+    }
+
+    setCourses(prevCourses => 
+      prevCourses.map(course => 
+        course.id === courseId 
+          ? {
+              ...course,
+              eleves: [...course.eleves, newStudent]
+            }
+          : course
+      )
+    )
+  }
+
+  // Filtrer les cours selon la recherche et le jour
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = course.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         course.coach.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesDay = selectedDay === '' || course.jour === selectedDay
+    return matchesSearch && matchesDay
+  })
+
   // Grouper les cours par jour
-  const coursesByDay = courses.reduce((acc, course) => {
+  const coursesByDay = filteredCourses.reduce((acc, course) => {
     if (!acc[course.jour]) {
       acc[course.jour] = []
     }
@@ -274,138 +303,161 @@ export default function AttendancePage() {
     return acc
   }, {} as Record<string, Course[]>)
 
-  // Trier les cours par heure dans chaque jour
-  Object.keys(coursesByDay).forEach(day => {
-    coursesByDay[day].sort((a, b) => a.heure.localeCompare(b.heure))
-  })
+  const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
-  // Déterminer le jour par défaut basé sur le paramètre course
-  useEffect(() => {
-    if (courseParam && courses.length > 0) {
-      // Extraire le titre du cours depuis le paramètre (enlever le timestamp)
-      const courseTitle = courseParam.split('-').slice(0, -1).join('-')
-      const mappedId = mapCourseTitleToId(courseTitle)
-      
-      if (mappedId) {
-        const course = courses.find(c => c.id === mappedId)
-        if (course) {
-          setSelectedDay(course.jour)
-        }
-      }
-    } else if (courses.length > 0 && !selectedDay) {
-      // Seulement définir le jour par défaut si aucun jour n'est sélectionné
-      const coursesByDay = courses.reduce((acc, course) => {
-        if (!acc[course.jour]) {
-          acc[course.jour] = []
-        }
-        acc[course.jour].push(course)
-        return acc
-      }, {} as Record<string, Course[]>)
-      
-      setSelectedDay(Object.keys(coursesByDay)[0])
-    }
-  }, [courseParam, courses, selectedDay])
-
-  // Supprimer les console.log de debug
-  // console.log('Cours par jour:', coursesByDay)
-  // console.log('Jour sélectionné:', selectedDay)
-
-  const handlePresenceChange = (courseId: string, eleveId: string, present: boolean) => {
-    setCourses(prev => prev.map(course => 
-      course.id === courseId 
-        ? {
-            ...course,
-            eleves: course.eleves.map(eleve => 
-              eleve.id === eleveId ? { ...eleve, present } : eleve
-            )
-          }
-        : course
-    ))
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement des cours...</p>
+        </div>
+      </div>
+    )
   }
-
- 
-
-  const handleAddTemporaryStudent = (courseId: string, nom: string, prenom: string) => {
-    const newStudent: Student = {
-      id: `temp-${Date.now()}`,
-      nom: nom.trim(),
-      prenom: prenom.trim(),
-      present: false,
-      isTemporary: true
-    }
-
-    setCourses(prev => prev.map(course => 
-      course.id === courseId 
-        ? {
-            ...course,
-            eleves: [...course.eleves, newStudent]
-          }
-        : course
-    ))
-  }
-
-  const removeStudentFromCourse = (course: Course, studentId: string): Course => ({
-    ...course,
-    eleves: course.eleves.filter(eleve => eleve.id !== studentId)
-  })
-
-  const handleRemoveTemporaryStudent = (courseId: string, studentId: string) => {
-    setCourses(prev => prev.map(course => 
-      course.id === courseId ? removeStudentFromCourse(course, studentId) : course
-    ))
-  }
-
-
-  if (loading) return <div className="container mx-auto p-4">Chargement...</div>
-  if (error) return <div className="container mx-auto p-4">Erreur: {error}</div>
 
   return (
-    <div className="container mx-auto p-4 lg:max-w-7xl">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">
-            Feuilles d&apos;appel
-          </h1>
-        <p className="text-gray-600">Gérez les présences des élèves par cours</p>
-        </div>
-        <Link href="/dashboard">
-          <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
-            <Home className="h-4 w-4" />
-            Retour au Dashboard
-          </Button>
-        </Link>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Feuilles d'appel</h1>
+        <p className="text-gray-600">Gérez la présence des élèves pour chaque cours</p>
       </div>
 
-      <Tabs value={selectedDay} onValueChange={setSelectedDay} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          {Object.keys(coursesByDay).map(day => (
-            <TabsTrigger key={day} value={day}>
-              {day}
-            </TabsTrigger>
+      {/* Filtres */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder="Rechercher un cours ou un coach..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <select
+          value={selectedDay}
+          onChange={(e) => setSelectedDay(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="">Tous les jours</option>
+          {days.map(day => (
+            <option key={day} value={day}>{day}</option>
           ))}
-        </TabsList>
+        </select>
+      </div>
 
-        {Object.entries(coursesByDay).map(([day, dayCourses]) => (
-          <TabsContent key={day} value={day} className="space-y-4">
-            {dayCourses.map(course => {
-              const courseTitle = courseParam ? courseParam.split('-').slice(0, -1).join('-') : ''
-              const mappedId = courseParam ? mapCourseTitleToId(courseTitle) : ''
-              const isHighlighted = Boolean(courseParam && course.id === mappedId)
-              
-              return (
-                <CourseCard 
-                  key={course.id} 
-                  course={course}
-                  onPresenceChange={handlePresenceChange}
-                  onRemoveTemporaryStudent={handleRemoveTemporaryStudent}
-                  onAddTemporaryStudent={handleAddTemporaryStudent}
-                  isHighlighted={isHighlighted}
-                />
-              )
-            })}
-          </TabsContent>
-        ))}
-      </Tabs>
+      {/* Statistiques */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Cours</p>
+              <p className="text-2xl font-bold text-gray-900">{filteredCourses.length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Total élèves</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {filteredCourses.reduce((total, course) => total + course.eleves.length, 0)}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Présents</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {filteredCourses.reduce((total, course) => 
+                  total + course.eleves.filter(eleve => eleve.present).length, 0
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Absents</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {filteredCourses.reduce((total, course) => 
+                  total + course.eleves.filter(eleve => !eleve.present).length, 0
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Cours par jour */}
+      {Object.keys(coursesByDay).length === 0 ? (
+        <div className="bg-white p-8 rounded-lg shadow text-center">
+          <p className="text-gray-500">Aucun cours trouvé pour les critères sélectionnés</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {days.filter(day => coursesByDay[day]).map(day => (
+            <div key={day}>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {day}
+              </h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {coursesByDay[day].map(course => (
+                  <CourseCard
+                    key={course.id}
+                    course={course}
+                    onPresenceChange={handlePresenceChange}
+                    onRemoveTemporaryStudent={handleRemoveTemporaryStudent}
+                    onAddTemporaryStudent={handleAddTemporaryStudent}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
+  )
+}
+
+export default function AttendancePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    }>
+      <AttendancePageContent />
+    </Suspense>
   )
 }
