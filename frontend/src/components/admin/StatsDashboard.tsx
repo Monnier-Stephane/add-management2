@@ -85,14 +85,12 @@ export default function StatsDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Debug info - Seulement pour les admins */}
-      {isAdmin && (
-        <div className="bg-blue-50 p-4 rounded-lg border">
-          <div className="text-sm text-blue-800">
-            Informations venant de la base de données - Total: {stats.total} | En attente: {stats.attente} | Payé: {stats.paye}
-          </div>
+      {/* Debug info - Toujours visible pour debug */}
+      <div className="bg-blue-50 p-4 rounded-lg border">
+        <div className="text-sm text-blue-800">
+          Debug - Rôle: {userRole} | Admin: {isAdmin ? 'Oui' : 'Non'} | Total: {stats.total} | En attente: {stats.attente} | Payé: {stats.paye}
         </div>
-      )}
+      </div>
       
       {/* Key metrics tiles */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -216,36 +214,34 @@ export default function StatsDashboard() {
 
       {/* Pie charts */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Payment status - Seulement pour les admins */}
-        {isAdmin && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Statut de paiement</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={paiementData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    label
-                  >
-                    {paiementData.map((entry, index) => (
-                      <Cell key={`cell-paiement-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
+        {/* Payment status - Visible pour tous pour debug */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Statut de paiement</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={paiementData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  fill="#8884d8"
+                  label
+                >
+                  {paiementData.map((entry, index) => (
+                    <Cell key={`cell-paiement-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
         {/* Distribution by category */}
         <Card>
