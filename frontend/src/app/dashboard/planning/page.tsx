@@ -198,8 +198,11 @@ export default function PlanningPage() {
     setView(newView);
   };
 
-  const handleNavigate = (newDate: Date) => {
+  const handleNavigate = (newDate: Date, view?: string) => {
     setDate(newDate);
+    if (view) {
+      setView(view as typeof Views[keyof typeof Views]);
+    }
   };
 
   const handleSelectEvent = (event: Event) => {
@@ -420,42 +423,6 @@ export default function PlanningPage() {
               <CalendarIcon className="h-5 w-5" />
               {showMyPlanning ? 'Mon Calendrier' : 'Calendrier'}
             </CardTitle>
-            
-            {/* Boutons de vue */}
-            <div className="flex gap-2">
-              <Button
-                variant={view === Views.MONTH ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleViewChange(Views.MONTH)}
-                className="flex items-center gap-2"
-              >
-                <Grid3X3 className="h-4 w-4" />
-                Mois
-              </Button>
-              <Button
-                variant={view === Views.WEEK ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleViewChange(Views.WEEK)}
-                className="flex items-center gap-2"
-              >
-                <List className="h-4 w-4" />
-                Semaine
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const nextSaturday = new Date();
-                  nextSaturday.setDate(nextSaturday.getDate() + (6 - nextSaturday.getDay()));
-                  setDate(nextSaturday);
-                  setView(Views.WEEK);
-                }}
-                className="flex items-center gap-2"
-              >
-                <CalendarIcon className="h-4 w-4" />
-                Voir Samedi
-              </Button>
-            </div>
           </div>
         </CardHeader>
         
@@ -688,7 +655,7 @@ export default function PlanningPage() {
                   <div className="flex-1 flex flex-col min-h-0">
                     <h4 className="font-medium mb-1 text-sm flex-shrink-0">Ajouter un coach</h4>
                     <div className="flex-1 overflow-y-auto grid grid-cols-1 gap-1">
-                      {coaches?.map(coach => (
+                      {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => (
                         <Button
                           key={coach._id}
                           variant="outline"
