@@ -71,7 +71,9 @@ const CoachesContent = () => {
 
   const handleSave = async (coachId: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/coaches/${coachId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://add-management2.onrender.com';
+      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      const response = await fetch(`${cleanApiUrl}/coaches/${coachId}`, {
         method: 'PATCH', // Changé de PUT à PATCH
         headers: {
           'Content-Type': 'application/json',

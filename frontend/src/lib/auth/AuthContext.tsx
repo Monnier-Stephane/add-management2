@@ -153,7 +153,9 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       
       if (firebaseUser) {
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`);
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://add-management2.onrender.com';
+          const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+          const response = await fetch(`${cleanApiUrl}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`);
           
           if (response.ok) {
             const text = await response.text();

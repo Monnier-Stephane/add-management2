@@ -164,7 +164,9 @@ export default function PlanningPage() {
   useEffect(() => {
     const loadAssignments = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/planning/assignments`);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://add-management2.onrender.com';
+        const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+        const response = await fetch(`${cleanApiUrl}/planning/assignments`);
         if (response.ok) {
           const assignments = await response.json();
           
@@ -229,7 +231,9 @@ export default function PlanningPage() {
     
     // Sauvegarder en base de données
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/planning/assign-coach`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://add-management2.onrender.com';
+      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      const response = await fetch(`${cleanApiUrl}/planning/assign-coach`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -274,7 +278,9 @@ export default function PlanningPage() {
 
     // Sauvegarder en base de données
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/planning/remove-coach`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://add-management2.onrender.com';
+      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      const response = await fetch(`${cleanApiUrl}/planning/remove-coach`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
