@@ -8,7 +8,10 @@ interface ApiResponse<T> {
 class ApiService {
   private cache = new Map<string, ApiResponse<any>>()
   private readonly CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-  private readonly API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  private readonly API_BASE = (() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://add-management2.onrender.com';
+    return apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+  })()
 
   private isCacheValid(timestamp: number): boolean {
     return Date.now() - timestamp < this.CACHE_DURATION
