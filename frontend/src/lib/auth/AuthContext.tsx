@@ -101,20 +101,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
     }, SESSION_DURATION)
   }
 
-  // Fonction pour vérifier la validité de la session
-  const checkSessionValidity = () => {
-    const sessionStartTime = sessionStorage.getItem('sessionStartTime')
-    if (sessionStartTime) {
-      const elapsed = Date.now() - parseInt(sessionStartTime)
-      if (elapsed >= SESSION_DURATION) {
-        // Ne pas appeler handleAutoLogout ici pour éviter les boucles
-        return false
-      }
-      return true
-    }
-    // Si pas de session enregistrée, considérer comme valide pour permettre la connexion
-    return true
-  }
+
 
   // Fonction pour étendre la session
   const extendSession = () => {
@@ -166,7 +153,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       
       if (firebaseUser) {
         try {
-          const response = await fetch(`http://localhost:3001/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`);
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`);
           
           if (response.ok) {
             const text = await response.text();

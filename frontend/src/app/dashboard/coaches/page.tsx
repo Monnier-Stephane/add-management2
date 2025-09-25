@@ -71,7 +71,7 @@ const CoachesContent = () => {
 
   const handleSave = async (coachId: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/coaches/${coachId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/coaches/${coachId}`, {
         method: 'PATCH', // Changé de PUT à PATCH
         headers: {
           'Content-Type': 'application/json',

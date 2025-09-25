@@ -12,7 +12,7 @@ interface Coach {
 }
 
 async function getCoaches(): Promise<Coach[]> {
-  const response = await fetch('http://localhost:3001/coaches');
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/coaches`);
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }

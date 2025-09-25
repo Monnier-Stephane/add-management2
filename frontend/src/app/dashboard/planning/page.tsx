@@ -164,7 +164,7 @@ export default function PlanningPage() {
   useEffect(() => {
     const loadAssignments = async () => {
       try {
-        const response = await fetch('http://localhost:3001/planning/assignments');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/planning/assignments`);
         if (response.ok) {
           const assignments = await response.json();
           
@@ -229,7 +229,7 @@ export default function PlanningPage() {
     
     // Sauvegarder en base de données
     try {
-      const response = await fetch('http://localhost:3001/planning/assign-coach', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/planning/assign-coach`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -274,7 +274,7 @@ export default function PlanningPage() {
 
     // Sauvegarder en base de données
     try {
-      const response = await fetch('http://localhost:3001/planning/remove-coach', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/planning/remove-coach`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

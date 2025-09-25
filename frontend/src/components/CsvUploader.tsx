@@ -45,7 +45,7 @@ export function CsvUploader() {
       formData.append('file', file);
 
       // Utiliser le nouvel endpoint qui accepte Excel
-      const response = await fetch('http://localhost:3001/subscriptions/upload-excel', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscriptions/upload-excel`, {
         method: 'POST',
         body: formData,
       });

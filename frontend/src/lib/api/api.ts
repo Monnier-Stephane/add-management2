@@ -8,7 +8,7 @@ interface ApiResponse<T> {
 class ApiService {
   private cache = new Map<string, ApiResponse<any>>()
   private readonly CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-  private readonly API_BASE = 'http://localhost:3001'
+  private readonly API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
   private isCacheValid(timestamp: number): boolean {
     return Date.now() - timestamp < this.CACHE_DURATION
