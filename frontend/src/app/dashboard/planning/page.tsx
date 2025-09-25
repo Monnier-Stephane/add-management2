@@ -164,7 +164,10 @@ export default function PlanningPage() {
   useEffect(() => {
     const loadAssignments = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://add-management2.onrender.com';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        if (!apiUrl) {
+          throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+        }
         const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
         const response = await fetch(`${cleanApiUrl}/planning/assignments`);
         if (response.ok) {
@@ -231,7 +234,10 @@ export default function PlanningPage() {
     
     // Sauvegarder en base de données
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://add-management2.onrender.com';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+      }
       const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
       const response = await fetch(`${cleanApiUrl}/planning/assign-coach`, {
         method: 'POST',
@@ -278,7 +284,10 @@ export default function PlanningPage() {
 
     // Sauvegarder en base de données
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://add-management2.onrender.com';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+      }
       const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
       const response = await fetch(`${cleanApiUrl}/planning/remove-coach`, {
         method: 'POST',

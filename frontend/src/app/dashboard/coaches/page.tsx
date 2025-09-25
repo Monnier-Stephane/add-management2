@@ -71,7 +71,10 @@ const CoachesContent = () => {
 
   const handleSave = async (coachId: string) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://add-management2.onrender.com';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+      }
       const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
       const response = await fetch(`${cleanApiUrl}/coaches/${coachId}`, {
         method: 'PATCH', // Changé de PUT à PATCH

@@ -6,10 +6,13 @@ interface ApiResponse<T> {
 }
 
 class ApiService {
-  private cache = new Map<string, ApiResponse<any>>()
+  private cache = new Map<string, ApiResponse<unknown>>()
   private readonly CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
   private readonly API_BASE = (() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://add-management2.onrender.com';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) {
+      throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+    }
     return apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
   })()
 
@@ -52,8 +55,8 @@ class ApiService {
     // Vérifier le cache
     if (useCache && this.cache.has(cacheKey)) {
       const cached = this.cache.get(cacheKey)
-      if (this.isCacheValid(cached.timestamp)) {
-        return cached.data
+      if (cached && this.isCacheValid(cached.timestamp)) {
+        return cached.data as T
       }
     }
 
@@ -71,7 +74,7 @@ class ApiService {
     return data
   }
 
-  async post<T>(endpoint: string, data: any, useCache = true): Promise<T> {
+  async post<T>(endpoint: string, data: unknown, useCache = true): Promise<T> {
     const result = await this.fetchWithRetry<T>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -85,7 +88,7 @@ class ApiService {
     return result
   }
 
-  async patch<T>(endpoint: string, data: any, useCache = true): Promise<T> {
+  async patch<T>(endpoint: string, data: unknown, useCache = true): Promise<T> {
     const result = await this.fetchWithRetry<T>(endpoint, {
       method: 'PATCH',
       body: JSON.stringify(data),
