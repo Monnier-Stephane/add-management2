@@ -19,16 +19,7 @@ interface Subscription {
   _id: string
   nom: string
   prenom: string
-  cours: string[]
-  telephone?: string
-  telephoneUrgence?: string
-  adresse?: string
-  dateInscription: string
-  statutPaiement: 'paye' | 'impaye' | 'partiel'
-  montantPaye: number
-  montantTotal: number
-  dateNaissance?: string
-  email?: string
+  tarif: string
 }
 
 interface Course {
@@ -41,6 +32,226 @@ interface Course {
   eleves: Student[]
 }
 
+// Structure des cours basée sur les données MongoDB
+const coursesStructure = [
+  {
+    id: "lundi-bercy",
+    nom: "Cours Lundi 19h30",
+    jour: "Lundi",
+    heure: "19h30",
+    lieu: "Paris Bercy",
+    coach: "Coach Bercy"
+  },
+  {
+    id: "mercredi-12h15",
+    nom: "Cours Mercredi 12h15",
+    jour: "Mercredi", 
+    heure: "12h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "mercredi-16h15",
+    nom: "Cours Mercredi 16h15",
+    jour: "Mercredi",
+    heure: "16h15", 
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "jeudi-18h",
+    nom: "Cours Jeudi 18h",
+    jour: "Jeudi",
+    heure: "18h00",
+    lieu: "Paris Châtelet", 
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "jeudi-19h30",
+    nom: "Cours Jeudi 19h30",
+    jour: "Jeudi",
+    heure: "19h30",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "samedi-10h",
+    nom: "Cours Samedi 10h",
+    jour: "Samedi",
+    heure: "10h00",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "samedi-11h15",
+    nom: "Cours Samedi 11h15", 
+    jour: "Samedi",
+    heure: "11h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "samedi-12h15",
+    nom: "Cours Samedi 12h15",
+    jour: "Samedi", 
+    heure: "12h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "samedi-13h15",
+    nom: "Cours Samedi 13h15",
+    jour: "Samedi",
+    heure: "13h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "samedi-14h15",
+    nom: "Cours Samedi 14h15",
+    jour: "Samedi",
+    heure: "14h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "samedi-15h15",
+    nom: "Cours Samedi 15h15",
+    jour: "Samedi",
+    heure: "15h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "samedi-16h15",
+    nom: "Cours Samedi 16h15",
+    jour: "Samedi",
+    heure: "16h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "samedi-17h15",
+    nom: "Cours Samedi 17h15",
+    jour: "Samedi",
+    heure: "17h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "samedi-18h15",
+    nom: "Cours Samedi 18h15",
+    jour: "Samedi",
+    heure: "18h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "samedi-19h15",
+    nom: "Cours Samedi 19h15",
+    jour: "Samedi",
+    heure: "19h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "samedi-20h15",
+    nom: "Cours Samedi 20h15",
+    jour: "Samedi",
+    heure: "20h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "dimanche-10h",
+    nom: "Cours Dimanche 10h",
+    jour: "Dimanche",
+    heure: "10h00",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "dimanche-11h15",
+    nom: "Cours Dimanche 11h15",
+    jour: "Dimanche",
+    heure: "11h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "dimanche-12h15",
+    nom: "Cours Dimanche 12h15",
+    jour: "Dimanche",
+    heure: "12h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "dimanche-13h15",
+    nom: "Cours Dimanche 13h15",
+    jour: "Dimanche",
+    heure: "13h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "dimanche-14h15",
+    nom: "Cours Dimanche 14h15",
+    jour: "Dimanche",
+    heure: "14h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "dimanche-15h15",
+    nom: "Cours Dimanche 15h15",
+    jour: "Dimanche",
+    heure: "15h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "dimanche-16h15",
+    nom: "Cours Dimanche 16h15",
+    jour: "Dimanche",
+    heure: "16h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "dimanche-17h15",
+    nom: "Cours Dimanche 17h15",
+    jour: "Dimanche",
+    heure: "17h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "dimanche-18h15",
+    nom: "Cours Dimanche 18h15",
+    jour: "Dimanche",
+    heure: "18h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "dimanche-19h15",
+    nom: "Cours Dimanche 19h15",
+    jour: "Dimanche",
+    heure: "19h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  },
+  {
+    id: "dimanche-20h15",
+    nom: "Cours Dimanche 20h15",
+    jour: "Dimanche",
+    heure: "20h15",
+    lieu: "Paris Châtelet",
+    coach: "Coach Châtelet"
+  }
+]
+
 function AttendancePageContent() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,104 +259,10 @@ function AttendancePageContent() {
   const [selectedDay, setSelectedDay] = useState<string>('')
   const searchParams = useSearchParams()
 
-  // Structure des cours avec leurs élèves
-  const coursesStructure: Course[] = [
-    {
-      id: 'karate-enfants',
-      nom: 'Karaté Enfants',
-      jour: 'Lundi',
-      heure: '17h00',
-      lieu: 'Dojo Principal',
-      coach: 'Sensei Martin',
-      eleves: []
-    },
-    {
-      id: 'karate-adultes',
-      nom: 'Karaté Adultes',
-      jour: 'Lundi',
-      heure: '19h00',
-      lieu: 'Dojo Principal',
-      coach: 'Sensei Martin',
-      eleves: []
-    },
-    {
-      id: 'karate-enfants-mardi',
-      nom: 'Karaté Enfants',
-      jour: 'Mardi',
-      heure: '17h00',
-      lieu: 'Dojo Principal',
-      coach: 'Sensei Dubois',
-      eleves: []
-    },
-    {
-      id: 'karate-adultes-mardi',
-      nom: 'Karaté Adultes',
-      jour: 'Mardi',
-      heure: '19h00',
-      lieu: 'Dojo Principal',
-      coach: 'Sensei Dubois',
-      eleves: []
-    },
-    {
-      id: 'karate-enfants-mercredi',
-      nom: 'Karaté Enfants',
-      jour: 'Mercredi',
-      heure: '17h00',
-      lieu: 'Dojo Principal',
-      coach: 'Sensei Martin',
-      eleves: []
-    },
-    {
-      id: 'karate-adultes-mercredi',
-      nom: 'Karaté Adultes',
-      jour: 'Mercredi',
-      heure: '19h00',
-      lieu: 'Dojo Principal',
-      coach: 'Sensei Martin',
-      eleves: []
-    },
-    {
-      id: 'karate-enfants-jeudi',
-      nom: 'Karaté Enfants',
-      jour: 'Jeudi',
-      heure: '17h00',
-      lieu: 'Dojo Principal',
-      coach: 'Sensei Dubois',
-      eleves: []
-    },
-    {
-      id: 'karate-adultes-jeudi',
-      nom: 'Karaté Adultes',
-      jour: 'Jeudi',
-      heure: '19h00',
-      lieu: 'Dojo Principal',
-      coach: 'Sensei Dubois',
-      eleves: []
-    },
-    {
-      id: 'karate-enfants-vendredi',
-      nom: 'Karaté Enfants',
-      jour: 'Vendredi',
-      heure: '17h00',
-      lieu: 'Dojo Principal',
-      coach: 'Sensei Martin',
-      eleves: []
-    },
-    {
-      id: 'karate-adultes-vendredi',
-      nom: 'Karaté Adultes',
-      jour: 'Vendredi',
-      heure: '19h00',
-      lieu: 'Dojo Principal',
-      coach: 'Sensei Martin',
-      eleves: []
-    }
-  ]
-
   // Fonction pour filtrer les élèves selon le cours
   const filterStudentsForCourse = (course: Course, subscriptions: Subscription[]): Student[] => {
     return subscriptions
-      .filter(sub => sub.cours.includes(course.nom))
+      .filter(sub => sub.cours && sub.cours.includes(course.nom))
       .map(sub => ({
         id: sub._id,
         nom: sub.nom,
