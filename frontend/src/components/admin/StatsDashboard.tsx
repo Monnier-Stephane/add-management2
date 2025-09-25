@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChevronDown, ChevronUp, Users, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { useSubscriptions } from '@/lib/hooks/useSubscriptions';
 
 const COLORS = ['#4ade80', '#60a5fa', '#fbbf24', '#f87171', '#a78bfa'];
 
@@ -20,64 +22,39 @@ interface Student {
 }
 
 export default function StatsDashboard() {
-  const [stats, setStats] = useState({
-    total: 0,
-    attente: 0,
-    paye: 0,
-    enfants: 0,
-    ados: 0,
-    adultes: 0,
-  });
-  const [pendingStudents, setPendingStudents] = useState<Student[]>([]);
+  const { userRole } = useAuth();
   const [showPendingDetails, setShowPendingDetails] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Utiliser le hook optimisé
+  const { data: students, isLoading, error } = useSubscriptions();
+  
+  const isAdmin = userRole === 'admin';
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        
-        const response = await fetch('http://localhost:3001/subscriptions');
-        
-        if (!response.ok) {
-          throw new Error(`HTTP Error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        const total = data.length;
-        let attente = 0, paye = 0, enfants = 0, ados = 0, adultes = 0;
-        const pendingList: Student[] = [];
+  // Calculer les statistiques à partir des données
+  const stats = students ? (() => {
+    const total = students.length;
+    let attente = 0, paye = 0, enfants = 0, ados = 0, adultes = 0;
+    const pendingList: Student[] = [];
 
-        data.forEach((item: Student) => {
-          // Payment status
-          if (item.statutPaiement === 'en attente') {
-            attente++;
-            pendingList.push(item);
-          }
-          if (item.statutPaiement === 'payé') paye++;
-
-          // Categorization by pricing tier
-          const tarif = (item.tarif || '').toLowerCase();
-          if (tarif.includes('enfant')) enfants++;
-          else if (tarif.includes('ado')) ados++;
-          else if (tarif.includes('adulte')) adultes++;
-        });
-
-        setStats({ total, attente, paye, enfants, ados, adultes });
-        setPendingStudents(pendingList);
-        setError(null);
-      } catch (err) {
-        console.error('Erreur lors du chargement des statistiques:', err);
-        setError(err instanceof Error ? err.message : 'Erreur inconnue');
-      } finally {
-        setLoading(false);
+    students.forEach((item: Student) => {
+      // Payment status
+      if (item.statutPaiement === 'en attente') {
+        attente++;
+        pendingList.push(item);
       }
-    };
+      if (item.statutPaiement === 'payé') paye++;
 
-    fetchStats();
-  }, []);
+      // Categorization by pricing tier
+      const tarif = (item.tarif || '').toLowerCase();
+      if (tarif.includes('enfant')) enfants++;
+      else if (tarif.includes('ado')) ados++;
+      else if (tarif.includes('adulte')) adultes++;
+    });
+
+    return { total, attente, paye, enfants, ados, adultes };
+  })() : { total: 0, attente: 0, paye: 0, enfants: 0, ados: 0, adultes: 0 };
+
+  const pendingStudents = students ? students.filter(item => item.statutPaiement === 'en attente') : [];
 
   const paiementData = [
     { name: 'En attente', value: stats.attente },
@@ -90,7 +67,7 @@ export default function StatsDashboard() {
     { name: 'Adultes', value: stats.adultes },
   ];
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-lg">🔄 Chargement des statistiques...</div>
@@ -101,25 +78,27 @@ export default function StatsDashboard() {
   if (error) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="text-red-600">Erreur: {error}</div>
+        <div className="text-red-600">Erreur: {error.message}</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
-      {/* Debug info */}
-      <div className="bg-blue-50 p-4 rounded-lg border">
-        <div className="text-sm text-blue-800">
-          Informations venant de la base de données - Total: {stats.total} | En attente: {stats.attente} | Payé: {stats.paye}
+      {/* Debug info - Seulement pour les admins */}
+      {isAdmin && (
+        <div className="bg-blue-50 p-4 rounded-lg border">
+          <div className="text-sm text-blue-800">
+            Informations venant de la base de données - Total: {stats.total} | En attente: {stats.attente} | Payé: {stats.paye}
+          </div>
         </div>
-      </div>
+      )}
       
       {/* Key metrics tiles */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Total d&lsquo;adhérents</CardTitle>
+            <CardTitle className="text-center">Total d&apos;adhérents</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-center text-4xl font-bold text-primary py-2">{stats.total}</div>
@@ -151,8 +130,8 @@ export default function StatsDashboard() {
         </Card>
       </div>
 
-      {/* Pending payments section */}
-      {stats.attente > 0 && (
+      {/* Pending payments section - Seulement pour les admins */}
+      {isAdmin && stats.attente > 0 && (
         <Card className="border-orange-200 bg-orange-50">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -185,7 +164,9 @@ export default function StatsDashboard() {
           {showPendingDetails && (
             <CardContent>
               <div className="space-y-3">
-                {pendingStudents.map((student) => (
+                {pendingStudents
+                  .sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' }))
+                  .map((student) => (
                   <div
                     key={student._id}
                     className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-white rounded-lg border border-orange-200"
@@ -235,34 +216,36 @@ export default function StatsDashboard() {
 
       {/* Pie charts */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Payment status */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Statut de paiement</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={paiementData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  label
-                >
-                  {paiementData.map((entry, index) => (
-                    <Cell key={`cell-paiement-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Payment status - Seulement pour les admins */}
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Statut de paiement</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={paiementData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    fill="#8884d8"
+                    label
+                  >
+                    {paiementData.map((entry, index) => (
+                      <Cell key={`cell-paiement-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Distribution by category */}
         <Card>

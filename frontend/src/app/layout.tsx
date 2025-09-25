@@ -5,6 +5,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { AuthProvider } from '@/lib/auth/AuthContext';
+import { SessionWarning } from '@/components/auth/SessionWarning';
+import { SessionExpiredModal } from '@/components/auth/SessionExpiredModal';
 
 import { ReactQueryProvider } from '@/lib/ReactQueryProvider';
 import { ScrollToTop } from '@/components/ui/ScrollToTop'
@@ -42,6 +44,8 @@ export default function RootLayout({
             <Navbar />
             {children}
             <ScrollToTop />
+            <SessionWarning />
+            <SessionExpiredModal />
           </AuthProvider>
         </ReactQueryProvider>
       </body>

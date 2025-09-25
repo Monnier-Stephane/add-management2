@@ -302,63 +302,64 @@ export const CourseCard = ({
     }
   }
 
+
   return (
     <Card className={`w-full ${isHighlighted ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              {course.nom}
-            </CardTitle>
-            <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-              <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                {course.lieu}
-              </div>
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                {course.coach}
-              </div>
+    <CardHeader>
+      <div className="flex items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            {course.nom}
+          </CardTitle>
+          <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+            <div className="flex items-center gap-1">
+              <MapPin className="w-4 h-4" />
+              {course.lieu}
+            </div>
+            <div className="flex items-center gap-1">
+              <Users className="w-4 h-4" />
+              {course.coach}
             </div>
           </div>
-          <Badge variant="outline">
-            {course.eleves.length} élèves
-          </Badge>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {course.eleves.map(eleve => (
-            <StudentItem 
-              key={eleve.id} 
-              eleve={eleve} 
-              course={course}
-              onPresenceChange={onPresenceChange}
-              onRemoveTemporaryStudent={onRemoveTemporaryStudent}
-            />
-          ))}
-        </div>
-        
-        {/* Bouton pour ajouter un élève temporaire */}
-        <div className="mt-4 pt-4 border-t">
-          <AddStudentDialog 
-            course={course} 
-            onAddStudent={onAddTemporaryStudent}
+        <Badge variant="outline">
+          {course.eleves.length} élèves
+        </Badge>
+      </div>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-3">
+        {course.eleves.map(eleve => (
+          <StudentItem 
+            key={eleve.id} 
+            eleve={eleve} 
+            course={course}
+            onPresenceChange={onPresenceChange}
+            onRemoveTemporaryStudent={onRemoveTemporaryStudent}
           />
+        ))}
+      </div>
+      
+      {/* Bouton pour ajouter un élève temporaire */}
+      <div className="mt-4 pt-4 border-t">
+        <AddStudentDialog 
+          course={course} 
+          onAddStudent={onAddTemporaryStudent}
+        />
+      </div>
+      
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-4 pt-4 border-t gap-3">
+        <div className="text-sm text-gray-600">
+          {course.eleves.filter(e => e.present).length} / {course.eleves.length} présents
         </div>
-        
-        <div className="flex justify-between items-center mt-4 pt-4 border-t">
-          <div className="text-sm text-gray-600">
-            {course.eleves.filter(e => e.present).length} / {course.eleves.length} présents
-          </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button 
               onClick={() => generatePDF('preview')} 
               size="sm" 
               variant="outline"
               disabled={isGeneratingPDF}
-              className="flex items-center gap-2"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <Eye className="h-4 w-4" />
               {isGeneratingPDF ? 'Génération...' : 'Visualiser'}
@@ -367,14 +368,15 @@ export const CourseCard = ({
               onClick={() => generatePDF('download')} 
               size="sm" 
               disabled={isGeneratingPDF}
-              className="flex items-center gap-2"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <Download className="h-4 w-4" />
               {isGeneratingPDF ? 'Génération...' : 'Télécharger'}
             </Button>
           </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
+      </div>
+    </CardContent>
+
+  </Card>
+)
 }

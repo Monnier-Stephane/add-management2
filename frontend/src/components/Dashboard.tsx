@@ -6,9 +6,8 @@ import StatsDashboard from '@/components/admin/StatsDashboard'
 import CoachesList from '@/components/CoachesList'
 
 export function Dashboard() {
-  const { userRole } = useAuth()
+  const { userProfile } = useAuth()
   
-
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -16,12 +15,12 @@ export function Dashboard() {
         <header className="flex h-16 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <div className="text-sm text-gray-500">
-            {userRole === 'admin' ? 'Administrateur' : 'Coach'}
+            Bonjour {userProfile?.prenom || 'Utilisateur'}
           </div>
         </header>
         
         <main className="p-4">
-          {userRole === 'admin' ? (
+          {userProfile?.prenom ? (
             <>
             <StatsDashboard />
             <CoachesList />

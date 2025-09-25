@@ -16,10 +16,8 @@ import {
   Users,
   Calendar,
   ClipboardList,
-  BarChart,
   Shield,
   Upload,
-  TrendingUp,
   Home,
   LogOut
 } from 'lucide-react'
@@ -48,11 +46,6 @@ export function AppSidebar() {
       url: "/dashboard/attendance",
       icon: ClipboardList
     },
-    {
-      title: userRole === 'admin' ? 'Statistiques globales' : 'Mes statistiques',
-      url: "/dashboard/my-stats",
-      icon: BarChart
-    }
   ]
 
   const adminItems = userRole === 'admin' ? [
@@ -66,11 +59,6 @@ export function AppSidebar() {
       url: "/dashboard/import",
       icon: Upload
     },
-    {
-      title: "Administration",
-      url: "/dashboard/admin",
-      icon: TrendingUp
-    }
   ] : []
 
   return (

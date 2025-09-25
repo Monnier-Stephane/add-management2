@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Pencil, Trash2, Home, Phone, MapPin, CreditCard, FileText } from "lucide-react";
 import Link from "next/link";
+import { useSubscriptions, useUniqueTarifs } from '@/lib/hooks/useSubscriptions';
+import { api } from '@/lib/api/api';
 
 interface Student {
   _id: string;
@@ -33,11 +35,7 @@ interface Student {
 }
 
 const StudentsPage = () => {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [uniqueTarifs, setUniqueTarifs] = useState<string[]>([]);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Student>>({});
@@ -47,38 +45,15 @@ const StudentsPage = () => {
   // Ajouter un état pour gérer l'onglet actif par cours
   const [activeTabs, setActiveTabs] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Récupérer les élèves et les tarifs uniques en parallèle
-        const [studentsResponse, tarifsResponse] = await Promise.all([
-          fetch('http://localhost:3001/subscriptions'),
-          fetch('http://localhost:3001/subscriptions/tarifs/unique')
-        ]);
-        
-        if (!studentsResponse.ok || !tarifsResponse.ok) {
-          throw new Error(`HTTP Error: ${studentsResponse.status}`);
-        }
-        
-        const [studentsData, tarifsData] = await Promise.all([
-          studentsResponse.json(),
-          tarifsResponse.json()
-        ]);
-        
-        setStudents(studentsData);
-        setUniqueTarifs(tarifsData);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Utiliser les hooks optimisés
+  const { data: students, isLoading, error, refetch } = useSubscriptions();
+  const { data: uniqueTarifs } = useUniqueTarifs();
+  
+  // Typage explicite pour éviter les erreurs TypeScript
+  const studentsArray = Array.isArray(students) ? students : [];
+  const tarifsArray = Array.isArray(uniqueTarifs) ? uniqueTarifs : [];
 
-    fetchData();
-  }, []);
+  // Plus besoin de useEffect pour charger les données, les hooks s'en chargent
 
   // Function to calculate age from date of birth
   const calculateAge = (dateOfBirth: string): number => {
@@ -156,7 +131,7 @@ const StudentsPage = () => {
 
   // Ajouter cette logique après la ligne 155 (après filterStudents) :
   // Filter students first based on search term
-  const filteredStudents = filterStudents(students, searchTerm);
+  const filteredStudents = filterStudents(studentsArray, searchTerm);
 
   // Group filtered students by course, then by age category within each course
   const studentsByCourse: Record<string, { enfants: Student[], adolescents: Student[], adultes: Student[] }> = {};
@@ -255,25 +230,10 @@ const StudentsPage = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/subscriptions/${editingStudent._id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editForm),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
-      }
-
-      // Mettre à jour la liste des élèves
-      const updatedStudents = students.map(student => 
-        student._id === editingStudent._id 
-          ? { ...student, ...editForm }
-          : student
-      );
-      setStudents(updatedStudents);
+      await api.patch(`/subscriptions/${editingStudent._id}`, editForm);
+      
+      // Rafraîchir les données
+      refetch();
       
       // Message de succès
       alert(`✅ Les modifications pour ${studentName} ont été sauvegardées avec succès !`);
@@ -282,7 +242,6 @@ const StudentsPage = () => {
       setEditingStudent(null);
     } catch (err) {
       console.error('Error updating student:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
       alert('❌ Erreur lors de la sauvegarde. Veuillez réessayer.');
     }
   };
@@ -290,7 +249,7 @@ const StudentsPage = () => {
   // Fonction pour supprimer un élève
   const handleDelete = async (studentId: string) => {
     // Trouver l'élève à supprimer pour afficher son nom
-    const studentToDelete = students.find(student => student._id === studentId);
+    const studentToDelete = studentsArray.find(student => student._id === studentId);
     if (!studentToDelete) return;
 
     const studentName = `${studentToDelete.prenom} ${studentToDelete.nom}`;
@@ -310,28 +269,20 @@ const StudentsPage = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/subscriptions/${studentId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
-      }
-
-      // Mettre à jour la liste des élèves
-      const updatedStudents = students.filter(student => student._id !== studentId);
-      setStudents(updatedStudents);
+      await api.delete(`/subscriptions/${studentId}`);
+      
+      // Rafraîchir les données
+      refetch();
       
       // Message de confirmation
       alert(`✅ L'élève ${studentName} a été supprimé avec succès.`);
     } catch (err) {
       console.error('Error deleting student:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
       alert('❌ Erreur lors de la suppression. Veuillez réessayer.');
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-12 max-w-7xl mx-auto">
         <h1>Chargement des élèves...</h1>
@@ -343,7 +294,10 @@ const StudentsPage = () => {
     return (
       <div className="p-12 max-w-7xl mx-auto">
         <h1>Erreur</h1>
-        <p>Erreur lors du chargement des élèves : {error}</p>
+        <p>Erreur lors du chargement des élèves : {error.message}</p>
+        <Button onClick={() => refetch()} className="mt-4">
+          Réessayer
+        </Button>
       </div>
     );
   }
@@ -372,7 +326,7 @@ const StudentsPage = () => {
         />
       </div>
 
-      {students.length > 0 ? (
+      {studentsArray.length > 0 ? (
         <div className="space-y-6">
           {Object.keys(studentsByCourse).length > 0 ? (
             Object.keys(studentsByCourse).map((courseKey) => {
@@ -741,7 +695,7 @@ const StudentsPage = () => {
                   <SelectValue placeholder="Sélectionner un tarif" />
                 </SelectTrigger>
                 <SelectContent className="max-w-[90vw] sm:max-w-none">
-                  {uniqueTarifs.map((tarif) => (
+                  {tarifsArray.map((tarif) => (
                     <SelectItem 
                       key={tarif} 
                       value={tarif}
