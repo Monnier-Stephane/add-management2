@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { Home } from 'lucide-react'
+import { Home, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { CourseCard } from '@/components/attendance/CourseCard'
 import { useSearchParams } from 'next/navigation'
@@ -415,7 +415,16 @@ function AttendancePageContent() {
     ))
   }
 
-  if (isLoading) return <div className="container mx-auto p-4">Chargement...</div>
+  if (isLoading) return (
+    <div className="container mx-auto p-4">
+      <div className="flex items-center justify-center py-8">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <div>Chargement...</div>
+        </div>
+      </div>
+    </div>
+  )
   if (error) return <div className="container mx-auto p-4">Erreur: {error.message}</div>
 
   return (
@@ -471,7 +480,16 @@ function AttendancePageContent() {
 
 export default function AttendancePage() {
   return (
-    <Suspense fallback={<div className="container mx-auto p-4">Chargement...</div>}>
+    <Suspense fallback={
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center py-8">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <div>Chargement...</div>
+          </div>
+        </div>
+      </div>
+    }>
       <AttendancePageContent />
     </Suspense>
   )

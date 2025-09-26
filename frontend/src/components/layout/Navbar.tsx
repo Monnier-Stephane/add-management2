@@ -62,7 +62,7 @@ export function Navbar() {
               {sessionTimeRemaining > 0 && !sessionExpired && (
                 <div className="flex items-center gap-2 text-gray-600 text-sm">
                   <Clock className="h-4 w-4" />
-                  <span className="hidden sm:inline">
+                  <span className="inline">
                     {Math.floor(sessionTimeRemaining / 60000)}:{(Math.floor((sessionTimeRemaining % 60000) / 1000)).toString().padStart(2, '0')}
                   </span>
                 </div>

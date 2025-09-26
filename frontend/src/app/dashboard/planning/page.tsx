@@ -1,13 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect } from 'react';
+import React,{ useState, useEffect } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import { Input } from '@/components/ui/input';
-import { Calendar as CalendarIcon, Plus, X, Users, Home, ClipboardList } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, X, Users, Home, ClipboardList, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCoaches } from '@/lib/hooks/useCoaches';
 import moment from 'moment';
@@ -33,8 +34,7 @@ interface Event {
   };
 }
 
-// Interface pour les coaches (utilise la même que dans useCoaches)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// Interface pour les coaches
 interface Coach {
   _id: string;
   nom: string;
@@ -42,6 +42,7 @@ interface Coach {
   email: string;
   statut: 'coach' | 'admin';
 }
+
 
 // Couleurs pour les coaches
 const COACH_COLORS = [
@@ -56,6 +57,22 @@ const COACH_COLORS = [
   '#84cc16', // lime
   '#f59e0b', // amber
 ];
+
+
+const CACHE_KEY = 'planning-assignments-cache';
+
+
+
+const setCachedAssignments = (data: any) => {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+      data,
+      timestamp: Date.now()
+    }));
+  } catch (error) {
+    console.error('Erreur sauvegarde cache:', error);
+  }
+};
 
 export default function PlanningPage() {
   const [view, setView] = useState<typeof Views[keyof typeof Views]>(Views.MONTH);
@@ -147,57 +164,61 @@ export default function PlanningPage() {
     return eventsList;
   };
 
-  // Initialiser les événements et assigner des couleurs aux coaches
+
+  
   useEffect(() => {
-    setEvents(generateRecurringEvents());
-    
-    if (coaches) {
-      const colors: Record<string, string> = {};
-      coaches.forEach((coach, index) => {
-        colors[coach._id] = COACH_COLORS[index % COACH_COLORS.length];
-      });
-      setCoachColors(colors);
+    ;
+  
+    // Charger seulement si on a les coaches
+    if (coaches && coaches.length > 0) {
+      const loadPlanningData = async (generateRecurringEvents: () => Event[]) => {
+        // 1. Générer les événements
+        const generatedEvents = generateRecurringEvents();
+        setEvents(generatedEvents);
+        
+        // 2. Assigner les couleurs aux coaches
+        if (coaches) {
+          const colors: Record<string, string> = {};
+          coaches.forEach((coach, index) => {
+            colors[coach._id] = COACH_COLORS[index % COACH_COLORS.length];
+          });
+          setCoachColors(colors);
+        }
+        
+        // 3. Charger les assignations depuis l'API
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+          if (!apiUrl) {
+            throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+          }
+          const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+          const response = await fetch(`${cleanApiUrl}/planning/assignments`);
+          
+          if (response.ok) {
+            const assignments = await response.json();
+            
+            if (Array.isArray(assignments)) {
+              setCachedAssignments(assignments);
+              
+              setEvents(prev => prev.map(event => {
+                const assignment = assignments.find((a: any) => a.eventId === event.id);
+                return assignment ? {
+                  ...event,
+                  resource: {
+                    ...event.resource!,
+                    coaches: assignment.coaches || []
+                  }
+                } : event;
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('Erreur lors du chargement des assignations:', error);
+        }
+      };
+      loadPlanningData(generateRecurringEvents);
     }
   }, [coaches]);
-
-  // Charger les assignations au démarrage
-  useEffect(() => {
-    const loadAssignments = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        if (!apiUrl) {
-          throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-        }
-        const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-        const response = await fetch(`${cleanApiUrl}/planning/assignments`);
-        if (response.ok) {
-          const assignments = await response.json();
-          
-          // Vérifier que assignments est un tableau
-          if (Array.isArray(assignments)) {
-            // Appliquer les assignations aux événements
-            setEvents(prev => prev.map(event => {
-              const assignment = assignments.find((a: { eventId: string; coaches: string[] }) => a.eventId === event.id);
-              return assignment ? {
-                ...event,
-                resource: {
-                  ...event.resource!,
-                  coaches: assignment.coaches || []
-                }
-              } : event;
-            }));
-          }
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des assignations:', error);
-      }
-    };
-
-    // Charger les assignations après que les événements soient générés
-    if (events.length > 0) {
-      loadAssignments();
-    }
-  }, [events.length]); // Déclencher quand les événements sont générés
 
   const handleViewChange = (newView: typeof Views[keyof typeof Views]) => {
     setView(newView);
@@ -277,6 +298,7 @@ export default function PlanningPage() {
         coaches: [...prev.resource!.coaches, coachName]
       }
     } : null);
+    clearCacheAndReload(coaches);
   };
 
   const removeCoachFromEvent = async (coachName: string) => {
@@ -327,6 +349,9 @@ export default function PlanningPage() {
         coaches: prev.resource!.coaches.filter(c => c !== coachName)
       }
     } : null);
+    if (coaches) {
+      clearCacheAndReload(coaches);
+    }
   };
 
   const addCustomCoach = () => {
@@ -375,11 +400,79 @@ export default function PlanningPage() {
     return (
       <div className="container mx-auto p-4 lg:max-w-7xl">
         <div className="flex items-center justify-center py-8">
-          <div className="text-lg"> Chargement des coaches...</div>
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <div className="text-lg">Chargement des coaches...</div>
+          </div>
         </div>
       </div>
     );
   }
+
+  const DateCellWrapper = ({ children }: { children: React.ReactElement }) =>
+    React.cloneElement(React.Children.only(children), {
+      style: {
+        ...(children.props as any).style,
+        borderRight: '1px solid #e5e7eb',
+      },
+    } as any);
+
+  const clearCacheAndReload = (coaches: Coach[]) => {
+    try {
+      sessionStorage.removeItem(CACHE_KEY);
+      // Recharger les données
+      if (coaches && coaches.length > 0) {
+        const loadPlanningData = async (generateRecurringEvents: () => Event[]) => {
+          // 1. Générer les événements
+          const generatedEvents = generateRecurringEvents();
+          setEvents(generatedEvents);
+          
+          // 2. Assigner les couleurs aux coaches
+          if (coaches) {
+            const colors: Record<string, string> = {};
+            coaches.forEach((coach, index) => {
+              colors[coach._id] = COACH_COLORS[index % COACH_COLORS.length];
+            });
+            setCoachColors(colors);
+          }
+          
+          // 3. Charger les assignations depuis l'API
+          try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+            if (!apiUrl) {
+              throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+            }
+            const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+            const response = await fetch(`${cleanApiUrl}/planning/assignments`);
+            
+            if (response.ok) {
+              const assignments = await response.json();
+              
+              if (Array.isArray(assignments)) {
+                setCachedAssignments(assignments);
+                
+                setEvents(prev => prev.map(event => {
+                  const assignment = assignments.find((a: any) => a.eventId === event.id);
+                  return assignment ? {
+                    ...event,
+                    resource: {
+                      ...event.resource!,
+                      coaches: assignment.coaches || []
+                    }
+                  } : event;
+                }));
+              }
+            }
+          } catch (error) {
+            console.error('Erreur lors du chargement des assignations:', error);
+          }
+        };
+        loadPlanningData(generateRecurringEvents);
+      }
+    } catch (error) {
+      console.error('Erreur lors du vidage du cache:', error);
+    }
+  };
 
   return (
     <div className="container mx-auto p-4 lg:max-w-7xl">
@@ -442,27 +535,61 @@ export default function PlanningPage() {
         </CardHeader>
         
         <CardContent>
-          <div className="h-[800px]">
-            <style jsx>{`
-              .rbc-show-more {
-                font-size: 10px !important;
-                padding: 2px 4px !important;
-                margin: 1px 0 !important;
-                white-space: nowrap !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-                max-width: 100% !important;
-                display: inline-block !important;
-              }
-              
-              @media (max-width: 768px) {
-                .rbc-show-more {
-                  font-size: 8px !important;
-                  padding: 1px 2px !important;
-                  max-width: 90% !important;
-                }
-              }
-            `}</style>
+          <div className="h-[1300px]">
+          <style jsx>{`
+  .rbc-month-view .rbc-date-cell {
+  height: 300px !important;
+}
+  
+  /* Hauteur encore plus grande sur mobile */
+  @media (max-width: 768px) {
+    .rbc-month-view .rbc-date-cell {
+      height: 350px !important;
+    }
+  }
+  
+  /* Amélioration de l'espacement de la barre de navigation */
+  .rbc-toolbar {
+    padding: 16px 0 !important;
+    margin-bottom: 16px !important;
+  }
+  
+  @media (max-width: 768px) {
+    .rbc-toolbar {
+      padding: 20px 0 !important;
+      margin-bottom: 20px !important;
+    }
+    
+    .rbc-toolbar button {
+      padding: 8px 12px !important;
+      margin: 4px !important;
+    }
+    
+    .rbc-toolbar-label {
+      font-size: 18px !important;
+      margin: 8px 0 !important;
+    }
+  }
+  
+  .rbc-show-more {
+    font-size: 10px !important;
+    padding: 2px 4px !important;
+    margin: 1px 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+    display: inline-block !important;
+  }
+  
+  @media (max-width: 768px) {
+    .rbc-show-more {
+      font-size: 8px !important;
+      padding: 1px 2px !important;
+      max-width: 90% !important;
+    }
+  }
+`}</style>
             <Calendar
               localizer={localizer}
               events={displayEvents} // Utiliser les événements filtrés
@@ -517,30 +644,41 @@ export default function PlanningPage() {
                 },
               })}
               components={{
+                dateCellWrapper: DateCellWrapper,
                 event: ({ event }) => (
-                  <div className="flex flex-col">
-                    <div className="text-xs font-medium truncate">
-                      {event.title}
-                    </div>
+                  <div className="text-xs truncate">
+                    <div className="font-medium">{event.title}</div>
                     {event.resource?.coaches && event.resource.coaches.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {event.resource.coaches.map((coach, index) => (
-                          <div key={index} className="flex items-center">
-                            {/* Version desktop avec initiales */}
+                      <div className="flex gap-1 mt-0.5">
+                        {/* Version desktop - limite à 2 coaches + compteur */}
+                        <div className="hidden md:flex gap-1">
+                          {event.resource.coaches.slice(0, 2).map((coach, index) => (
                             <span
-                              className="hidden md:inline text-xs px-1 py-0.5 rounded text-white"
+                              key={index}
+                              className="text-xs px-1 py-0.5 rounded text-white"
                               style={{ backgroundColor: getCoachColor(coach) }}
                             >
                               {getInitials(coach)}
                             </span>
-                            {/* Version mobile avec cercles */}
+                          ))}
+                          {event.resource.coaches.length > 2 && (
+                            <span className="text-xs text-white bg-gray-600 px-1 py-0.5 rounded">
+                              +{event.resource.coaches.length - 2}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Version mobile - tous les cercles */}
+                        <div className="md:hidden flex gap-1">
+                          {event.resource.coaches.map((coach, index) => (
                             <div
-                              className="md:hidden w-2 h-2 rounded-full border border-white"
+                              key={index}
+                              className="w-2 h-2 rounded-full border border-white"
                               style={{ backgroundColor: getCoachColor(coach) }}
                               title={coach}
                             />
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

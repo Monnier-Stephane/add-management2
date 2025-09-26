@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Save, X, Home } from 'lucide-react';
+import { Edit, Save, X, Home, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 
@@ -45,7 +45,14 @@ const CoachesContent = () => {
 
   const isAdmin = userRole === 'admin';
 
-  if (isLoading) return <div>Chargement...</div>;
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-8">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <div>Chargement...</div>
+      </div>
+    </div>
+  );
   if (error) return <div>Error: {error.message}</div>;
 
   // Filtrer les coaches (exclure celui avec prénom "chau")

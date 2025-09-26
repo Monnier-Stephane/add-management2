@@ -3,7 +3,7 @@ import { useCoaches } from '@/lib/hooks/useCoaches'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Mail, Phone, X, User } from 'lucide-react'
+import { Mail, Phone, X, User, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
 interface Coach {
@@ -43,7 +43,14 @@ const CoachesList = () => {
      window.open(`tel:${phone}`, '_blank')
    }
 
-   if(isLoading) return <div>Chargement...</div>
+   if(isLoading) return (
+    <div className="flex items-center justify-center py-8">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <div>Chargement...</div>
+      </div>
+    </div>
+  )
    if(error) return <div>Erreur: {error.message}</div>
 
    return (
@@ -78,7 +85,7 @@ const CoachesList = () => {
 
 		{/* Popup avec les détails du coach */}
 		<Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-			<DialogContent className="max-w-md">
+		<DialogContent className="max-w-lg px-6 py-4">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						<User className="h-5 w-5" />

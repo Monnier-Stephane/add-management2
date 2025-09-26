@@ -6,6 +6,8 @@ import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from '@/lib/auth/AuthContext'
+import { Loader2 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Pencil, Trash2, Home, Phone, MapPin, CreditCard, FileText } from "lucide-react";
@@ -41,6 +43,9 @@ const StudentsPage = () => {
   const [editForm, setEditForm] = useState<Partial<Student>>({});
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+
+  const { userRole } = useAuth()
+  const isAdmin = userRole === 'admin'
 
   // Ajouter un état pour gérer l'onglet actif par cours
   const [activeTabs, setActiveTabs] = useState<Record<string, string>>({});
@@ -164,7 +169,7 @@ const StudentsPage = () => {
     );
   });
 
-  // Ajouter cette définition juste avant la fonction getActiveTabForCourse (vers la ligne 192)
+  
   // Define age categories for display
   const ageCategories = [
     { key: 'enfants', label: 'Enfants (0-11 ans)', color: 'bg-blue-50 border-blue-200' },
@@ -284,8 +289,11 @@ const StudentsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="p-12 max-w-7xl mx-auto">
-        <h1>Chargement des élèves...</h1>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-gray-600">Chargement des élèves...</p>
+        </div>
       </div>
     );
   }
@@ -398,24 +406,26 @@ const StudentsPage = () => {
                                             {student.prenom}
                                           </TableCell>
                                           <TableCell>
-                                            <div className="flex gap-2">
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleEdit(student)}
-                                              >
-                                                <Pencil className="h-4 w-4" />
-                                              </Button>
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleDelete(student._id)}
-                                                className="text-red-600 hover:text-red-700"
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            </div>
-                                          </TableCell>
+  {isAdmin && (
+    <div className="flex gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleEdit(student)}
+      >
+        <Pencil className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleDelete(student._id)}
+        className="text-red-600 hover:text-red-700"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  )}
+</TableCell>
                                         </TableRow>
                                       ))}
                                     </TableBody>
@@ -437,23 +447,25 @@ const StudentsPage = () => {
                                           {student.prenom} {student.nom}
                                         </h4>
                                       </div>
-                                      <div className="flex gap-2 mt-3 justify-end">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handleEdit(student)}
-                                        >
-                                          <Pencil className="h-3 w-3" />
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handleDelete(student._id)}
-                                          className="text-red-600 hover:text-red-700"
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                      </div>
+                                      {isAdmin && (
+  <div className="flex gap-2 mt-3 justify-end">
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => handleEdit(student)}
+    >
+      <Pencil className="h-3 w-3" />
+    </Button>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => handleDelete(student._id)}
+      className="text-red-600 hover:text-red-700"
+    >
+      <Trash2 className="h-3 w-3" />
+    </Button>
+  </div>
+)}
                                     </div>
                                   ))}
                                 </div>
@@ -563,23 +575,26 @@ const StudentsPage = () => {
               </div>
 
               {/* Statut de paiement */}
-              <div>
-                <Label className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Statut de paiement
-                </Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    selectedStudent.statutPaiement === 'payé' 
-                      ? 'bg-green-100 text-green-800' 
-                      : selectedStudent.statutPaiement === 'en attente'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {selectedStudent.statutPaiement}
-                  </span>
-                </div>
-              </div>
+              {/* Statut de paiement - Seulement pour les admins */}
+{isAdmin && (
+  <div>
+    <Label className="text-sm font-medium text-gray-500 flex items-center gap-2">
+      <CreditCard className="h-4 w-4" />
+      Statut de paiement
+    </Label>
+    <div className="flex items-center gap-2 mt-1">
+      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+        selectedStudent.statutPaiement === 'payé' 
+          ? 'bg-green-100 text-green-800' 
+          : selectedStudent.statutPaiement === 'en attente'
+          ? 'bg-yellow-100 text-yellow-800'
+          : 'bg-red-100 text-red-800'
+      }`}>
+        {selectedStudent.statutPaiement}
+      </span>
+    </div>
+  </div>
+)}
 
               {/* Remarques */}
               {selectedStudent.remarques && (

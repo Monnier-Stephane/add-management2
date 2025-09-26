@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Loader2 } from 'lucide-react';
 import { ChevronDown, ChevronUp, Users, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSubscriptions } from '@/lib/hooks/useSubscriptions';
@@ -31,7 +32,7 @@ export default function StatsDashboard() {
   const isAdmin = userRole === 'admin';
 
   // Calculer les statistiques à partir des données
-  const stats = students ? (() => {
+  const stats = students && Array.isArray(students) ? (() => {
     const total = students.length;
     let attente = 0, paye = 0, enfants = 0, ados = 0, adultes = 0;
     const pendingList: Student[] = [];
@@ -54,7 +55,7 @@ export default function StatsDashboard() {
     return { total, attente, paye, enfants, ados, adultes };
   })() : { total: 0, attente: 0, paye: 0, enfants: 0, ados: 0, adultes: 0 };
 
-  const pendingStudents = students ? students.filter(item => item.statutPaiement === 'en attente') : [];
+  const pendingStudents = students && Array.isArray(students) ? students.filter((item: Student) => item.statutPaiement === 'en attente') : [];
 
   const paiementData = [
     { name: 'En attente', value: stats.attente },
@@ -70,7 +71,10 @@ export default function StatsDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="text-lg">🔄 Chargement des statistiques...</div>
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <div className="text-lg">Chargement des statistiques...</div>
+        </div>
       </div>
     );
   }
@@ -167,19 +171,19 @@ export default function StatsDashboard() {
                   .map((student) => (
                   <div
                     key={student._id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-white rounded-lg border border-orange-200"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 sm:p-3 bg-white rounded-lg border border-orange-200"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Users className="h-4 w-4 text-orange-600" />
-                      </div>
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg p-3 flex items-center justify-center flex-shrink-0 shadow-sm">
+  <Users className="h-5 w-5 text-orange-700" />
+</div>
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-gray-900 truncate">
                           {student.prenom} {student.nom}
                         </div>
                         <div className="text-sm text-gray-600 space-y-1">
                           {student.email && (
-                            <div className="truncate">📧 {student.email}</div>
+                            <div className="break-words">📧 {student.email}</div>
                           )}
                           {student.telephone && (
                             <div className="truncate">📞 {student.telephone}</div>
@@ -188,14 +192,14 @@ export default function StatsDashboard() {
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2">
-                      <Badge 
-                        variant="outline" 
-                        className="text-orange-600 border-orange-300 text-xs sm:text-sm w-fit"
-                      >
-                        <span className="truncate max-w-[120px] sm:max-w-none">
-                          {student.tarif}
-                        </span>
-                      </Badge>
+                    <Badge 
+  variant="outline" 
+  className="text-orange-600 border-orange-300 text-xs sm:text-sm w-fit rounded-md px-3 py-1"
+>
+  <span className="max-w-[140px] sm:max-w-none text-wrap">
+    {student.tarif}
+  </span>
+</Badge>
                       <Button 
                         size="sm" 
                         variant="outline"
