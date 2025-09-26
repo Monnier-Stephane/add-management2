@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useEffect, useState, useContext, useRef } from 'react'
+import { createContext, useEffect, useState, useContext, useRef, useCallback } from 'react'
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
 import { auth } from './firebase'
 import { useRouter } from 'next/navigation'
@@ -9,6 +9,7 @@ type UserRole = 'coach' | 'admin'
 
 type AuthContextType = {
   user: User | null
+  profileLoading: boolean
   userProfile: { statut: string; nom: string; prenom: string; email: string } | null
   userRole: UserRole | null
   loading: boolean
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<{ statut: string; nom: string; prenom: string; email: string } | null>(null)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [sessionExpired, setSessionExpired] = useState(false)
   const [timeRemaining, setTimeRemaining] = useState(0)
@@ -111,7 +113,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
   }
 
   // Fonction de déconnexion automatique
-  const handleAutoLogout = async () => {
+  const handleAutoLogout = useCallback(async () => {
     try {
       // Sauvegarder les données d'attendance avant la déconnexion
       const attendanceData = localStorage.getItem('attendanceData')
@@ -143,7 +145,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
     } catch (error) {
       console.error('Erreur lors de la déconnexion automatique:', error)
     }
-  }
+  }, [router])
 
   useEffect(() => {
     
@@ -152,17 +154,19 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       setUser(firebaseUser)
       
       if (firebaseUser) {
+        setProfileLoading(true)
         try {
           const apiUrl = process.env.NEXT_PUBLIC_API_URL;
           if (!apiUrl) {
             throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
           }
           const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+         
           const response = await fetch(`${cleanApiUrl}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`);
           
           if (response.ok) {
             const text = await response.text();
-           
+
             if (text.trim()) {
               const coach = JSON.parse(text);
              
@@ -179,6 +183,8 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
         } catch (error) {
           console.error('Error fetching coach profile:', error);
           setUserRole('coach');
+        } finally {
+          setProfileLoading(false)
         }
         
         // Vérifier la session après le chargement du profil
@@ -211,7 +217,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       unsubscribe()
       clearTimers()
     }
-  }, [])
+  }, [SESSION_DURATION])
 
 
   const logout = async () => {
@@ -262,4 +268,4 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       {children}
     </AuthContext.Provider>
   )
-} 
+}

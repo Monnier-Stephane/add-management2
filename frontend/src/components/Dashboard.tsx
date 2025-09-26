@@ -4,9 +4,21 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/s
 import { AppSidebar } from '@/components/AppSidebar'
 import StatsDashboard from '@/components/admin/StatsDashboard'
 import CoachesList from '@/components/CoachesList'
+import { Loader2 } from 'lucide-react'
 
 export function Dashboard() {
-  const { userProfile } = useAuth()
+  const { userProfile, profileLoading } = useAuth()
+  
+  if (profileLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-gray-600">Chargement de votre profil...</p>
+        </div>
+      </div>
+    )
+  }
   
   return (
     <SidebarProvider>
