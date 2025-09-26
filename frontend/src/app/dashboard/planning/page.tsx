@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import { Input } from '@/components/ui/input';
-import { Calendar as CalendarIcon, Grid3X3, List, Plus, X, Users, Home, ClipboardList } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, X, Users, Home, ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 import { useCoaches } from '@/lib/hooks/useCoaches';
 import moment from 'moment';
