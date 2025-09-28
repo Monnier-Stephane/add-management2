@@ -9,8 +9,8 @@ export async function bootstrap() {
     origin: [
       'https://add-management2.vercel.app',
       'https://add-management2-lkuaczyow-monnier-stehanes-projects.vercel.app',
-      'http://localhost:3000', // Pour le développement local
-      'http://localhost:3001'  // Pour le développement local
+      'http://localhost:3000', 
+      'http://localhost:3001'  
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],

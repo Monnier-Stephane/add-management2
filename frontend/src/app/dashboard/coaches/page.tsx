@@ -50,6 +50,9 @@ const CoachesContent = () => {
   telephone: '',
   statut: 'coach' as 'coach' | 'admin'
 });
+const [deletingCoach, setDeletingCoach] = useState<string | null>(null);
+const [showDeleteModal, setShowDeleteModal] = useState(false);
+const [isDeleting, setIsDeleting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   const isAdmin = userRole === 'admin';
@@ -165,6 +168,44 @@ const CoachesContent = () => {
       alert(`Erreur lors de la création: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleDelete = async (coachId: string) => {
+    try {
+      setIsDeleting(true);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+      }
+      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      
+      const response = await fetch(`${cleanApiUrl}/coaches/${coachId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erreur HTTP: ${response.status}`);
+      }
+  
+      // Fermer les modals et recharger
+      setDeletingCoach(null);
+      setShowDeleteModal(false);
+      setEditingCoach(null);
+      setShowSuccessModal(true);
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      alert(`Erreur lors de la suppression: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -341,6 +382,16 @@ const CoachesContent = () => {
                 <Button variant="outline" onClick={handleCancel} className="flex-1">
                   Annuler
                 </Button>
+                <Button 
+    variant="destructive" 
+    onClick={() => {
+      setDeletingCoach(editingCoach);
+      setShowDeleteModal(true);
+    }}
+    className="flex-1"
+  >
+    Supprimer
+  </Button>
               </div>
             </div>
           </DialogContent>
@@ -430,6 +481,45 @@ const CoachesContent = () => {
           </DialogContent>
         </Dialog>
       )}
+      {/* Modal de confirmation de suppression */}
+{showDeleteModal && deletingCoach && (
+  <Dialog open={true} onOpenChange={() => setShowDeleteModal(false)}>
+    <DialogContent className="max-w-md">
+      <DialogHeader>
+        <DialogTitle>Confirmer la suppression</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4">
+        <p className="text-gray-600">
+          Êtes-vous sûr de vouloir supprimer ce coach ? Cette action est irréversible.
+        </p>
+        <div className="flex gap-2 pt-4">
+          <Button 
+            variant="destructive" 
+            onClick={() =>handleDelete(deletingCoach!)} 
+            disabled={isDeleting}
+            className="flex-1"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Suppression...
+              </>
+            ) : (
+              'Confirmer la suppression'
+            )}
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => setShowDeleteModal(false)} 
+            className="flex-1"
+          >
+            Annuler
+          </Button>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+)}
     </div>
   )
 }
