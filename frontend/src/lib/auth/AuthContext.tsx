@@ -24,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   userProfile: null,
   userRole: null,
   loading: true,
+  profileLoading: false,
   logout: async () => {},
   sessionExpired: false,
   timeRemaining: 0,
@@ -263,7 +264,8 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       logout, 
       sessionExpired, 
       timeRemaining, 
-      extendSession 
+      extendSession,
+      profileLoading
     }}>
       {children}
     </AuthContext.Provider>
