@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Save, X, Home, Loader2 } from 'lucide-react';
+import { Edit, Save, X, Home, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 
@@ -42,6 +42,15 @@ const CoachesContent = () => {
     telephone: '',
     statut: 'coach' as 'coach' | 'admin'
   });
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({
+  nom: '',
+  prenom: '',
+  email: '',
+  telephone: '',
+  statut: 'coach' as 'coach' | 'admin'
+});
+  const [isCreating, setIsCreating] = useState(false);
 
   const isAdmin = userRole === 'admin';
 
@@ -121,22 +130,71 @@ const CoachesContent = () => {
     });
   };
 
+  const handleCreate = async () => {
+    try {
+      setIsCreating(true);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+      }
+      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      
+      const response = await fetch(`${cleanApiUrl}/coaches`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(createForm),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erreur HTTP: ${response.status}`);
+      }
+  
+      // Fermer le modal et recharger
+      setShowCreateModal(false);
+      setCreateForm({ nom: '', prenom: '', email: '', telephone: '', statut: 'coach' });
+      setShowSuccessModal(true);
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error('Erreur lors de la création:', error);
+      alert(`Erreur lors de la création: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 lg:max-w-7xl">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Gestion des coaches</h1>
-          <p className="text-gray-600">Gérez les informations des coaches</p>
-        </div>
-        <Link href="/dashboard">
-          <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
-            <Home className="h-4 w-4" />
-            Retour au Dashboard
-          </Button>
-        </Link>
-      </div>
+  <div>
+    <h1 className="text-2xl md:text-3xl font-bold">Gestion des coaches</h1>
+    <p className="text-gray-600">Gérez les informations des coaches</p>
+  </div>
+  <div className="flex gap-2">  {/* ← AJOUTER ICI */}
+    {isAdmin && (
+      <Button 
+        onClick={() => setShowCreateModal(true)}
+        className="flex items-center gap-2"
+      >
+        <Plus className="h-4 w-4" />
+        Ajouter un coach
+      </Button>
+    )}
+    <Link href="/dashboard">
+      <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
+        <Home className="h-4 w-4" />
+        Retour au Dashboard
+      </Button>
+    </Link>
+  </div>
+</div>
 
-      <Card className="max-w-4xl">
+      <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle>Liste des coaches</CardTitle>
           <p className="text-sm text-gray-600 mt-1">
@@ -288,8 +346,93 @@ const CoachesContent = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Modal de création */}
+      {showCreateModal && (
+        <Dialog open={true} onOpenChange={() => setShowCreateModal(false)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Ajouter un nouveau coach</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="create-nom">Nom</Label>
+                <Input
+                  id="create-nom"
+                  value={createForm.nom}
+                  onChange={(e) => setCreateForm({...createForm, nom: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="create-prenom">Prénom</Label>
+                <Input
+                  id="create-prenom"
+                  value={createForm.prenom}
+                  onChange={(e) => setCreateForm({...createForm, prenom: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="create-email">Email</Label>
+                <Input
+                  id="create-email"
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm({...createForm, email: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="create-telephone">Téléphone</Label>
+                <Input
+                  id="create-telephone"
+                  value={createForm.telephone}
+                  onChange={(e) => setCreateForm({...createForm, telephone: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="create-statut">Statut</Label>
+                <Select
+                  value={createForm.statut}
+                  onValueChange={(value: 'coach' | 'admin') => setCreateForm({...createForm, statut: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="coach">Coach</SelectItem>
+                    <SelectItem value="admin">Administrateur</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  onClick={handleCreate} 
+                  disabled={isCreating}
+                  className="flex-1"
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Création...
+                    </>
+                  ) : (
+                    'Créer le coach'
+                  )}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowCreateModal(false)} 
+                  className="flex-1"
+                >
+                  Annuler
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
+
 
 export default CoachesPage;
