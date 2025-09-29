@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/lib/auth/AuthContext'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signInWithEmailAndPassword } from 'firebase/auth'
@@ -24,6 +25,14 @@ function SignInPage() {
   const [error, setError] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
   const router = useRouter()
+
+  const { user, loading: authLoading } = useAuth()
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      router.push('/dashboard')
+    }
+  }, [user, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -62,7 +71,29 @@ function SignInPage() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <div className="grid w-full grow items-center px-4 sm:justify-center mt-[100px]">
+        <AnimatedContainer>
+          <Card className="w-full sm:w-96">
+            <CardContent className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Vérification de l'authentification...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </AnimatedContainer>
+      </div>
+    )
+  }
+  
+  if (user) {
+    return null // L'utilisateur sera redirigé par useEffect
+  }
+
   return (
+    
     <div className="grid w-full grow items-center px-4 sm:justify-center mt-[100px]">
       <AnimatedContainer>
         <Card className="w-full sm:w-96">
