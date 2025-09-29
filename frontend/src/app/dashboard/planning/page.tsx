@@ -44,18 +44,32 @@ interface Coach {
 }
 
 
-// Couleurs pour les coaches
+// Couleurs pour les coaches - Palette personnalisée
 const COACH_COLORS = [
-  '#ef4444', // rouge
-  '#f97316', // orange
-  '#eab308', // jaune
-  '#22c55e', // vert
-  '#06b6d4', // cyan
-  '#3b82f6', // bleu
-  '#8b5cf6', // violet
-  '#ec4899', // rose
-  '#84cc16', // lime
-  '#f59e0b', // amber
+  "#FF0000", // Rouge pur
+  "#00FF00", // Vert pur  
+  "#0000FF", // Bleu pur
+  "#FFFF00", // Jaune pur
+  "#FF00FF", // Magenta pur
+  "#00FFFF", // Cyan pur
+  "#FF8000", // Orange vif
+  "#8000FF", // Violet vif
+  "#000000", // Noir
+  "#FFFFFF", // Blanc (avec bordure)
+  "#FF0080", // Rose vif
+  "#80FF00", // Vert lime
+  "#0080FF", // Bleu ciel
+  "#FF8000", // Orange vif
+  "#800080", // Violet foncé
+  "#808000", // Olive
+  "#008080", // Teal
+  "#FF4040", // Rouge clair
+  "#40FF40", // Vert clair
+  "#4040FF", // Bleu clair
+  "#FFFF40", // Jaune clair
+  "#FF40FF", // Magenta clair
+  "#40FFFF", // Cyan clair
+  "#FF8040"  // Orange clair
 ];
 
 
@@ -84,6 +98,7 @@ export default function PlanningPage() {
   const [coachColors, setCoachColors] = useState<Record<string, string>>({});
   const [showSaturdayView, setShowSaturdayView] = useState(false);
   const [showMyPlanning, setShowMyPlanning] = useState(false); // Nouveau state
+  const [selectedCoach, setSelectedCoach] = useState<string | null>(null); // Coach sélectionné pour filtrage
 
   // Récupérer les coaches depuis MongoDB
   const { data: coaches, isLoading: coachesLoading } = useCoaches();
@@ -102,8 +117,16 @@ export default function PlanningPage() {
     );
   };
 
+  // Fonction pour filtrer les événements par coach
+  const getCoachEvents = (coachName: string) => {
+    return events.filter(event => 
+      event.resource?.coaches.includes(coachName)
+    );
+  };
+
   // Événements à afficher selon le mode
-  const displayEvents = showMyPlanning ? getMyEvents() : events;
+  const displayEvents = showMyPlanning ? getMyEvents() : 
+    selectedCoach ? getCoachEvents(selectedCoach) : events;
 
   // Générer les événements récurrents pour chaque semaine
   const generateRecurringEvents = (): Event[] => {
@@ -166,6 +189,41 @@ export default function PlanningPage() {
 
 
   
+  // Nouvelle fonction pour attribuer des couleurs stables ET uniques
+  const assignStableUniqueColors = (coaches: Coach[]): Record<string, string> => {
+    const colors: Record<string, string> = {};
+    const usedColors = new Set<string>();
+    
+    // Trier les coaches par ID pour garantir un ordre stable
+    const sortedCoaches = [...coaches].sort((a, b) => a._id.localeCompare(b._id));
+    
+    sortedCoaches.forEach((coach) => {
+      // Utiliser un hash basé sur l'ID pour la stabilité
+      let hash = 0;
+      for (let i = 0; i < coach._id.length; i++) {
+        const char = coach._id.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      
+      let colorIndex = Math.abs(hash) % COACH_COLORS.length;
+      let color = COACH_COLORS[colorIndex];
+      
+      // Si collision, trouver la prochaine couleur disponible
+      let attempts = 0;
+      while (usedColors.has(color) && attempts < COACH_COLORS.length) {
+        colorIndex = (colorIndex + 1) % COACH_COLORS.length;
+        color = COACH_COLORS[colorIndex];
+        attempts++;
+      }
+      
+      usedColors.add(color);
+      colors[coach._id] = color;
+    });
+    
+    return colors;
+  }; 
+
   useEffect(() => {
     ;
   
@@ -176,12 +234,9 @@ export default function PlanningPage() {
         const generatedEvents = generateRecurringEvents();
         setEvents(generatedEvents);
         
-        // 2. Assigner les couleurs aux coaches
+        // 2. Assigner les couleurs aux coaches de manière stable ET unique
         if (coaches) {
-          const colors: Record<string, string> = {};
-          coaches.forEach((coach, index) => {
-            colors[coach._id] = COACH_COLORS[index % COACH_COLORS.length];
-          });
+          const colors = assignStableUniqueColors(coaches);
           setCoachColors(colors);
         }
         
@@ -427,12 +482,9 @@ export default function PlanningPage() {
           const generatedEvents = generateRecurringEvents();
           setEvents(generatedEvents);
           
-          // 2. Assigner les couleurs aux coaches
+          // 2. Assigner les couleurs aux coaches de manière stable ET unique
           if (coaches) {
-            const colors: Record<string, string> = {};
-            coaches.forEach((coach, index) => {
-              colors[coach._id] = COACH_COLORS[index % COACH_COLORS.length];
-            });
+            const colors = assignStableUniqueColors(coaches);
             setCoachColors(colors);
           }
           
@@ -474,17 +526,22 @@ export default function PlanningPage() {
     }
   };
 
+
   return (
-    <div className="container mx-auto p-4 lg:max-w-7xl">
+    <div className="w-full px-1 md:px-6 lg:px-8 py-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold mb-2">
-            {showMyPlanning ? 'Mon Planning' : 'Planning des cours'}
+            {showMyPlanning ? 'Mon Planning' : 
+             selectedCoach ? `Planning de ${selectedCoach}` : 
+             'Planning des cours'}
           </h1>
           <p className="text-gray-600">
             {showMyPlanning 
               ? `Cours où vous êtes assigné (${getMyEvents().length} cours)`
-              : 'Gérez le planning des cours et événements'
+              : selectedCoach
+                ? `Cours où ${selectedCoach} est assigné (${getCoachEvents(selectedCoach).length} cours)`
+                : 'Gérez le planning des cours et événements'
             }
           </p>
         </div>
@@ -500,6 +557,7 @@ export default function PlanningPage() {
               {showMyPlanning ? 'Voir tout le planning' : 'Mon planning'}
             </Button>
           )}
+
           <Link href="/dashboard">
             <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
               <Home className="h-4 w-4" />
@@ -524,7 +582,64 @@ export default function PlanningPage() {
         </div>
       )}
 
-      <Card>
+      {/* Légende mobile - au-dessus du planning */}
+      <div className="lg:hidden mb-4">
+        <Card className="p-3 mx-1">
+          <h3 className="font-semibold mb-2 text-sm">Coaches</h3>
+          <div className="flex flex-wrap gap-2">
+            {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => (
+              <div key={coach._id} className="flex items-center gap-2 text-xs p-2 border border-gray-200 rounded-lg bg-gray-50">
+                <span
+                  className="text-xs px-1 py-0.5 rounded text-white"
+                  style={{ backgroundColor: coachColors[coach._id] }}
+                >
+                  {getInitials(`${coach.prenom} ${coach.nom}`)}
+                </span>
+                <span>{coach.prenom} {coach.nom}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div className="flex gap-4">
+        {/* Légende des coaches - Desktop uniquement */}
+        <div className="hidden lg:block w-1/10">
+          <Card className="p-4">
+            <h3 className="font-semibold mb-3">Coaches</h3>
+            <div className="space-y-2">
+              {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => {
+                const coachName = `${coach.prenom} ${coach.nom}`;
+                const isSelected = selectedCoach === coachName;
+                return (
+                  <button
+                    key={coach._id}
+                    onClick={() => setSelectedCoach(isSelected ? null : coachName)}
+                    className={`flex items-center gap-2 p-2 border rounded-lg w-full text-left transition-colors ${
+                      isSelected 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span
+                      className="text-xs px-1 py-0.5 rounded text-white"
+                      style={{ backgroundColor: coachColors[coach._id] }}
+                    >
+                      {getInitials(coachName)}
+                    </span>
+                    <span className="text-sm font-medium">
+                      {coach.prenom} {coach.nom}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+        
+        {/* Planning */}
+        <div className="flex-1 lg:w-9/10">
+          <Card className="mx-0 md:mx-4 lg:mx-0 p-1 md:p-6">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="flex items-center gap-2">
@@ -534,61 +649,37 @@ export default function PlanningPage() {
           </div>
         </CardHeader>
         
-        <CardContent>
-          <div className="h-[1300px]">
+        <CardContent className="p-2 md:p-6">
+          <div className="h-[1400px]">
           <style jsx>{`
   .rbc-month-view .rbc-date-cell {
-  height: 300px !important;
+  min-height: 350px !important;
 }
-  
-  /* Hauteur encore plus grande sur mobile */
-  @media (max-width: 768px) {
-    .rbc-month-view .rbc-date-cell {
-      height: 350px !important;
-    }
+
+/* Hauteur encore plus grande sur mobile */
+@media (max-width: 768px) {
+  .rbc-month-view .rbc-date-cell {
+    min-height: 400px !important;
   }
   
-  /* Amélioration de l'espacement de la barre de navigation */
+  /* Réduire le padding sur mobile */
+  .rbc-calendar {
+    padding: 4px !important;
+  }
+  
   .rbc-toolbar {
-    padding: 16px 0 !important;
-    margin-bottom: 16px !important;
+    padding: 8px 4px !important;
+    margin-bottom: 8px !important;
   }
   
-  @media (max-width: 768px) {
-    .rbc-toolbar {
-      padding: 20px 0 !important;
-      margin-bottom: 20px !important;
-    }
-    
-    .rbc-toolbar button {
-      padding: 8px 12px !important;
-      margin: 4px !important;
-    }
-    
-    .rbc-toolbar-label {
-      font-size: 18px !important;
-      margin: 8px 0 !important;
-    }
+  .rbc-header {
+    padding: 4px 2px !important;
   }
   
-  .rbc-show-more {
-    font-size: 10px !important;
-    padding: 2px 4px !important;
-    margin: 1px 0 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: 100% !important;
-    display: inline-block !important;
+  .rbc-date-cell {
+    padding: 2px !important;
   }
-  
-  @media (max-width: 768px) {
-    .rbc-show-more {
-      font-size: 8px !important;
-      padding: 1px 2px !important;
-      max-width: 90% !important;
-    }
-  }
+}
 `}</style>
             <Calendar
               localizer={localizer}
@@ -646,34 +737,29 @@ export default function PlanningPage() {
               components={{
                 dateCellWrapper: DateCellWrapper,
                 event: ({ event }) => (
-                  <div className="text-xs truncate">
+                  <div className="text-xs">
                     <div className="font-medium">{event.title}</div>
                     {event.resource?.coaches && event.resource.coaches.length > 0 && (
                       <div className="flex gap-1 mt-0.5">
-                        {/* Version desktop - limite à 2 coaches + compteur */}
-                        <div className="hidden md:flex gap-1">
-                          {event.resource.coaches.slice(0, 2).map((coach, index) => (
+                        {/* Version desktop - tous les coaches avec retour à la ligne */}
+                        <div className="hidden md:flex flex-wrap gap-1">
+                          {event.resource.coaches.map((coach, index) => (
                             <span
                               key={index}
-                              className="text-xs px-1 py-0.5 rounded text-white"
+                              className="text-xs px-1 py-0.5 rounded text-white border border-gray-300"
                               style={{ backgroundColor: getCoachColor(coach) }}
                             >
                               {getInitials(coach)}
                             </span>
                           ))}
-                          {event.resource.coaches.length > 2 && (
-                            <span className="text-xs text-white bg-gray-600 px-1 py-0.5 rounded">
-                              +{event.resource.coaches.length - 2}
-                            </span>
-                          )}
                         </div>
                         
-                        {/* Version mobile - tous les cercles */}
-                        <div className="md:hidden flex gap-1">
+                        {/* Version mobile - tous les cercles avec retour à la ligne */}
+                        <div className="md:hidden flex flex-wrap gap-1">
                           {event.resource.coaches.map((coach, index) => (
                             <div
                               key={index}
-                              className="w-2 h-2 rounded-full border border-white"
+                              className="w-3 h-3 rounded-full border border-white"
                               style={{ backgroundColor: getCoachColor(coach) }}
                               title={coach}
                             />
@@ -703,7 +789,9 @@ export default function PlanningPage() {
             />
           </div>
         </CardContent>
-      </Card>
+          </Card>
+        </div>
+      </div>
 
       {/* Vue spéciale pour les samedis - seulement si pas en mode "Mon planning" */}
       {showSaturdayView && !showMyPlanning && (
