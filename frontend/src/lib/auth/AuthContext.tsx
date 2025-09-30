@@ -12,6 +12,7 @@ type AuthContextType = {
   profileLoading: boolean
   userProfile: { statut: string; nom: string; prenom: string; email: string } | null
   userRole: UserRole | null
+  isConnecting: boolean
   loading: boolean
   logout: () => Promise<void>
   sessionExpired: boolean
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   profileLoading: false,
   logout: async () => {},
+  isConnecting: false,
   sessionExpired: false,
   timeRemaining: 0,
   extendSession: () => {},
@@ -46,6 +48,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [isConnecting, setIsConnecting] = useState(false)
   const [sessionExpired, setSessionExpired] = useState(false)
   const [timeRemaining, setTimeRemaining] = useState(0)
   const router = useRouter()
@@ -156,6 +159,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       
       if (firebaseUser) {
         setProfileLoading(true)
+        setIsConnecting(true)
         try {
           const apiUrl = process.env.NEXT_PUBLIC_API_URL;
           if (!apiUrl) {
@@ -186,6 +190,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
           setUserRole('coach');
         } finally {
           setProfileLoading(false)
+          setIsConnecting(false)
         }
         
         // Vérifier la session après le chargement du profil
