@@ -215,6 +215,12 @@ const filterStudentsForCourse = (course: CourseData, subscriptions: Subscription
     const tarif = sub.tarif || ''
     const isUnlimited = isUnlimitedOr2Courses(tarif)
     
+    // Exclure spécifiquement les adultes du cours Mercredi 16h15 (cours adolescents)
+    if (course.jour === 'Mercredi' && course.heure === '16h15') {
+      // Seuls les adolescents peuvent être dans ce cours
+      return checkCourseDayAndTime(course, tarif) && !tarif.includes('ADULTES')
+    }
+    
     // Pour les élèves illimité, ils peuvent aller à tous les cours adultes
     if (isUnlimited && (courseHasAdults || isAdultCourseType)) {
       return true
