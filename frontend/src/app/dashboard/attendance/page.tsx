@@ -156,7 +156,6 @@ const isAdultCourse = (course: CourseData): boolean => {
   const adultCourses = [
     'Lundi 19h30 - Paris Bercy',
     'Mercredi 16h15 - Paris Châtelet', 
-    'Jeudi 18h00 - Paris Châtelet',
     'Jeudi 19h30 - Paris Châtelet',
     'Samedi 10h00 - Paris Châtelet',
     'Samedi 16h30 - Choisy le Roi',
@@ -217,6 +216,12 @@ const filterStudentsForCourse = (course: CourseData, subscriptions: Subscription
     
     // Exclure spécifiquement les adultes du cours Mercredi 16h15 (cours adolescents)
     if (course.jour === 'Mercredi' && course.heure === '16h15') {
+      // Seuls les adolescents peuvent être dans ce cours
+      return checkCourseDayAndTime(course, tarif) && !tarif.includes('ADULTES')
+    }
+    
+    // Exclure spécifiquement les adultes du cours Jeudi 18h (cours adolescents)
+    if (course.jour === 'Jeudi' && course.heure === '18h00') {
       // Seuls les adolescents peuvent être dans ce cours
       return checkCourseDayAndTime(course, tarif) && !tarif.includes('ADULTES')
     }

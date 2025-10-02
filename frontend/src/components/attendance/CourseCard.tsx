@@ -5,6 +5,8 @@ import { Clock, MapPin, Users, Download, Eye } from 'lucide-react'
 import { StudentItem } from './StudentItem'
 import { AddStudentDialog } from './AddStudentDialog'
 import { useState } from 'react'
+import { jsPDF } from 'jspdf'
+
 
 interface Student {
   id: string
@@ -48,9 +50,6 @@ export const CourseCard = ({
     setIsGeneratingPDF(true)
     
     try {
-      // Import dynamique de jsPDF uniquement
-      const { jsPDF } = await import('jspdf')
-      
       // Créer un nouveau document PDF
       const doc = new jsPDF('p', 'mm', 'a4')
       const pageWidth = doc.internal.pageSize.getWidth()
