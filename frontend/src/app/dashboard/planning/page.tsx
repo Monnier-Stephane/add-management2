@@ -583,24 +583,55 @@ export default function PlanningPage() {
       )}
 
       {/* Légende mobile - au-dessus du planning */}
-      <div className="lg:hidden mb-4">
-        <Card className="p-3 mx-1">
-          <h3 className="font-semibold mb-2 text-sm">Coaches</h3>
-          <div className="flex flex-wrap gap-2">
-            {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => (
-              <div key={coach._id} className="flex items-center gap-2 text-xs p-2 border border-gray-200 rounded-lg bg-gray-50">
-                <span
-                  className="text-xs px-1 py-0.5 rounded text-white"
-                  style={{ backgroundColor: coachColors[coach._id] }}
-                >
-                  {getInitials(`${coach.prenom} ${coach.nom}`)}
-                </span>
-                <span>{coach.prenom} {coach.nom}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+      {/* Filtres mobile - au-dessus du planning */}
+<div className="lg:hidden mb-4">
+  <Card className="p-3 mx-1">
+    <h3 className="font-semibold mb-3 text-sm">Coaches</h3>
+    <div className="space-y-2">
+      {/* Bouton pour afficher tous les cours */}
+      <button
+        onClick={() => setSelectedCoach(null)}
+        className={`flex items-center gap-2 p-3 border rounded-lg w-full text-left transition-colors ${
+          selectedCoach === null 
+            ? 'border-blue-500 bg-blue-50' 
+            : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+        }`}
+      >
+        <span className="text-xs px-2 py-1 rounded text-white bg-gray-600">
+          Tous
+        </span>
+        <span className="text-sm font-medium">Tous les cours</span>
+      </button>
+      
+      {/* Boutons des coaches */}
+      {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => {
+        const coachName = `${coach.prenom} ${coach.nom}`;
+        const isSelected = selectedCoach === coachName;
+        return (
+          <button
+            key={coach._id}
+            onClick={() => setSelectedCoach(isSelected ? null : coachName)}
+            className={`flex items-center gap-2 p-3 border rounded-lg w-full text-left transition-colors ${
+              isSelected 
+                ? 'border-blue-500 bg-blue-50' 
+                : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+            }`}
+          >
+            <span
+              className="text-xs px-1 py-0.5 rounded text-white"
+              style={{ backgroundColor: coachColors[coach._id] }}
+            >
+              {getInitials(coachName)}
+            </span>
+            <span className="text-sm font-medium">
+              {coach.prenom} {coach.nom}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  </Card>
+</div>
 
       <div className="flex gap-4">
         {/* Légende des coaches - Desktop uniquement */}
