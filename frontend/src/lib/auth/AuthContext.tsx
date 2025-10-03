@@ -154,10 +154,11 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
   useEffect(() => {
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-     
+      console.log('🔄 [AUTH-CONTEXT] onAuthStateChanged déclenché, firebaseUser:', firebaseUser ? 'présent' : 'null')
       setUser(firebaseUser)
       
       if (firebaseUser) {
+        console.log('👤 [AUTH-CONTEXT] Utilisateur Firebase connecté:', firebaseUser.email)
         setProfileLoading(true)
         setIsConnecting(true)
         try {
@@ -167,16 +168,20 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
           }
           const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
          
-          const response = await fetch(`${cleanApiUrl}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`);
+          console.log('📡 [AUTH-CONTEXT] Appel API MongoDB pour récupérer le profil coach')
+const response = await fetch(`${cleanApiUrl}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`);
           
-          if (response.ok) {
-            const text = await response.text();
+console.log('📄 [AUTH-CONTEXT] Réponse API MongoDB:', { status: response.status, ok: response.ok })
 
-            if (text.trim()) {
-              const coach = JSON.parse(text);
-             
-              setUserProfile(coach);
-              setUserRole(coach?.statut || 'coach');
+if (response.ok) {
+  const text = await response.text();
+  console.log('📝 [AUTH-CONTEXT] Contenu de la réponse MongoDB:', text.substring(0, 100) + '...')
+
+  if (text.trim()) {
+    const coach = JSON.parse(text);
+    console.log('✅ [AUTH-CONTEXT] Profil coach récupéré:', { nom: coach.nom, prenom: coach.prenom, statut: coach.statut })
+    setUserProfile(coach);
+    setUserRole(coach?.statut || 'coach');
             } else {
               // Pas de coach trouvé, utiliser les valeurs par défaut
               setUserProfile(null);
