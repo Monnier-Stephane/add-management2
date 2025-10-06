@@ -38,6 +38,8 @@ function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    console.log('🔍 [DEBUG] handleSubmit appelé avec:', { email, password: '***' })
   
     if (!email || !password || !confirmPassword) {
       setError('Veuillez remplir tous les champs.')
