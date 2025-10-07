@@ -37,8 +37,10 @@ export function Dashboard() {
           
           {userProfile?.prenom ? (
             <>
-              {/* Affichage conditionnel basé sur le rôle */}
-              {userRole === 'admin' && <StatsDashboard />}
+              {/* Statistiques pour tous */}
+              <StatsDashboard />
+              
+              {/* Liste des coaches pour tous */}
               <CoachesList />
             </>
           ) : (
