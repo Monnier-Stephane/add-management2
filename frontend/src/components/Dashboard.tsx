@@ -4,13 +4,16 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/s
 import { AppSidebar } from '@/components/AppSidebar'
 import StatsDashboard from '@/components/admin/StatsDashboard'
 import CoachesList from '@/components/CoachesList'
+import { DailyCourseReminder } from '@/components/DailyCourseReminder'
+
 import { Loader2 } from 'lucide-react'
 
 export function Dashboard() {
-  const { userProfile, profileLoading, user, userRole } = useAuth()
+  const { userProfile, profileLoading, user, userRole, loading } = useAuth()
   
   
-  if (profileLoading) {
+  // Afficher le loader seulement si on charge encore l'utilisateur ou le profil
+  if (loading || profileLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">
@@ -28,14 +31,21 @@ export function Dashboard() {
         <header className="flex h-16 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <div className="text-sm text-gray-500">
-            Bonjour {userProfile?.prenom || user?.email || 'Utilisateur'}
+            Bonjour {userProfile?.prenom || userProfile?.nom || user?.email || 'Utilisateur'}
             {userRole && <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{userRole}</span>}
           </div>
         </header>
         
         <main className="p-4">
+         
           
-          {userProfile?.prenom ? (
+          {/* Composant de rappel des cours */}
+          <DailyCourseReminder />
+          
+         
+          
+          {/* Contenu conditionnel */}
+          {user ? (
             <>
               {/* Statistiques pour tous */}
               <StatsDashboard />

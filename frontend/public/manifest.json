@@ -1,8 +1,10 @@
 {
-  "name": "ADD Management - Art Du Dépaclement",
+  "name": "ADD Management - Art Du Déplacement",
   "short_name": "ADD Management",
   "description": "Application de gestion pour l'Art Du Déplacement",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3b82f6",
@@ -22,5 +24,6 @@
     }
   ],
   "categories": ["education", "productivity"],
-  "lang": "fr"
+  "lang": "fr",
+  "prefer_related_applications": false
 }
