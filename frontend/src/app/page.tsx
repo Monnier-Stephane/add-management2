@@ -34,11 +34,11 @@ export default function Home() {
   const { user } = useAuth()
 
   return (
-    <div className="relative flex flex-col justify-center min-h-screen p-8 pb-20 font-[family-name:var(--font-geist-sans)] bg-white dark:bg-black/5 overflow-hidden pt-6 md:pt-16 items-center">
+    <div className="relative flex flex-col justify-center min-h-screen p-4 sm:p-8 pb-20 font-[family-name:var(--font-geist-sans)] bg-white dark:bg-black/5 overflow-hidden pt-6 md:pt-16 items-center">
       <AnimatedGrid />
 
       {/* Circles with logo in the center */}
-      <motion.div className="relative h-[480px] w-[480px] flex items-center justify-center">
+      <motion.div className="relative h-[280px] w-[280px] sm:h-[380px] sm:w-[380px] md:h-[480px] md:w-[480px] flex items-center justify-center">
         {CUSTOM_COLORS.map((borderClass, i) => (
           <motion.div
             key={i}
@@ -77,8 +77,9 @@ export default function Home() {
           <Image
             src="/logo_add.png"
             alt="Logo"
-            width={150}
-            height={150}
+            width={80}
+            height={80}
+            className="sm:w-[120px] sm:h-[120px] md:w-[150px] md:h-[150px]"
             priority
           />
         </motion.div>
@@ -92,7 +93,7 @@ export default function Home() {
           transition={{ delay: 0.4, duration: 0.6 }}
           className="relative z-10 mt-16"
         >
-          <Link href="/dashboard" className="px-8 py-3 bg-gradient-to-r from-blue-600 to-teal-500 text-white font-medium rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+          <Link href="/dashboard" className="px-6 py-2 sm:px-8 sm:py-3 bg-gradient-to-r from-blue-600 to-teal-500 text-white font-medium rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 text-sm sm:text-base">
             Accéder au tableau de bord
           </Link>
         </motion.div>

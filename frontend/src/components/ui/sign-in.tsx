@@ -26,13 +26,18 @@ function SignInPage() {
   const [loading, setLoading] = useState<boolean>(false)
   const router = useRouter()
 
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, profileLoading } = useAuth()
 
   useEffect(() => {
-    if (user && !authLoading) {
-      router.push('/dashboard')
+    if (user && !authLoading && !profileLoading) {
+      // Attendre que le profil soit chargé avant de rediriger
+      const timer = setTimeout(() => {
+        router.push('/dashboard')
+      }, 100) // Petit délai pour éviter les conflits
+      
+      return () => clearTimeout(timer)
     }
-  }, [user, authLoading, router])
+  }, [user, authLoading, profileLoading, router])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -81,7 +86,7 @@ function SignInPage() {
             <CardContent className="flex items-center justify-center py-8">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Vérification de l'authentification...</p>
+                <p className="text-gray-600">Vérification de l&apos;authentification...</p>
               </div>
             </CardContent>
           </Card>
