@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 
 /* eslint-disable prettier/prettier */
-import { Controller, Post, Get, Body } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query } from '@nestjs/common';
 import { PlanningService } from './planning.service';
 import { PlanningAssignment } from './schemas/planning-assignment.schema';
 
@@ -22,5 +22,10 @@ export class PlanningController {
   @Get('assignments')
   async getAssignments(): Promise<PlanningAssignment[]> {
     return this.planningService.getAssignments();
+  }
+
+  @Get('today-courses')
+  async getTodayCourses(@Query('coachEmail') coachEmail?: string) {
+    return this.planningService.getTodayCourses(coachEmail);
   }
 }
