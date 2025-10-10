@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
+ 
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -61,7 +61,7 @@ export class PlanningService {
       console.log(`📅 ${assignments.length} événements trouvés dans le planning`);
 
       // Récupérer le coach si un email est fourni
-      let coach = null;
+      let coach: Coach | null = null;
       if (coachEmail) {
         coach = await this.coachModel.findOne({ email: coachEmail, statut: 'coach' }).exec();
         if (!coach) {
@@ -103,12 +103,12 @@ export class PlanningService {
         const students = assignment.coaches.length;
         
         return {
-          id: assignment._id.toString(),
+          id: (assignment._id as any).toString(),
           name: dayTime,
           time: time,
           students: students,
           location: location,
-          coachId: coach?._id.toString() || 'multiple',
+          coachId: (coach as any)?._id?.toString() || 'multiple',
           coachName: coach ? `${coach.prenom} ${coach.nom}` : 'Multiple coaches',
           coachEmail: coach?.email || 'multiple@example.com',
           date: today,
