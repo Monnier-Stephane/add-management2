@@ -124,7 +124,7 @@ const StudentsPage = () => {
   };
 
   const filterStudents = (students: Student[], searchTerm: string) => {
-    if (!searchTerm) return students;
+    if (!searchTerm || searchTerm.length < 2) return students;
     
     const term = searchTerm.toLowerCase().trim();
     return students.filter(student => 
@@ -334,6 +334,12 @@ const StudentsPage = () => {
         />
       </div>
 
+      {searchTerm.length === 1 && (
+  <p className="text-sm text-gray-500 mt-2">
+    Tapez au moins 2 lettres pour voir les résultats de recherche
+  </p>
+)}
+
       {studentsArray.length > 0 ? (
         <div className="space-y-6">
           {Object.keys(studentsByCourse).length > 0 ? (
@@ -397,13 +403,13 @@ const StudentsPage = () => {
                                             className="font-medium cursor-pointer hover:text-blue-600 hover:underline"
                                             onClick={() => handleShowInfo(student)}
                                           >
-                                            {student.nom}
+                                            {student.nom.toUpperCase()}
                                           </TableCell>
                                           <TableCell 
                                             className="cursor-pointer hover:text-blue-600 hover:underline"
                                             onClick={() => handleShowInfo(student)}
                                           >
-                                            {student.prenom}
+                                            {student.prenom.toLowerCase()}
                                           </TableCell>
                                           <TableCell>
   {isAdmin && (
@@ -444,7 +450,7 @@ const StudentsPage = () => {
                                         onClick={() => handleShowInfo(student)}
                                       >
                                         <h4 className="font-semibold text-sm">
-                                          {student.prenom} {student.nom}
+                                          {student.prenom.toLowerCase()} {student.nom.toUpperCase()}
                                         </h4>
                                       </div>
                                       {isAdmin && (
