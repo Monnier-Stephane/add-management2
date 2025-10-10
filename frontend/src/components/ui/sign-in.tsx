@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { signInWithEmailAndPassword } from 'firebase/auth'
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { FirebaseError } from 'firebase/app'
 import { auth } from '@/lib/auth/firebase'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,9 @@ function SignInPage() {
   const [password, setPassword] = useState<string>('')
   const [error, setError] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
+  const [forgotPassword, setForgotPassword] = useState(false)
+const [resetEmail, setResetEmail] = useState('')
+const [resetMessage, setResetMessage] = useState('')
   const router = useRouter()
 
   const { user, loading: authLoading, profileLoading } = useAuth()
@@ -41,17 +44,22 @@ function SignInPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-
+  
+    if (forgotPassword) {
+      await handleForgotPassword(e)
+      return
+    }
+  
     if (!email || !password) {
       setError('Veuillez remplir tous les champs.')
       return
     }
-
+  
     if (!/\S+@\S+\.\S+/.test(email)) {
       setError('Veuillez entrer une adresse e-mail valide.')
       return
     }
-
+  
     try {
       setLoading(true)
       setError('')
@@ -69,6 +77,39 @@ function SignInPage() {
           setError('Trop de tentatives. Veuillez réessayer plus tard.')
         } else {
           setError('Une erreur est survenue lors de la connexion.')
+        }
+      } else {
+        setError('Une erreur inattendue est survenue.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    
+    if (!resetEmail) {
+      setError('Veuillez entrer votre adresse e-mail.')
+      return
+    }
+  
+    if (!/\S+@\S+\.\S+/.test(resetEmail)) {
+      setError('Veuillez entrer une adresse e-mail valide.')
+      return
+    }
+  
+    try {
+      setLoading(true)
+      setError('')
+      await sendPasswordResetEmail(auth, resetEmail)
+      setResetMessage('Un e-mail de réinitialisation a été envoyé. Vérifiez votre boîte de réception.')
+    } catch (error: unknown) {
+      if (error instanceof FirebaseError) {
+        if (error.code === 'auth/user-not-found') {
+          setError('Aucun compte trouvé avec cette adresse e-mail.')
+        } else {
+          setError('Une erreur est survenue lors de l\'envoi de l\'e-mail.')
         }
       } else {
         setError('Une erreur inattendue est survenue.')
@@ -110,60 +151,125 @@ function SignInPage() {
           </CardHeader>
 
           <form onSubmit={handleSubmit}>
-            <CardContent className="grid gap-y-4">
-              <div className="h-px w-full bg-border" />
+          <CardContent className="grid gap-y-4">
+  <div className="h-px w-full bg-border" />
 
-              <AnimatedFadeIn delay={0.1}>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Adresse e-mail</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </AnimatedFadeIn>
+  {!forgotPassword ? (
+    // Formulaire de connexion existant
+    <>
+      <AnimatedFadeIn delay={0.1}>
+        <div className="space-y-2">
+          <Label htmlFor="email">Adresse e-mail</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+      </AnimatedFadeIn>
 
-              <AnimatedFadeIn delay={0.2}>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Mot de passe</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-              </AnimatedFadeIn>
+      <AnimatedFadeIn delay={0.2}>
+        <div className="space-y-2">
+          <Label htmlFor="password">Mot de passe</Label>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+      </AnimatedFadeIn>
 
-              {error && (
-                <AnimatedFadeIn>
-                  <p className="text-sm text-red-600 font-medium">
-                    {error}
-                  </p>
-                </AnimatedFadeIn>
-              )}
-            </CardContent>
+      {error && (
+        <AnimatedFadeIn>
+          <p className="text-sm text-red-600 font-medium">
+            {error}
+          </p>
+        </AnimatedFadeIn>
+      )}
+    </>
+  ) : (
+    // Formulaire de réinitialisation
+    <>
+      <AnimatedFadeIn delay={0.1}>
+        <div className="space-y-2">
+          <Label htmlFor="resetEmail">Adresse e-mail</Label>
+          <Input
+            id="resetEmail"
+            type="email"
+            value={resetEmail}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setResetEmail(e.target.value)}
+            placeholder="Entrez votre adresse e-mail"
+            required
+          />
+        </div>
+      </AnimatedFadeIn>
 
-            <CardFooter>
-              <div className="grid w-full gap-y-4 mt-4">
-                <AnimatedFadeIn delay={0.3}>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? 'Connexion...' : 'Se connecter'}
-                  </Button>
-                </AnimatedFadeIn>
-                <AnimatedFadeIn delay={0.4}>
-                  <Button variant="link" size="sm" asChild>
-                    <Link href="/signup">
-                      Vous n&apos;avez pas de compte ? Inscrivez-vous
-                    </Link>
-                  </Button>
-                </AnimatedFadeIn>
-              </div>
-            </CardFooter>
+      {error && (
+        <AnimatedFadeIn>
+          <p className="text-sm text-red-600 font-medium">
+            {error}
+          </p>
+        </AnimatedFadeIn>
+      )}
+
+      {resetMessage && (
+        <AnimatedFadeIn>
+          <p className="text-sm text-green-600 font-medium">
+            {resetMessage}
+          </p>
+        </AnimatedFadeIn>
+      )}
+    </>
+  )}
+</CardContent>
+
+<CardFooter>
+  <div className="grid w-full gap-y-4 mt-4">
+    <AnimatedFadeIn delay={0.3}>
+      <Button type="submit" disabled={loading}>
+        {loading ? 'Envoi...' : forgotPassword ? 'Envoyer l\'e-mail' : 'Se connecter'}
+      </Button>
+    </AnimatedFadeIn>
+    
+    <AnimatedFadeIn delay={0.4}>
+      {!forgotPassword ? (
+        <div className="space-y-2">
+          <Button 
+            variant="link" 
+            size="sm" 
+            type="button"
+            onClick={() => setForgotPassword(true)}
+          >
+            Mot de passe oublié ?
+          </Button>
+          <Button variant="link" size="sm" asChild>
+            <Link href="/signup">
+              Vous n&apos;avez pas de compte ? Inscrivez-vous
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <Button 
+          variant="link" 
+          size="sm" 
+          type="button"
+          onClick={() => {
+            setForgotPassword(false)
+            setResetEmail('')
+            setResetMessage('')
+            setError('')
+          }}
+        >
+          ← Retour à la connexion
+        </Button>
+      )}
+    </AnimatedFadeIn>
+  </div>
+</CardFooter>
           </form>
         </Card>
       </AnimatedContainer>

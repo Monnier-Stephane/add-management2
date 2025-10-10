@@ -97,7 +97,8 @@ export default function PlanningPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [coachColors, setCoachColors] = useState<Record<string, string>>({});
   const [showSaturdayView, setShowSaturdayView] = useState(false);
-  const [showMyPlanning, setShowMyPlanning] = useState(false); // Nouveau state
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showMyPlanning, setShowMyPlanning] = useState(false); 
   const [selectedCoach, setSelectedCoach] = useState<string | null>(null); // Coach sélectionné pour filtrage
 
   // Récupérer les coaches depuis MongoDB
@@ -582,11 +583,11 @@ export default function PlanningPage() {
         </div>
       )}
 
-      {/* Légende mobile - au-dessus du planning */}
-      {/* Filtres mobile - au-dessus du planning */}
+      
+{/* Menu déroulant mobile personnalisé - au-dessus du planning */}
 <div className="lg:hidden mb-4">
   <Card className="p-3 mx-1">
-    <h3 className="font-semibold mb-3 text-sm">Coaches</h3>
+    <h3 className="font-semibold mb-3 text-sm">Filtrer par coach</h3>
     <div className="space-y-2">
       {/* Bouton pour afficher tous les cours */}
       <button
@@ -603,32 +604,64 @@ export default function PlanningPage() {
         <span className="text-sm font-medium">Tous les cours</span>
       </button>
       
-      {/* Boutons des coaches */}
-      {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => {
-        const coachName = `${coach.prenom} ${coach.nom}`;
-        const isSelected = selectedCoach === coachName;
-        return (
-          <button
-            key={coach._id}
-            onClick={() => setSelectedCoach(isSelected ? null : coachName)}
-            className={`flex items-center gap-2 p-3 border rounded-lg w-full text-left transition-colors ${
-              isSelected 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-            }`}
+      {/* Menu déroulant personnalisé pour les coaches */}
+      <div className="relative">
+        <button
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          className="w-full p-3 border border-gray-200 rounded-lg bg-white text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer flex items-center justify-between"
+        >
+          <span className="text-gray-700">
+            {selectedCoach ? selectedCoach : "Sélectionner un coach"}
+          </span>
+          <svg 
+            className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
           >
-            <span
-              className="text-xs px-1 py-0.5 rounded text-white"
-              style={{ backgroundColor: coachColors[coach._id] }}
-            >
-              {getInitials(coachName)}
-            </span>
-            <span className="text-sm font-medium">
-              {coach.prenom} {coach.nom}
-            </span>
-          </button>
-        );
-      })}
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        
+        {/* Liste déroulante personnalisée - conditionnellement affichée */}
+        {isDropdownOpen && (
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+            {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => {
+              const coachName = `${coach.prenom} ${coach.nom}`;
+              const isSelected = selectedCoach === coachName;
+              return (
+                <button
+                  key={coach._id}
+                  onClick={() => {
+                    setSelectedCoach(isSelected ? null : coachName);
+                    setIsDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 transition-colors ${
+                    isSelected ? 'bg-blue-50' : ''}`}
+                >
+                  <div
+                    className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0"
+                    style={{ backgroundColor: coachColors[coach._id] }}
+                  />
+                  <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900 truncate">
+  {coach.prenom.toLowerCase()} {coach.nom.toUpperCase()}
+</div>
+                    <div className="text-xs text-gray-500">
+                      {getInitials(coachName)}
+                    </div>
+                  </div>
+                  {isSelected && (
+                    <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   </Card>
 </div>
