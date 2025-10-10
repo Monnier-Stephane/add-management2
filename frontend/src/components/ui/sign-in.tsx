@@ -63,9 +63,9 @@ const [resetMessage, setResetMessage] = useState('')
     try {
       setLoading(true)
       setError('')
-      console.log('🔐 [SIGN-IN] Début de la connexion Firebase pour:', email)
+      
       await signInWithEmailAndPassword(auth, email, password)
-      console.log('✅ [SIGN-IN] Connexion Firebase réussie, redirection vers dashboard')
+      
       router.push('/dashboard')
     } catch (error: unknown) {
       console.error(error)

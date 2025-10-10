@@ -244,10 +244,23 @@ export default function PlanningPage() {
         // 3. Charger les assignations depuis l'API
         try {
           const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+          let cleanApiUrl: string;
+          
           if (!apiUrl) {
-            throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+            console.warn('NEXT_PUBLIC_API_URL environment variable is not defined, using default');
+            cleanApiUrl = 'http://localhost:3001';
+          } else {
+            cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+            
+            // Validation de l'URL avant l'appel
+            try {
+              new URL(cleanApiUrl);
+            } catch (urlError) {
+              console.error('URL invalide:', cleanApiUrl, urlError);
+              throw new Error('URL invalide dans NEXT_PUBLIC_API_URL');
+            }
           }
-          const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+          
           const response = await fetch(`${cleanApiUrl}/planning/assignments`);
           
           if (response.ok) {
@@ -292,8 +305,8 @@ export default function PlanningPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSelectSlot = (slotInfo: { start: Date; end: Date; slots: Date[] }) => {
-    console.log('Créneau sélectionné:', slotInfo);
+  const handleSelectSlot = () => {
+    // Fonction pour gérer la sélection de créneaux
   };
 
   const addCoachToEvent = async (coachId: string) => {

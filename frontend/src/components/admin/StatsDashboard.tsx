@@ -89,12 +89,7 @@ export default function StatsDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Debug info - Toujours visible pour debug */}
-      <div className="bg-blue-50 p-4 rounded-lg border">
-        <div className="text-sm text-blue-800">
-          Debug - Rôle: {userRole} | Admin: {isAdmin ? 'Oui' : 'Non'} | Total: {stats.total} | En attente: {stats.attente} | Payé: {stats.paye}
-        </div>
-      </div>
+     
       
       {/* Key metrics tiles */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
