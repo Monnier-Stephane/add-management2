@@ -1,11 +1,12 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { Home } from 'lucide-react'
+import { Home, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { CourseCard } from '@/components/attendance/CourseCard'
 import { useSearchParams } from 'next/navigation'
+import { useSubscriptions } from '@/lib/hooks/useSubscriptions'
 
 interface Student {
   id: string
@@ -155,7 +156,6 @@ const isAdultCourse = (course: CourseData): boolean => {
   const adultCourses = [
     'Lundi 19h30 - Paris Bercy',
     'Mercredi 16h15 - Paris Châtelet', 
-    'Jeudi 18h00 - Paris Châtelet',
     'Jeudi 19h30 - Paris Châtelet',
     'Samedi 10h00 - Paris Châtelet',
     'Samedi 16h30 - Choisy le Roi',
@@ -214,6 +214,18 @@ const filterStudentsForCourse = (course: CourseData, subscriptions: Subscription
     const tarif = sub.tarif || ''
     const isUnlimited = isUnlimitedOr2Courses(tarif)
     
+    // Exclure spécifiquement les adultes du cours Mercredi 16h15 (cours adolescents)
+    if (course.jour === 'Mercredi' && course.heure === '16h15') {
+      // Seuls les adolescents peuvent être dans ce cours
+      return checkCourseDayAndTime(course, tarif) && !tarif.includes('ADULTES')
+    }
+    
+    // Exclure spécifiquement les adultes du cours Jeudi 18h (cours adolescents)
+    if (course.jour === 'Jeudi' && course.heure === '18h00') {
+      // Seuls les adolescents peuvent être dans ce cours
+      return checkCourseDayAndTime(course, tarif) && !tarif.includes('ADULTES')
+    }
+    
     // Pour les élèves illimité, ils peuvent aller à tous les cours adultes
     if (isUnlimited && (courseHasAdults || isAdultCourseType)) {
       return true
@@ -233,7 +245,7 @@ const filterStudentsForCourse = (course: CourseData, subscriptions: Subscription
   )
 }
 
-export default function AttendancePage() {
+function AttendancePageContent() {
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedDay, setSelectedDay] = useState<string>('')
   
@@ -353,10 +365,6 @@ export default function AttendancePage() {
     }
   }, [courseParam, courses, selectedDay])
 
-  // Supprimer les console.log de debug
-  // console.log('Cours par jour:', coursesByDay)
-  // console.log('Jour sélectionné:', selectedDay)
-
   const handlePresenceChange = (courseId: string, eleveId: string, present: boolean) => {
     setCourses(prev => {
       const updatedCourses = prev.map(course => 
@@ -388,8 +396,6 @@ export default function AttendancePage() {
     })
   }
 
- 
-
   const handleAddTemporaryStudent = (courseId: string, nom: string, prenom: string) => {
     const newStudent: Student = {
       id: `temp-${Date.now()}`,
@@ -420,8 +426,16 @@ export default function AttendancePage() {
     ))
   }
 
-
-  if (isLoading) return <div className="container mx-auto p-4">Chargement...</div>
+  if (isLoading) return (
+    <div className="container mx-auto p-4">
+      <div className="flex items-center justify-center py-8">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <div>Chargement...</div>
+        </div>
+      </div>
+    </div>
+  )
   if (error) return <div className="container mx-auto p-4">Erreur: {error.message}</div>
 
   return (
@@ -472,5 +486,22 @@ export default function AttendancePage() {
         ))}
       </Tabs>
     </div>
+  )
+}
+
+export default function AttendancePage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center py-8">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <div>Chargement...</div>
+          </div>
+        </div>
+      </div>
+    }>
+      <AttendancePageContent />
+    </Suspense>
   )
 }

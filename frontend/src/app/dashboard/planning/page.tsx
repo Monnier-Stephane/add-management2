@@ -1,13 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect } from 'react';
+import React,{ useState, useEffect } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import { Input } from '@/components/ui/input';
-import { Calendar as CalendarIcon, Grid3X3, List, Plus, X, Users, Home, ClipboardList } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, X, Users, Home, ClipboardList, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCoaches } from '@/lib/hooks/useCoaches';
 import moment from 'moment';
@@ -33,8 +34,7 @@ interface Event {
   };
 }
 
-// Interface pour les coaches (utilise la même que dans useCoaches)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// Interface pour les coaches
 interface Coach {
   _id: string;
   nom: string;
@@ -43,19 +43,50 @@ interface Coach {
   statut: 'coach' | 'admin';
 }
 
-// Couleurs pour les coaches
+
+// Couleurs pour les coaches - Palette personnalisée
 const COACH_COLORS = [
-  '#ef4444', // rouge
-  '#f97316', // orange
-  '#eab308', // jaune
-  '#22c55e', // vert
-  '#06b6d4', // cyan
-  '#3b82f6', // bleu
-  '#8b5cf6', // violet
-  '#ec4899', // rose
-  '#84cc16', // lime
-  '#f59e0b', // amber
+  "#FF0000", // Rouge pur
+  "#00FF00", // Vert pur  
+  "#0000FF", // Bleu pur
+  "#FFFF00", // Jaune pur
+  "#FF00FF", // Magenta pur
+  "#00FFFF", // Cyan pur
+  "#FF8000", // Orange vif
+  "#8000FF", // Violet vif
+  "#000000", // Noir
+  "#FFFFFF", // Blanc (avec bordure)
+  "#FF0080", // Rose vif
+  "#80FF00", // Vert lime
+  "#0080FF", // Bleu ciel
+  "#FF8000", // Orange vif
+  "#800080", // Violet foncé
+  "#808000", // Olive
+  "#008080", // Teal
+  "#FF4040", // Rouge clair
+  "#40FF40", // Vert clair
+  "#4040FF", // Bleu clair
+  "#FFFF40", // Jaune clair
+  "#FF40FF", // Magenta clair
+  "#40FFFF", // Cyan clair
+  "#FF8040"  // Orange clair
 ];
+
+
+const CACHE_KEY = 'planning-assignments-cache';
+
+
+
+const setCachedAssignments = (data: any) => {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+      data,
+      timestamp: Date.now()
+    }));
+  } catch (error) {
+    console.error('Erreur sauvegarde cache:', error);
+  }
+};
 
 export default function PlanningPage() {
   const [view, setView] = useState<typeof Views[keyof typeof Views]>(Views.MONTH);
@@ -66,13 +97,36 @@ export default function PlanningPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [coachColors, setCoachColors] = useState<Record<string, string>>({});
   const [showSaturdayView, setShowSaturdayView] = useState(false);
+  const [showMyPlanning, setShowMyPlanning] = useState(false); // Nouveau state
+  const [selectedCoach, setSelectedCoach] = useState<string | null>(null); // Coach sélectionné pour filtrage
 
   // Récupérer les coaches depuis MongoDB
   const { data: coaches, isLoading: coachesLoading } = useCoaches();
   
   // Récupérer les informations de l'utilisateur connecté
-  const { userRole } = useAuth();
+  const { userRole, userProfile } = useAuth();
   const isCoach = userRole === 'coach';
+
+  // Filtrer les événements pour le coach connecté
+  const getMyEvents = () => {
+    if (!userProfile || !isCoach) return events;
+    
+    const myName = `${userProfile.prenom} ${userProfile.nom}`;
+    return events.filter(event => 
+      event.resource?.coaches.includes(myName)
+    );
+  };
+
+  // Fonction pour filtrer les événements par coach
+  const getCoachEvents = (coachName: string) => {
+    return events.filter(event => 
+      event.resource?.coaches.includes(coachName)
+    );
+  };
+
+  // Événements à afficher selon le mode
+  const displayEvents = showMyPlanning ? getMyEvents() : 
+    selectedCoach ? getCoachEvents(selectedCoach) : events;
 
   // Générer les événements récurrents pour chaque semaine
   const generateRecurringEvents = (): Event[] => {
@@ -133,54 +187,103 @@ export default function PlanningPage() {
     return eventsList;
   };
 
-  // Initialiser les événements et assigner des couleurs aux coaches
-  useEffect(() => {
-    setEvents(generateRecurringEvents());
+
+  
+  // Nouvelle fonction pour attribuer des couleurs stables ET uniques
+  const assignStableUniqueColors = (coaches: Coach[]): Record<string, string> => {
+    const colors: Record<string, string> = {};
+    const usedColors = new Set<string>();
     
-    if (coaches) {
-      const colors: Record<string, string> = {};
-      coaches.forEach((coach, index) => {
-        colors[coach._id] = COACH_COLORS[index % COACH_COLORS.length];
-      });
-      setCoachColors(colors);
+    // Trier les coaches par ID pour garantir un ordre stable
+    const sortedCoaches = [...coaches].sort((a, b) => a._id.localeCompare(b._id));
+    
+    sortedCoaches.forEach((coach) => {
+      // Utiliser un hash basé sur l'ID pour la stabilité
+      let hash = 0;
+      for (let i = 0; i < coach._id.length; i++) {
+        const char = coach._id.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      
+      let colorIndex = Math.abs(hash) % COACH_COLORS.length;
+      let color = COACH_COLORS[colorIndex];
+      
+      // Si collision, trouver la prochaine couleur disponible
+      let attempts = 0;
+      while (usedColors.has(color) && attempts < COACH_COLORS.length) {
+        colorIndex = (colorIndex + 1) % COACH_COLORS.length;
+        color = COACH_COLORS[colorIndex];
+        attempts++;
+      }
+      
+      usedColors.add(color);
+      colors[coach._id] = color;
+    });
+    
+    return colors;
+  }; 
+
+  useEffect(() => {
+    ;
+  
+    // Charger seulement si on a les coaches
+    if (coaches && coaches.length > 0) {
+      const loadPlanningData = async (generateRecurringEvents: () => Event[]) => {
+        // 1. Générer les événements
+        const generatedEvents = generateRecurringEvents();
+        setEvents(generatedEvents);
+        
+        // 2. Assigner les couleurs aux coaches de manière stable ET unique
+        if (coaches) {
+          const colors = assignStableUniqueColors(coaches);
+          setCoachColors(colors);
+        }
+        
+        // 3. Charger les assignations depuis l'API
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+          if (!apiUrl) {
+            throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+          }
+          const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+          const response = await fetch(`${cleanApiUrl}/planning/assignments`);
+          
+          if (response.ok) {
+            const assignments = await response.json();
+            
+            if (Array.isArray(assignments)) {
+              setCachedAssignments(assignments);
+              
+              setEvents(prev => prev.map(event => {
+                const assignment = assignments.find((a: any) => a.eventId === event.id);
+                return assignment ? {
+                  ...event,
+                  resource: {
+                    ...event.resource!,
+                    coaches: assignment.coaches || []
+                  }
+                } : event;
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('Erreur lors du chargement des assignations:', error);
+        }
+      };
+      loadPlanningData(generateRecurringEvents);
     }
   }, [coaches]);
-
-  // Charger les assignations au démarrage
-  useEffect(() => {
-    const loadAssignments = async () => {
-      try {
-        const response = await fetch('http://localhost:3001/planning/assignments');
-        const assignments = await response.json();
-        
-        // Vérifier que assignments est un tableau
-        if (Array.isArray(assignments)) {
-          // Appliquer les assignations aux événements
-          setEvents(prev => prev.map(event => {
-            const assignment = assignments.find((a: { eventId: string; coaches: string[] }) => a.eventId === event.id);
-            return assignment ? {
-              ...event,
-              resource: {
-                ...event.resource!,
-                coaches: assignment.coaches || []
-              }
-            } : event;
-          }));
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des assignations:', error);
-      }
-    };
-
-    loadAssignments();
-  }, []);
 
   const handleViewChange = (newView: typeof Views[keyof typeof Views]) => {
     setView(newView);
   };
 
-  const handleNavigate = (newDate: Date) => {
+  const handleNavigate = (newDate: Date, view?: string) => {
     setDate(newDate);
+    if (view) {
+      setView(view as typeof Views[keyof typeof Views]);
+    }
   };
 
   const handleSelectEvent = (event: Event) => {
@@ -200,20 +303,37 @@ export default function PlanningPage() {
 
     const coachName = `${coach.prenom} ${coach.nom}`;
     
+    // Vérifier si le coach n'est pas déjà assigné
+    if (selectedEvent.resource?.coaches.includes(coachName)) {
+      return;
+    }
+    
     // Sauvegarder en base de données
     try {
-      await fetch('http://localhost:3001/planning/assign-coach', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+      }
+      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      const response = await fetch(`${cleanApiUrl}/planning/assign-coach`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventId: selectedEvent.id,
-          coachName: coachName  // Envoyer le nom au lieu de l'ID
+          coachName: coachName
         })
       });
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors de la sauvegarde');
+      }
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
+      alert('Erreur lors de la sauvegarde de l\'assignation');
+      return;
     }
     
+    // Mettre à jour l'état local seulement après la sauvegarde réussie
     setEvents(prev => prev.map(event => 
       event.id === selectedEvent.id 
         ? {
@@ -233,6 +353,7 @@ export default function PlanningPage() {
         coaches: [...prev.resource!.coaches, coachName]
       }
     } : null);
+    clearCacheAndReload(coaches);
   };
 
   const removeCoachFromEvent = async (coachName: string) => {
@@ -240,7 +361,12 @@ export default function PlanningPage() {
 
     // Sauvegarder en base de données
     try {
-      await fetch('http://localhost:3001/planning/remove-coach', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+      }
+      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      const response = await fetch(`${cleanApiUrl}/planning/remove-coach`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -248,10 +374,17 @@ export default function PlanningPage() {
           coachName: coachName
         })
       });
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors de la suppression');
+      }
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
+      alert('Erreur lors de la suppression de l\'assignation');
+      return;
     }
 
+    // Mettre à jour l'état local seulement après la sauvegarde réussie
     setEvents(prev => prev.map(event => 
       event.id === selectedEvent.id 
         ? {
@@ -271,6 +404,9 @@ export default function PlanningPage() {
         coaches: prev.resource!.coaches.filter(c => c !== coachName)
       }
     } : null);
+    if (coaches) {
+      clearCacheAndReload(coaches);
+    }
   };
 
   const addCustomCoach = () => {
@@ -319,102 +455,266 @@ export default function PlanningPage() {
     return (
       <div className="container mx-auto p-4 lg:max-w-7xl">
         <div className="flex items-center justify-center py-8">
-          <div className="text-lg"> Chargement des coaches...</div>
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <div className="text-lg">Chargement des coaches...</div>
+          </div>
         </div>
       </div>
     );
   }
 
+  const DateCellWrapper = ({ children }: { children: React.ReactElement }) =>
+    React.cloneElement(React.Children.only(children), {
+      style: {
+        ...(children.props as any).style,
+        borderRight: '1px solid #e5e7eb',
+      },
+    } as any);
+
+  const clearCacheAndReload = (coaches: Coach[]) => {
+    try {
+      sessionStorage.removeItem(CACHE_KEY);
+      // Recharger les données
+      if (coaches && coaches.length > 0) {
+        const loadPlanningData = async (generateRecurringEvents: () => Event[]) => {
+          // 1. Générer les événements
+          const generatedEvents = generateRecurringEvents();
+          setEvents(generatedEvents);
+          
+          // 2. Assigner les couleurs aux coaches de manière stable ET unique
+          if (coaches) {
+            const colors = assignStableUniqueColors(coaches);
+            setCoachColors(colors);
+          }
+          
+          // 3. Charger les assignations depuis l'API
+          try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+            if (!apiUrl) {
+              throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+            }
+            const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+            const response = await fetch(`${cleanApiUrl}/planning/assignments`);
+            
+            if (response.ok) {
+              const assignments = await response.json();
+              
+              if (Array.isArray(assignments)) {
+                setCachedAssignments(assignments);
+                
+                setEvents(prev => prev.map(event => {
+                  const assignment = assignments.find((a: any) => a.eventId === event.id);
+                  return assignment ? {
+                    ...event,
+                    resource: {
+                      ...event.resource!,
+                      coaches: assignment.coaches || []
+                    }
+                  } : event;
+                }));
+              }
+            }
+          } catch (error) {
+            console.error('Erreur lors du chargement des assignations:', error);
+          }
+        };
+        loadPlanningData(generateRecurringEvents);
+      }
+    } catch (error) {
+      console.error('Erreur lors du vidage du cache:', error);
+    }
+  };
+
+
   return (
-    <div className="container mx-auto p-4 lg:max-w-7xl">
+    <div className="w-full px-1 md:px-6 lg:px-8 py-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold mb-2">
-            Planning des cours
+            {showMyPlanning ? 'Mon Planning' : 
+             selectedCoach ? `Planning de ${selectedCoach}` : 
+             'Planning des cours'}
           </h1>
           <p className="text-gray-600">
-            Gérez le planning des cours et événements
+            {showMyPlanning 
+              ? `Cours où vous êtes assigné (${getMyEvents().length} cours)`
+              : selectedCoach
+                ? `Cours où ${selectedCoach} est assigné (${getCoachEvents(selectedCoach).length} cours)`
+                : 'Gérez le planning des cours et événements'
+            }
           </p>
         </div>
-        <Link href="/dashboard">
-          <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
-            <Home className="h-4 w-4" />
-            Retour au Dashboard
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          {/* Bouton pour basculer entre vue complète et vue personnelle */}
+          {isCoach && (
+            <Button
+              variant={showMyPlanning ? "default" : "outline"}
+              onClick={() => setShowMyPlanning(!showMyPlanning)}
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              {showMyPlanning ? 'Voir tout le planning' : 'Mon planning'}
+            </Button>
+          )}
+
+          <Link href="/dashboard">
+            <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
+              <Home className="h-4 w-4" />
+              Retour au Dashboard
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <Card>
+      {/* Message informatif pour les coaches */}
+      {isCoach && showMyPlanning && getMyEvents().length === 0 && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-blue-600" />
+            <div>
+              <h3 className="font-medium text-blue-900">Aucun cours assigné</h3>
+              <p className="text-sm text-blue-700">
+                Vous n&apos;êtes pas encore assigné à des cours. Contactez un administrateur pour être ajouté aux cours.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Légende mobile - au-dessus du planning */}
+      {/* Filtres mobile - au-dessus du planning */}
+<div className="lg:hidden mb-4">
+  <Card className="p-3 mx-1">
+    <h3 className="font-semibold mb-3 text-sm">Coaches</h3>
+    <div className="space-y-2">
+      {/* Bouton pour afficher tous les cours */}
+      <button
+        onClick={() => setSelectedCoach(null)}
+        className={`flex items-center gap-2 p-3 border rounded-lg w-full text-left transition-colors ${
+          selectedCoach === null 
+            ? 'border-blue-500 bg-blue-50' 
+            : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+        }`}
+      >
+        <span className="text-xs px-2 py-1 rounded text-white bg-gray-600">
+          Tous
+        </span>
+        <span className="text-sm font-medium">Tous les cours</span>
+      </button>
+      
+      {/* Boutons des coaches */}
+      {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => {
+        const coachName = `${coach.prenom} ${coach.nom}`;
+        const isSelected = selectedCoach === coachName;
+        return (
+          <button
+            key={coach._id}
+            onClick={() => setSelectedCoach(isSelected ? null : coachName)}
+            className={`flex items-center gap-2 p-3 border rounded-lg w-full text-left transition-colors ${
+              isSelected 
+                ? 'border-blue-500 bg-blue-50' 
+                : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+            }`}
+          >
+            <span
+              className="text-xs px-1 py-0.5 rounded text-white"
+              style={{ backgroundColor: coachColors[coach._id] }}
+            >
+              {getInitials(coachName)}
+            </span>
+            <span className="text-sm font-medium">
+              {coach.prenom} {coach.nom}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  </Card>
+</div>
+
+      <div className="flex gap-4">
+        {/* Légende des coaches - Desktop uniquement */}
+        <div className="hidden lg:block w-1/10">
+          <Card className="p-4">
+            <h3 className="font-semibold mb-3">Coaches</h3>
+            <div className="space-y-2">
+              {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => {
+                const coachName = `${coach.prenom} ${coach.nom}`;
+                const isSelected = selectedCoach === coachName;
+                return (
+                  <button
+                    key={coach._id}
+                    onClick={() => setSelectedCoach(isSelected ? null : coachName)}
+                    className={`flex items-center gap-2 p-2 border rounded-lg w-full text-left transition-colors ${
+                      isSelected 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span
+                      className="text-xs px-1 py-0.5 rounded text-white"
+                      style={{ backgroundColor: coachColors[coach._id] }}
+                    >
+                      {getInitials(coachName)}
+                    </span>
+                    <span className="text-sm font-medium">
+                      {coach.prenom} {coach.nom}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+        
+        {/* Planning */}
+        <div className="flex-1 lg:w-9/10">
+          <Card className="mx-0 md:mx-4 lg:mx-0 p-1 md:p-6">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5" />
-              Calendrier
+              {showMyPlanning ? 'Mon Calendrier' : 'Calendrier'}
             </CardTitle>
-            
-            {/* Boutons de vue */}
-            <div className="flex gap-2">
-              <Button
-                variant={view === Views.MONTH ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleViewChange(Views.MONTH)}
-                className="flex items-center gap-2"
-              >
-                <Grid3X3 className="h-4 w-4" />
-                Mois
-              </Button>
-              <Button
-                variant={view === Views.WEEK ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleViewChange(Views.WEEK)}
-                className="flex items-center gap-2"
-              >
-                <List className="h-4 w-4" />
-                Semaine
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const nextSaturday = new Date();
-                  nextSaturday.setDate(nextSaturday.getDate() + (6 - nextSaturday.getDay()));
-                  setDate(nextSaturday);
-                  setView(Views.WEEK);
-                }}
-                className="flex items-center gap-2"
-              >
-                <CalendarIcon className="h-4 w-4" />
-                Voir Samedi
-              </Button>
-            </div>
           </div>
         </CardHeader>
         
-        <CardContent>
-          <div className="h-[800px]">
-            <style jsx>{`
-              .rbc-show-more {
-                font-size: 10px !important;
-                padding: 2px 4px !important;
-                margin: 1px 0 !important;
-                white-space: nowrap !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-                max-width: 100% !important;
-                display: inline-block !important;
-              }
-              
-              @media (max-width: 768px) {
-                .rbc-show-more {
-                  font-size: 8px !important;
-                  padding: 1px 2px !important;
-                  max-width: 90% !important;
-                }
-              }
-            `}</style>
+        <CardContent className="p-2 md:p-6">
+          <div className="h-[1400px]">
+          <style jsx>{`
+  .rbc-month-view .rbc-date-cell {
+  min-height: 350px !important;
+}
+
+/* Hauteur encore plus grande sur mobile */
+@media (max-width: 768px) {
+  .rbc-month-view .rbc-date-cell {
+    min-height: 400px !important;
+  }
+  
+  /* Réduire le padding sur mobile */
+  .rbc-calendar {
+    padding: 4px !important;
+  }
+  
+  .rbc-toolbar {
+    padding: 8px 4px !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .rbc-header {
+    padding: 4px 2px !important;
+  }
+  
+  .rbc-date-cell {
+    padding: 2px !important;
+  }
+}
+`}</style>
             <Calendar
               localizer={localizer}
-              events={events}
+              events={displayEvents} // Utiliser les événements filtrés
               startAccessor="start"
               endAccessor="end"
               view={view}
@@ -466,30 +766,36 @@ export default function PlanningPage() {
                 },
               })}
               components={{
+                dateCellWrapper: DateCellWrapper,
                 event: ({ event }) => (
-                  <div className="flex flex-col">
-                    <div className="text-xs font-medium truncate">
-                      {event.title}
-                    </div>
+                  <div className="text-xs">
+                    <div className="font-medium">{event.title}</div>
                     {event.resource?.coaches && event.resource.coaches.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {event.resource.coaches.map((coach, index) => (
-                          <div key={index} className="flex items-center">
-                            {/* Version desktop avec initiales */}
+                      <div className="flex gap-1 mt-0.5">
+                        {/* Version desktop - tous les coaches avec retour à la ligne */}
+                        <div className="hidden md:flex flex-wrap gap-1">
+                          {event.resource.coaches.map((coach, index) => (
                             <span
-                              className="hidden md:inline text-xs px-1 py-0.5 rounded text-white"
+                              key={index}
+                              className="text-xs px-1 py-0.5 rounded text-white border border-gray-300"
                               style={{ backgroundColor: getCoachColor(coach) }}
                             >
                               {getInitials(coach)}
                             </span>
-                            {/* Version mobile avec cercles */}
+                          ))}
+                        </div>
+                        
+                        {/* Version mobile - tous les cercles avec retour à la ligne */}
+                        <div className="md:hidden flex flex-wrap gap-1">
+                          {event.resource.coaches.map((coach, index) => (
                             <div
-                              className="md:hidden w-2 h-2 rounded-full border border-white"
+                              key={index}
+                              className="w-3 h-3 rounded-full border border-white"
                               style={{ backgroundColor: getCoachColor(coach) }}
                               title={coach}
                             />
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -514,10 +820,12 @@ export default function PlanningPage() {
             />
           </div>
         </CardContent>
-      </Card>
+          </Card>
+        </div>
+      </div>
 
-      {/* Vue spéciale pour les samedis */}
-      {showSaturdayView && (
+      {/* Vue spéciale pour les samedis - seulement si pas en mode "Mon planning" */}
+      {showSaturdayView && !showMyPlanning && (
         <Card className="mt-4">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -590,6 +898,10 @@ export default function PlanningPage() {
                             style={{ backgroundColor: getCoachColor(coach) }}
                           />
                           <span className="text-xs">{coach}</span>
+                          {/* Indicateur pour le coach connecté */}
+                          {isCoach && userProfile && `${userProfile.prenom} ${userProfile.nom}` === coach && (
+                            <span className="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">Vous</span>
+                          )}
                         </div>
                         {/* Bouton de suppression seulement pour les admins */}
                         {!isCoach && (
@@ -615,7 +927,7 @@ export default function PlanningPage() {
                   <div className="flex-1 flex flex-col min-h-0">
                     <h4 className="font-medium mb-1 text-sm flex-shrink-0">Ajouter un coach</h4>
                     <div className="flex-1 overflow-y-auto grid grid-cols-1 gap-1">
-                      {coaches?.map(coach => (
+                      {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => (
                         <Button
                           key={coach._id}
                           variant="outline"
