@@ -5,11 +5,9 @@ const nextConfig: NextConfig = {
     reactRemoveProperties: true,
   },
   eslint: {
-    // Désactiver ESLint pendant le build pour permettre le déploiement
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Désactiver la vérification TypeScript pendant le build
     ignoreBuildErrors: true,
   },
   env: {
@@ -17,9 +15,9 @@ const nextConfig: NextConfig = {
     BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:3001',
   },
   // Configuration pour éviter les problèmes de chunks
-  experimental: {
-    optimizeCss: true,
-  },
+  // experimental: {
+  //   optimizeCss: true,  // ← Commenter cette ligne
+  // },
   // Headers pour optimiser le cache des assets statiques
   async headers() {
     return [
