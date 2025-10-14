@@ -194,15 +194,15 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
         }
         
         // Vérifier la session après le chargement du profil
-        const sessionStartTime = sessionStorage.getItem('sessionStartTime')
-        if (sessionStartTime) {
-          const elapsed = Date.now() - parseInt(sessionStartTime)
-          if (elapsed >= SESSION_DURATION) {
-            // Session expirée, déconnecter
-            handleAutoLogout()
-            return
-          }
-        }
+const sessionStartTime = sessionStorage.getItem('sessionStartTime')
+if (sessionStartTime) {
+  const elapsed = Date.now() - parseInt(sessionStartTime)
+  // Ajouter une marge de sécurité pour éviter les déconnexions immédiates
+  if (elapsed >= SESSION_DURATION + 60000) { // +1 minute de marge
+    handleAutoLogout()
+    return
+  }
+}
         
         // Démarrer le timer de session avec un petit délai pour s'assurer que tout est chargé
         setTimeout(() => {
@@ -271,7 +271,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       timeRemaining, 
       extendSession,
       profileLoading,
-      isConnecting,
+      isConnecting
     }}>
       {children}
     </AuthContext.Provider>

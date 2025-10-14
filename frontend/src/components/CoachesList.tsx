@@ -71,7 +71,7 @@ const CoachesList = () => {
 							onClick={() => handleCoachClick(coach)}
 						>
 							<div>
-								<p className="font-medium">{coach.nom} {coach.prenom}</p>
+								<p className="font-medium">{coach.nom.toUpperCase()} {coach.prenom.toLowerCase()}</p>
 								<p className="text-sm text-gray-600">{coach.email}</p>
 								{coach.telephone && (
 									<p className="text-sm text-gray-500">{coach.telephone}</p>
@@ -98,7 +98,7 @@ const CoachesList = () => {
 						{/* Nom et prénom */}
 						<div className="text-center p-4 bg-gray-50 rounded-lg">
 							<h3 className="text-xl font-bold text-gray-900">
-								{selectedCoach.prenom} {selectedCoach.nom}
+								{selectedCoach.prenom.toLowerCase()} {selectedCoach.nom.toUpperCase()}
 							</h3>
 							<p className="text-sm text-gray-600 mt-1">
 								{selectedCoach.statut === 'admin' ? 'Administrateur' : 'Coach'}

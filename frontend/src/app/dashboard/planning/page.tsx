@@ -97,7 +97,8 @@ export default function PlanningPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [coachColors, setCoachColors] = useState<Record<string, string>>({});
   const [showSaturdayView, setShowSaturdayView] = useState(false);
-  const [showMyPlanning, setShowMyPlanning] = useState(false); // Nouveau state
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showMyPlanning, setShowMyPlanning] = useState(false); 
   const [selectedCoach, setSelectedCoach] = useState<string | null>(null); // Coach sélectionné pour filtrage
 
   // Récupérer les coaches depuis MongoDB
@@ -243,10 +244,23 @@ export default function PlanningPage() {
         // 3. Charger les assignations depuis l'API
         try {
           const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+          let cleanApiUrl: string;
+          
           if (!apiUrl) {
-            throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+            console.warn('NEXT_PUBLIC_API_URL environment variable is not defined, using default');
+            cleanApiUrl = 'http://localhost:3001';
+          } else {
+            cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+            
+            // Validation de l'URL avant l'appel
+            try {
+              new URL(cleanApiUrl);
+            } catch (urlError) {
+              console.error('URL invalide:', cleanApiUrl, urlError);
+              throw new Error('URL invalide dans NEXT_PUBLIC_API_URL');
+            }
           }
-          const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+          
           const response = await fetch(`${cleanApiUrl}/planning/assignments`);
           
           if (response.ok) {
@@ -291,8 +305,8 @@ export default function PlanningPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSelectSlot = (slotInfo: { start: Date; end: Date; slots: Date[] }) => {
-    console.log('Créneau sélectionné:', slotInfo);
+  const handleSelectSlot = () => {
+    // Fonction pour gérer la sélection de créneaux
   };
 
   const addCoachToEvent = async (coachId: string) => {
@@ -582,27 +596,84 @@ export default function PlanningPage() {
         </div>
       )}
 
-      {/* Légende mobile - au-dessus du planning */}
-      {/* Filtres mobile - au-dessus du planning */}
+      
+{/* Menu déroulant mobile personnalisé - au-dessus du planning */}
 <div className="lg:hidden mb-4">
   <Card className="p-3 mx-1">
     <h3 className="font-semibold mb-3 text-sm">Filtrer par coach</h3>
     <div className="space-y-2">
-      <select
-        value={selectedCoach || ''}
-        onChange={(e) => setSelectedCoach(e.target.value || null)}
-        className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      <button
+        onClick={() => setSelectedCoach(null)}
+        className={`w-full p-3 border rounded-lg text-sm flex items-center gap-3 ${
+          !selectedCoach 
+            ? 'border-blue-500 bg-blue-50 text-blue-700' 
+            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+        }`}
       >
-        <option value="">Tous les cours</option>
-        {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => {
-          const coachName = `${coach.prenom} ${coach.nom}`;
-          return (
-            <option key={coach._id} value={coachName}>
-              {coach.prenom} {coach.nom}
-            </option>
-          );
-        })}
-      </select>
+        <span className="text-xs px-2 py-1 rounded text-white bg-gray-600">
+          Tous
+        </span>
+        <span className="text-sm font-medium">Tous les cours</span>
+      </button>
+      
+      {/* Menu déroulant personnalisé pour les coaches */}
+      <div className="relative">
+        <button
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          className="w-full p-3 border border-gray-200 rounded-lg bg-white text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer flex items-center justify-between"
+        >
+          <span className="text-gray-700">
+            {selectedCoach ? selectedCoach : "Sélectionner un coach"}
+          </span>
+          <svg 
+            className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        
+        {/* Liste déroulante personnalisée - conditionnellement affichée */}
+        {isDropdownOpen && (
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+            {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => {
+              const coachName = `${coach.prenom} ${coach.nom}`;
+              const isSelected = selectedCoach === coachName;
+              return (
+                <button
+                  key={coach._id}
+                  onClick={() => {
+                    setSelectedCoach(isSelected ? null : coachName);
+                    setIsDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 transition-colors ${
+                    isSelected ? 'bg-blue-50' : ''}`}
+                >
+                  <div
+                    className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0"
+                    style={{ backgroundColor: coachColors[coach._id] }}
+                  />
+                  <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900 truncate">
+  {coach.prenom.toLowerCase()} {coach.nom.toUpperCase()}
+</div>
+                    <div className="text-xs text-gray-500">
+                      {getInitials(coachName)}
+                    </div>
+                  </div>
+                  {isSelected && (
+                    <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   </Card>
 </div>

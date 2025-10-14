@@ -7,11 +7,13 @@ import {
   PlanningAssignment,
   PlanningAssignmentSchema,
 } from './schemas/planning-assignment.schema';
+import { Coach, CoachSchema } from '../coaches/schemas/coach.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: PlanningAssignment.name, schema: PlanningAssignmentSchema },
+      { name: Coach.name, schema: CoachSchema },
     ]),
   ],
   controllers: [PlanningController],

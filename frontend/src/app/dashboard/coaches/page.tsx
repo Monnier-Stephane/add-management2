@@ -247,7 +247,7 @@ const [isDeleting, setIsDeleting] = useState(false);
             {sortedCoaches?.map((coach) => (
               <div key={coach._id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                 <div className="flex-1">
-                  <p className="font-medium">{coach.prenom} {coach.nom}</p>
+                  <p className="font-medium">{coach.prenom.toLowerCase()} {coach.nom.toUpperCase()}</p>
                   <p className="text-sm text-gray-600">{coach.email}</p>
                   {coach.telephone && (
                     <p className="text-sm text-gray-500">{coach.telephone}</p>
