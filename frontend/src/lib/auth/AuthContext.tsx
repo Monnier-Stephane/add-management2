@@ -100,6 +100,8 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       }, 1000)
       
     }, SESSION_DURATION - WARNING_TIME)
+
+   
     
     // Timer principal d'expiration
     sessionTimerRef.current = setTimeout(() => {
@@ -268,7 +270,8 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       sessionExpired, 
       timeRemaining, 
       extendSession,
-      profileLoading
+      profileLoading,
+      isConnecting,
     }}>
       {children}
     </AuthContext.Provider>

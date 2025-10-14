@@ -586,49 +586,23 @@ export default function PlanningPage() {
       {/* Filtres mobile - au-dessus du planning */}
 <div className="lg:hidden mb-4">
   <Card className="p-3 mx-1">
-    <h3 className="font-semibold mb-3 text-sm">Coaches</h3>
+    <h3 className="font-semibold mb-3 text-sm">Filtrer par coach</h3>
     <div className="space-y-2">
-      {/* Bouton pour afficher tous les cours */}
-      <button
-        onClick={() => setSelectedCoach(null)}
-        className={`flex items-center gap-2 p-3 border rounded-lg w-full text-left transition-colors ${
-          selectedCoach === null 
-            ? 'border-blue-500 bg-blue-50' 
-            : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-        }`}
+      <select
+        value={selectedCoach || ''}
+        onChange={(e) => setSelectedCoach(e.target.value || null)}
+        className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       >
-        <span className="text-xs px-2 py-1 rounded text-white bg-gray-600">
-          Tous
-        </span>
-        <span className="text-sm font-medium">Tous les cours</span>
-      </button>
-      
-      {/* Boutons des coaches */}
-      {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => {
-        const coachName = `${coach.prenom} ${coach.nom}`;
-        const isSelected = selectedCoach === coachName;
-        return (
-          <button
-            key={coach._id}
-            onClick={() => setSelectedCoach(isSelected ? null : coachName)}
-            className={`flex items-center gap-2 p-3 border rounded-lg w-full text-left transition-colors ${
-              isSelected 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-            }`}
-          >
-            <span
-              className="text-xs px-1 py-0.5 rounded text-white"
-              style={{ backgroundColor: coachColors[coach._id] }}
-            >
-              {getInitials(coachName)}
-            </span>
-            <span className="text-sm font-medium">
+        <option value="">Tous les cours</option>
+        {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => {
+          const coachName = `${coach.prenom} ${coach.nom}`;
+          return (
+            <option key={coach._id} value={coachName}>
               {coach.prenom} {coach.nom}
-            </span>
-          </button>
-        );
-      })}
+            </option>
+          );
+        })}
+      </select>
     </div>
   </Card>
 </div>
@@ -865,8 +839,8 @@ export default function PlanningPage() {
 
       {/* Modal de gestion des coaches */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md mx-auto h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
+        <DialogContent className="max-w-[95vw] mx-auto h-[90vh] flex flex-col sm:max-w-md">
+          <DialogHeader className="flex-shrink-0 px-2 sm:px-6">
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               {isCoach ? 'Coaches du cours' : 'Gestion des coaches'}
@@ -874,7 +848,7 @@ export default function PlanningPage() {
           </DialogHeader>
           
           {selectedEvent && (
-            <div className="flex-1 flex flex-col space-y-3 overflow-hidden">
+            <div className="flex-1 flex flex-col space-y-3 overflow-hidden px-2 sm:px-6">
               {/* Informations du cours */}
               <div className="flex-shrink-0 p-2 bg-gray-50 rounded-lg">
                 <h3 className="font-medium text-gray-900 text-sm">{selectedEvent.title}</h3>
@@ -885,7 +859,7 @@ export default function PlanningPage() {
 
               {/* Coaches assignés */}
               <div className="flex-1 flex flex-col min-h-0">
-                <h4 className="font-medium mb-1 text-sm flex-shrink-0">Coaches assignés</h4>
+                <h4 className="font-medium mb-1 text-xs sm:text-sm flex-shrink-0">Coaches assignés</h4>
                 <div className="flex-1 overflow-y-auto space-y-1">
                   {selectedEvent.resource?.coaches.length === 0 ? (
                     <p className="text-gray-500 text-xs">Pas de coaches assignés pour le moment</p>
@@ -925,7 +899,7 @@ export default function PlanningPage() {
                 <>
                   {/* Ajouter un coach existant */}
                   <div className="flex-1 flex flex-col min-h-0">
-                    <h4 className="font-medium mb-1 text-sm flex-shrink-0">Ajouter un coach</h4>
+                    <h4 className="font-medium mb-1 text-xs sm:text-sm flex-shrink-0">Ajouter un coach</h4>
                     <div className="flex-1 overflow-y-auto grid grid-cols-1 gap-1">
                       {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => (
                         <Button
@@ -950,7 +924,7 @@ export default function PlanningPage() {
 
                   {/* Ajouter un coach personnalisé */}
                   <div className="flex-shrink-0">
-                    <h4 className="font-medium mb-1 text-sm">Coach personnalisé</h4>
+                    <h4 className="font-medium mb-1 text-xs sm:text-sm">Coach personnalisé</h4>
                     <div className="flex gap-2">
                       <Input
                         placeholder="Nom du coach"
