@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { ChevronDown, ChevronUp, Users, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSubscriptions } from '@/lib/hooks/useSubscriptions';
+import { useQueryClient } from '@tanstack/react-query';
 
 const COLORS = ['#4ade80', '#60a5fa', '#fbbf24', '#f87171', '#a78bfa'];
 
@@ -27,6 +28,7 @@ export default function StatsDashboard() {
   const [showPendingDetails, setShowPendingDetails] = useState(false);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const queryClient = useQueryClient();
   
   // Utiliser le hook optimisé
   const { data: students, isLoading, error, refetch } = useSubscriptions();
@@ -97,6 +99,9 @@ export default function StatsDashboard() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
         body: JSON.stringify({ statutPaiement: 'payé' }),
       });
@@ -108,6 +113,12 @@ export default function StatsDashboard() {
 
       // Forcer le rechargement immédiat des données
       await refetch();
+      
+      // Invalider toutes les queries liées aux subscriptions
+      await queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      
+      // Forcer un refetch immédiat
+      await queryClient.refetchQueries({ queryKey: ['subscriptions'] });
       
       // Afficher la popup de confirmation
       setShowSuccessModal(true);

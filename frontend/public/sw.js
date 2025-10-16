@@ -50,6 +50,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
+  // Ne pas mettre en cache les appels API - toujours aller au réseau
+  if (request.url.includes('/api/') || 
+      request.url.includes('/subscriptions') || 
+      request.url.includes('/coaches') || 
+      request.url.includes('/planning')) {
+    event.respondWith(
+      fetch(request, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }).catch(() => {
+        return new Response('Ressource non disponible hors ligne', {
+          status: 404
+        });
+      })
+    );
+    return;
+  }
+  
   if (request.method === 'GET') {
     event.respondWith(
       caches.match(request)
