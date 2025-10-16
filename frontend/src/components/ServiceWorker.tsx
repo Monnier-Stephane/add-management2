@@ -3,6 +3,9 @@ import { useEffect } from 'react'
 
 export function ServiceWorker() {
   useEffect(() => {
+    // Vérifier que nous sommes côté client
+    if (typeof window === 'undefined') return;
+    
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .catch((error) => {

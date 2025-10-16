@@ -65,7 +65,7 @@ const SelectTrigger = React.forwardRef<
   }
 >(({ className, children, isOpen, setIsOpen, ...props }, ref) => {
   // Filter out custom props that shouldn't be passed to DOM
-  const { isOpen: _, setIsOpen: __, ...domProps } = props
+  const { ...domProps } = props
   return (
     <button
       ref={ref}

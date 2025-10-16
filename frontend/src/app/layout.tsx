@@ -69,7 +69,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <ServiceWorker />
+        {typeof window !== 'undefined' && <ServiceWorker />}
         <ReactQueryProvider>
           <AuthProvider>
             <Navbar />
