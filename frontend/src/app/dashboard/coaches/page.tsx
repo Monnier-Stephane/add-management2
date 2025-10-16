@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { SelectNative } from '@/components/ui/select-native';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Edit, Save, X, Home, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -31,7 +31,7 @@ const CoachesPage = () => {
 }
 
 const CoachesContent = () => {
-  const { data: coaches, isLoading, error } = useCoaches();
+  const { data: coaches, isLoading, error, refetch } = useCoaches();
   const { userRole } = useAuth();
   const [editingCoach, setEditingCoach] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -112,10 +112,8 @@ const [isDeleting, setIsDeleting] = useState(false);
       setEditingCoach(null);
       setShowSuccessModal(true);
       
-      // Recharger les données après un court délai
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Recharger les données avec React Query
+      refetch();
     } catch (error) {
       console.error('Erreur détaillée:', error);
       alert(`Erreur lors de la mise à jour: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
@@ -160,9 +158,8 @@ const [isDeleting, setIsDeleting] = useState(false);
       setCreateForm({ nom: '', prenom: '', email: '', telephone: '', statut: 'coach' });
       setShowSuccessModal(true);
       
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Recharger les données avec React Query
+      refetch();
     } catch (error) {
       console.error('Erreur lors de la création:', error);
       alert(`Erreur lors de la création: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
@@ -198,9 +195,8 @@ const [isDeleting, setIsDeleting] = useState(false);
       setEditingCoach(null);
       setShowSuccessModal(true);
       
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Recharger les données avec React Query
+      refetch();
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       alert(`Erreur lors de la suppression: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
@@ -325,6 +321,9 @@ const [isDeleting, setIsDeleting] = useState(false);
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Modifier le coach</DialogTitle>
+              <DialogDescription>
+                Modifiez les informations du coach ci-dessous.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -362,18 +361,14 @@ const [isDeleting, setIsDeleting] = useState(false);
               </div>
               <div>
                 <Label htmlFor="statut">Statut</Label>
-                <Select
+                <SelectNative
+                  id="statut"
                   value={editForm.statut}
-                  onValueChange={(value: 'coach' | 'admin') => setEditForm({...editForm, statut: value})}
+                  onChange={(e) => setEditForm({...editForm, statut: e.target.value as 'coach' | 'admin'})}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="coach">Coach</SelectItem>
-                    <SelectItem value="admin">Administrateur</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value="coach">Coach</option>
+                  <option value="admin">Administrateur</option>
+                </SelectNative>
               </div>
               <div className="flex gap-2 pt-4">
                 <Button onClick={() => handleSave(editingCoach)} className="flex-1">
@@ -404,6 +399,9 @@ const [isDeleting, setIsDeleting] = useState(false);
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Ajouter un nouveau coach</DialogTitle>
+              <DialogDescription>
+                Remplissez les informations pour créer un nouveau coach.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -441,18 +439,14 @@ const [isDeleting, setIsDeleting] = useState(false);
               </div>
               <div>
                 <Label htmlFor="create-statut">Statut</Label>
-                <Select
+                <SelectNative
+                  id="create-statut"
                   value={createForm.statut}
-                  onValueChange={(value: 'coach' | 'admin') => setCreateForm({...createForm, statut: value})}
+                  onChange={(e) => setCreateForm({...createForm, statut: e.target.value as 'coach' | 'admin'})}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="coach">Coach</SelectItem>
-                    <SelectItem value="admin">Administrateur</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value="coach">Coach</option>
+                  <option value="admin">Administrateur</option>
+                </SelectNative>
               </div>
               <div className="flex gap-2 pt-4">
                 <Button 
@@ -487,6 +481,9 @@ const [isDeleting, setIsDeleting] = useState(false);
     <DialogContent className="max-w-md">
       <DialogHeader>
         <DialogTitle>Confirmer la suppression</DialogTitle>
+        <DialogDescription>
+          Cette action est irréversible. Le coach sera définitivement supprimé.
+        </DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
         <p className="text-gray-600">

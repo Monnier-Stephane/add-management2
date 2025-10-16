@@ -17,8 +17,8 @@ export const useSubscriptions = () => {
   return useQuery({
     queryKey: ['subscriptions'],
     queryFn: () => api.get<Subscription[]>('/subscriptions'),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 0, // Pas de cache pour les données en temps réel
+    cacheTime: 5 * 60 * 1000, // 5 minutes
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   })

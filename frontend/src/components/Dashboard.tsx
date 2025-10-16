@@ -7,10 +7,19 @@ import CoachesList from '@/components/CoachesList'
 import { DailyCourseReminder } from '@/components/DailyCourseReminder'
 
 import { Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export function Dashboard() {
+<<<<<<< HEAD
   const { userProfile, profileLoading, user, userRole, loading } = useAuth()
+=======
+  const { userProfile, profileLoading, user, userRole } = useAuth()
+  const [isMounted, setIsMounted] = useState(false)
+>>>>>>> lab
   
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
   
   // Afficher le loader seulement si on charge encore l'utilisateur ou le profil
   if (loading || profileLoading) {
@@ -24,6 +33,18 @@ export function Dashboard() {
     )
   }
   
+  // Éviter les erreurs d'hydratation en attendant que le composant soit monté
+  if (!isMounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
