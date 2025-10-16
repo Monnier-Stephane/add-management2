@@ -247,7 +247,7 @@ const [resetMessage, setResetMessage] = useState('')
           >
             Mot de passe oublié ?
           </Button>
-          <Button variant="link" size="sm" asChild>
+          <Button variant="link" size="sm">
             <Link href="/signup">
               Vous n&apos;avez pas de compte ? Inscrivez-vous
             </Link>

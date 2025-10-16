@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from "react";
+import { useState, ChangeEvent } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -329,7 +329,7 @@ const StudentsPage = () => {
           type="text"
           placeholder="Rechercher un élève..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
           className="w-full px-4 py-2 border rounded-lg"
         />
       </div>
@@ -359,7 +359,7 @@ const StudentsPage = () => {
                   
                   <Tabs 
                     value={activeTabs[courseKey] || getActiveTabForCourse(courseKey)} 
-                    onValueChange={(value) => setActiveTabs(prev => ({ ...prev, [courseKey]: value }))}
+                    onValueChange={(value: string) => setActiveTabs((prev: Record<string, string>) => ({ ...prev, [courseKey]: value }))}
                     className="w-full"
                   >
                     <TabsList className="flex flex-col sm:grid sm:grid-cols-3 gap-2 mb-12">
@@ -638,7 +638,7 @@ const StudentsPage = () => {
               <Input
                 id="nom"
                 value={editForm.nom || ''}
-                onChange={(e) => setEditForm({...editForm, nom: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, nom: e.target.value})}
               />
             </div>
             
@@ -647,7 +647,7 @@ const StudentsPage = () => {
               <Input
                 id="prenom"
                 value={editForm.prenom || ''}
-                onChange={(e) => setEditForm({...editForm, prenom: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, prenom: e.target.value})}
               />
             </div>
             
@@ -657,7 +657,7 @@ const StudentsPage = () => {
                 id="email"
                 type="email"
                 value={editForm.email || ''}
-                onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, email: e.target.value})}
               />
             </div>
             
@@ -666,7 +666,7 @@ const StudentsPage = () => {
               <Input
                 id="telephone"
                 value={editForm.telephone || ''}
-                onChange={(e) => setEditForm({...editForm, telephone: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, telephone: e.target.value})}
               />
             </div>
             
@@ -675,7 +675,7 @@ const StudentsPage = () => {
               <Input
                 id="telephoneUrgence"
                 value={editForm.telephoneUrgence || ''}
-                onChange={(e) => setEditForm({...editForm, telephoneUrgence: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, telephoneUrgence: e.target.value})}
               />
             </div>
             
@@ -684,7 +684,7 @@ const StudentsPage = () => {
               <Input
                 id="adresse"
                 value={editForm.adresse || ''}
-                onChange={(e) => setEditForm({...editForm, adresse: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, adresse: e.target.value})}
               />
             </div>
             
@@ -693,7 +693,7 @@ const StudentsPage = () => {
               <Input
                 id="ville"
                 value={editForm.ville || ''}
-                onChange={(e) => setEditForm({...editForm, ville: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, ville: e.target.value})}
               />
             </div>
             
@@ -702,7 +702,7 @@ const StudentsPage = () => {
               <Input
                 id="codePostal"
                 value={editForm.codePostal || ''}
-                onChange={(e) => setEditForm({...editForm, codePostal: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, codePostal: e.target.value})}
               />
             </div>
             
@@ -751,7 +751,7 @@ const StudentsPage = () => {
             <Input
               id="remarques"
               value={editForm.remarques || ''}
-              onChange={(e) => setEditForm({...editForm, remarques: e.target.value})}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, remarques: e.target.value})}
             />
             </div>
           </div>

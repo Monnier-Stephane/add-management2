@@ -1,4 +1,4 @@
-'use client';
+'use client'
 
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -25,9 +25,11 @@ interface Student {
 export default function StatsDashboard() {
   const { userRole } = useAuth();
   const [showPendingDetails, setShowPendingDetails] = useState(false);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   // Utiliser le hook optimisé
-  const { data: students, isLoading, error } = useSubscriptions();
+  const { data: students, isLoading, error, refetch } = useSubscriptions();
   
   const isAdmin = userRole === 'admin';
 
@@ -55,7 +57,19 @@ export default function StatsDashboard() {
     return { total, attente, paye, enfants, ados, adultes };
   })() : { total: 0, attente: 0, paye: 0, enfants: 0, ados: 0, adultes: 0 };
 
-  const pendingStudents = students && Array.isArray(students) ? students.filter((item: Student) => item.statutPaiement === 'en attente') : [];
+  console.log('[DEBUG] StatsDashboard is client:', typeof window !== 'undefined')
+
+
+  // Filtrer les élèves en attente avec vérification supplémentaire
+  const pendingStudents = students && Array.isArray(students) ? 
+    students.filter((item: Student) => item.statutPaiement === 'en attente') : [];
+
+  // Debug: Afficher les données pour vérifier
+  console.log('Debug StatsDashboard:', {
+    totalStudents: Array.isArray(students) ? students.length : 0,
+    pendingCount: pendingStudents.length,
+    pendingStudents: pendingStudents.map(s => ({ id: s._id, nom: s.nom, prenom: s.prenom, statut: s.statutPaiement }))
+  });
 
   const paiementData = [
     { name: 'En attente', value: stats.attente },
@@ -67,6 +81,49 @@ export default function StatsDashboard() {
     { name: 'Adolescents', value: stats.ados },
     { name: 'Adultes', value: stats.adultes },
   ];
+
+  // Fonction pour marquer un élève comme payé
+  const handleMarkAsPaid = async (studentId: string) => {
+    try {
+      setIsUpdating(studentId);
+      
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+      }
+      
+      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      const response = await fetch(`${cleanApiUrl}/subscriptions/${studentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ statutPaiement: 'payé' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erreur HTTP: ${response.status}`);
+      }
+
+      // Forcer le rechargement immédiat des données
+      await refetch();
+      
+      // Afficher la popup de confirmation
+      setShowSuccessModal(true);
+      
+      // Masquer la popup après 3 secondes
+      setTimeout(() => {
+        setShowSuccessModal(false);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du statut:', error);
+      alert(`Erreur lors de la mise à jour: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setIsUpdating(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -89,6 +146,25 @@ export default function StatsDashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Popup de confirmation */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm mx-4">
+            <div className="flex items-center gap-3 text-green-600">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold">Succès !</h3>
+                <p className="text-sm text-gray-600">Le statut de paiement a été mis à jour</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Debug info - Toujours visible pour debug */}
       <div className="bg-blue-50 p-4 rounded-lg border">
         <div className="text-sm text-blue-800">
@@ -204,8 +280,17 @@ export default function StatsDashboard() {
                         size="sm" 
                         variant="outline"
                         className="w-full sm:w-auto text-xs sm:text-sm"
+                        onClick={() => handleMarkAsPaid(student._id)}
+                        disabled={isUpdating === student._id}
                       >
-                        Marquer comme payé
+                        {isUpdating === student._id ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            Mise à jour...
+                          </>
+                        ) : (
+                          'Marquer comme payé'
+                        )}
                       </Button>
                     </div>
                   </div>

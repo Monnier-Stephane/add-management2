@@ -41,7 +41,7 @@ export const useAuth = () => {
   return context
 }
 
-export function AuthProvider({ children }: { readonly children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<{ statut: string; nom: string; prenom: string; email: string } | null>(null)

@@ -1,5 +1,5 @@
 
-
+import React from 'react';
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -10,6 +10,14 @@ import { SessionExpiredModal } from '@/components/auth/SessionExpiredModal';
 
 import { ReactQueryProvider } from '@/lib/ReactQueryProvider';
 import { ScrollToTop } from '@/components/ui/ScrollToTop'
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      [elemName: string]: any;
+    }
+  }
+}
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,9 +38,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="fr">
       <head>
