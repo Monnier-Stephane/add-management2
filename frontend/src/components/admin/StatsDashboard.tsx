@@ -60,7 +60,7 @@ export default function StatsDashboard() {
     return { total, attente, paye, enfants, ados, adultes };
   })() : { total: 0, attente: 0, paye: 0, enfants: 0, ados: 0, adultes: 0 };
 
-  console.log('[DEBUG] StatsDashboard is client:', typeof window !== 'undefined')
+  
 
 
   // Filtrer les élèves en attente avec vérification supplémentaire
@@ -68,11 +68,7 @@ export default function StatsDashboard() {
     students.filter((item: Student) => item.statutPaiement === 'en attente') : [];
 
   // Debug: Afficher les données pour vérifier
-  console.log('Debug StatsDashboard:', {
-    totalStudents: Array.isArray(students) ? students.length : 0,
-    pendingCount: pendingStudents.length,
-    pendingStudents: pendingStudents.map(s => ({ id: s._id, nom: s.nom, prenom: s.prenom, statut: s.statutPaiement }))
-  });
+  
 
   const paiementData = [
     { name: 'En attente', value: stats.attente },
