@@ -92,8 +92,8 @@ const SelectContent = React.forwardRef<
   }
 >(({ className, children, isOpen, setIsOpen, onValueChange, ...props }, ref) => {
   // Filter out custom props that shouldn't be passed to DOM
-  const { isOpen: _, setIsOpen: __, onValueChange: ___, ...domProps } = props
-  
+  const domProps = props
+
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (ref && 'current' in ref && ref.current && !ref.current.contains(event.target as Node)) {
@@ -150,8 +150,6 @@ const SelectItem = React.forwardRef<
     onValueChange?: (value: string) => void
   }
 >(({ className, children, value, onValueChange, ...props }, ref) => {
-  // Filter out custom props
-  const { onValueChange: _, ...domProps } = props
   return (
     <div
       ref={ref}
@@ -160,7 +158,7 @@ const SelectItem = React.forwardRef<
         "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
         className
       )}
-      {...domProps}
+      {...props}
     >
       <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
         <Check className="h-4 w-4" />

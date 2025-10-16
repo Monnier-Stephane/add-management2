@@ -38,6 +38,8 @@ function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    console.log('🔍 [DEBUG] handleSubmit appelé avec:', { email, password: '***' })
   
     if (!email || !password || !confirmPassword) {
       setError('Veuillez remplir tous les champs.')
@@ -120,7 +122,7 @@ function SignUpPage() {
             <CardContent className="flex items-center justify-center py-8">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Vérification de l&apos;authentification...</p>
+                <p className="text-gray-600">Vérification de l'authentification...</p>
               </div>
             </CardContent>
           </Card>
@@ -204,7 +206,7 @@ function SignUpPage() {
 </Button>
                 </AnimatedFadeIn>
                 <AnimatedFadeIn delay={0.5}>
-                  <Button variant="link" size="sm" asChild>
+                  <Button variant="link" size="sm">
                     <Link href="/login">
                       Vous avez déjà un compte ? Connectez-vous
                     </Link>

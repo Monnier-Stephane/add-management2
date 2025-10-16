@@ -17,7 +17,7 @@ interface Student {
   _id: string;
   nom: string;
   prenom: string;
-  statutPaiement: string;
+  statutPaiement?: string;
   tarif: string;
   email?: string;
   telephone?: string;
@@ -32,6 +32,7 @@ export default function StatsDashboard() {
   
   // Utiliser le hook optimisé
   const { data: students, isLoading, error, refetch } = useSubscriptions();
+  
   
   const isAdmin = userRole === 'admin';
 

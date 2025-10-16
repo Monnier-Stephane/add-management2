@@ -56,17 +56,21 @@ self.addEventListener('fetch', (event) => {
       request.url.includes('/coaches') || 
       request.url.includes('/planning')) {
     event.respondWith(
-      fetch(request, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      }).catch(() => {
-        return new Response('Ressource non disponible hors ligne', {
-          status: 404
-        });
-      })
+      fetch(request)
+        .then(response => {
+          // Forcer le rechargement en ajoutant un timestamp pour éviter le cache
+          const url = new URL(request.url);
+          if (!url.searchParams.has('_t')) {
+            url.searchParams.set('_t', Date.now().toString());
+            return fetch(url.toString());
+          }
+          return response;
+        })
+        .catch(() => {
+          return new Response('Ressource non disponible hors ligne', {
+            status: 404
+          });
+        })
     );
     return;
   }
