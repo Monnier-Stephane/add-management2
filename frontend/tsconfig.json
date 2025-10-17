@@ -15,7 +15,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve", // ✅ nouvelle génération JSX
+    "jsx": "react-jsx", 
     "incremental": true,
     "plugins": [
       {

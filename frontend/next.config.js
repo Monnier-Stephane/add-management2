@@ -2,6 +2,8 @@
 const nextConfig = {
   compiler: {
     reactRemoveProperties: true,
+    // Activer le nouveau transform JSX
+    jsx: 'react-jsx',
   },
   eslint: {
     ignoreDuringBuilds: true,
