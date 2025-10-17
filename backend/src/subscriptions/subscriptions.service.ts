@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import {
   Subscription,
   SubscriptionDocument,
 } from './schemas/subscription.schema';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
 
 @Injectable()
 export class SubscriptionsService {
@@ -37,12 +37,10 @@ export class SubscriptionsService {
     // Vérifier le cache
     const cached = await this.cacheManager.get<Subscription[]>(cacheKey);
     if (cached) {
-      console.log('📦 Cache hit for subscriptions');
       return cached;
     }
 
     // Récupérer depuis MongoDB
-    console.log('🔍 Fetching from MongoDB');
     const data = await this.subscriptionModel.find().exec();
     
     // Mettre en cache (5 minutes)
@@ -103,12 +101,10 @@ export class SubscriptionsService {
     // Vérifier le cache
     const cached = await this.cacheManager.get<any>(cacheKey);
     if (cached) {
-      console.log('📦 Cache hit for stats');
       return cached;
     }
 
     // Récupérer depuis MongoDB
-    console.log('🔍 Computing stats from MongoDB');
     const subscriptions = await this.subscriptionModel.find().exec();
     
     let total = subscriptions.length;

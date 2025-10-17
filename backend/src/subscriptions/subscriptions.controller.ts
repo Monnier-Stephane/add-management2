@@ -15,6 +15,7 @@ import { SubscriptionsService } from './subscriptions.service';
 import { CsvProcessorService } from './csv-processor.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import * as Sentry from '@sentry/node';
 
 interface ProcessingResult {
   totalRecords: number;
@@ -35,6 +36,13 @@ export class SubscriptionsController {
   create(@Body() createSubscriptionDto: CreateSubscriptionDto) {
     return this.subscriptionsService.create(createSubscriptionDto);
   }
+
+  @Get("/debug-sentry")
+getError() {
+  console.log('🧪 Testing Sentry...');
+  Sentry.captureMessage('Test message from backend');
+  throw new Error("My first Sentry error!");
+}
 
   @Get()
   findAll() {

@@ -1,14 +1,16 @@
 /* eslint-disable prettier/prettier */
- 
+
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable prettier/prettier */
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject  } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PlanningAssignment } from './schemas/planning-assignment.schema';
 import { Coach } from '../coaches/schemas/coach.schema';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class PlanningService {
@@ -17,19 +19,33 @@ export class PlanningService {
     private planningModel: Model<PlanningAssignment>,
     @InjectModel('Coach')
     private coachModel: Model<Coach>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
   async assignCoach(eventId: string, coachName: string): Promise<PlanningAssignment> {
     const assignment = await this.planningModel.findOne({ eventId }).exec();
 
     if (assignment && assignment.coaches) {
       assignment.coaches.push(coachName);
-      return assignment.save();
+      const result = await assignment.save();
+      
+      // Invalider le cache
+      await this.cacheManager.del('planning:assignments');
+      await this.cacheManager.del('planning:today-courses:all');
+      
+      return result;
     } else {
       const newAssignment = new this.planningModel({
         eventId,
         coaches: [coachName],
       });
-      return newAssignment.save();
+      const result = await newAssignment.save();
+      
+      // Invalider le cache
+      await this.cacheManager.del('planning:assignments');
+      await this.cacheManager.del('planning:today-courses:all');
+      
+      return result;
     }
   }
 
@@ -37,38 +53,61 @@ export class PlanningService {
     const assignment = await this.planningModel.findOne({ eventId });
     if (assignment && assignment.coaches) {
       assignment.coaches = assignment.coaches.filter((c) => c !== coachName);
-      return assignment.save();
+      const result = await assignment.save();
+      
+      // Invalider le cache
+      await this.cacheManager.del('planning:assignments');
+      await this.cacheManager.del('planning:today-courses:all');
+      
+      return result;
     }
     return null;
   }
 
   async getAssignments(): Promise<PlanningAssignment[]> {
-    return this.planningModel.find();
+    const cacheKey = 'planning:assignments';
+    
+    // Vérifier le cache
+    const cached = await this.cacheManager.get<PlanningAssignment[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Si pas en cache, récupérer depuis MongoDB
+    const data = await this.planningModel.find();
+    
+    // Mettre en cache pour 5 minutes
+    await this.cacheManager.set(cacheKey, data, 300);
+    
+    return data;
   }
 
   async getTodayCourses(coachEmail?: string) {
     const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const cacheKey = `planning:today-courses:${coachEmail || 'all'}`;
     
+    // Vérifier le cache
+    const cached = await this.cacheManager.get<any[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
       // Récupérer tous les assignments du planning
       const assignments = await this.planningModel.find().exec();
       
       if (assignments.length === 0) {
-        console.log('❌ Aucun événement trouvé dans le planning');
         return [];
       }
 
-      console.log(`📅 ${assignments.length} événements trouvés dans le planning`);
 
       // Récupérer le coach si un email est fourni
       let coach: Coach | null = null;
       if (coachEmail) {
         coach = await this.coachModel.findOne({ email: coachEmail, statut: 'coach' }).exec();
         if (!coach) {
-          console.log(`❌ Coach non trouvé pour l'email: ${coachEmail}`);
           return [];
         }
-        console.log(`👨‍🏫 Coach trouvé: ${coach.prenom} ${coach.nom}`);
       }
 
       // Filtrer les événements d'aujourd'hui et par coach si spécifié
@@ -86,7 +125,7 @@ export class PlanningService {
         return isToday;
       });
 
-      console.log(`📅 ${todayEvents.length} événements trouvés pour aujourd'hui${coachEmail ? ` pour ${coachEmail}` : ''}`);
+      
 
       // Convertir les événements en cours
       const courses = todayEvents.map(assignment => {
@@ -116,7 +155,7 @@ export class PlanningService {
         };
       });
 
-      console.log(`📅 Cours du jour ${today} créés:`, courses.length);
+      await this.cacheManager.set(cacheKey, courses, 300);
       return courses;
       
     } catch (error) {
@@ -137,7 +176,6 @@ export class PlanningService {
         }
       ];
       
-      console.log('🔄 Utilisation des données de fallback');
       return fallbackCourses;
     }
   }

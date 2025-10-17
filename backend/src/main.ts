@@ -1,8 +1,20 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import * as Sentry from '@sentry/node';
 
 export async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  console.log('🔧 Initializing Sentry...');
+  console.log('🔧 SENTRY_DSN:', process.env.SENTRY_DSN ? 'Set' : 'Not set');
+
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: 1.0,
+  });
+
+  console.log('✅ Sentry initialized');
   
   // Configuration CORS pour autoriser le frontend Vercel
   app.enableCors({

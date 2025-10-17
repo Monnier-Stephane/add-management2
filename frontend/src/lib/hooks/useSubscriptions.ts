@@ -17,12 +17,12 @@ export const useSubscriptions = () => {
   return useQuery({
     queryKey: ['subscriptions'],
     queryFn: () => api.get<Subscription[]>('/subscriptions'),
-    staleTime: 0, // Pas de cache pour les données en temps réel
-    gcTime: 0, // Pas de cache du tout pour les données critiques
+    staleTime: 5 * 60 * 1000, // 5 minutes - synchronisé avec backend Redis
+    gcTime: 10 * 60 * 1000, // 10 minutes - garde en mémoire plus longtemps
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    refetchOnWindowFocus: true, // Recharger quand la fenêtre reprend le focus
-    refetchOnMount: true, // Recharger à chaque montage
+    refetchOnWindowFocus: false, // Pas de rechargement automatique (cache cohérent)
+    refetchOnMount: false, // Pas de rechargement à chaque montage (cache cohérent)
   })
 }
 

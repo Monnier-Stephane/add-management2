@@ -29,8 +29,13 @@ export const useCoaches = () => {
   return useQuery({
     queryKey: ['coaches'],
     queryFn: getCoaches,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 5 * 60 * 1000, // 5 minutes - synchronisé avec backend Redis
+    gcTime: 10 * 60 * 1000, // 10 minutes - garde en mémoire plus longtemps
     placeholderData: keepPreviousData,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    refetchOnWindowFocus: false, // Pas de rechargement automatique (cache cohérent)
+    refetchOnMount: false, // Pas de rechargement à chaque montage (cache cohérent)
   })
 }
 

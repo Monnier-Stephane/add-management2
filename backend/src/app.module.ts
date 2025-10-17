@@ -19,8 +19,12 @@ import * as redisStore from 'cache-manager-redis-store';
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379', 10),
       password: process.env.REDIS_PASSWORD,
-      ttl: 300, // 5 minutes par défaut
+      ttl: 300000,
       isGlobal: true,
+      retryDelayOnFailover: 100,
+      enableReadyCheck: false,
+      maxRetriesPerRequest: null,
+      lazyConnect: true,
     }),
     DatabaseModule, 
     SubscriptionsModule, 

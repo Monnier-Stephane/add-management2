@@ -7,7 +7,7 @@ interface ApiResponse<T> {
 
 class ApiService {
   private cache = new Map<string, ApiResponse<unknown>>()
-  private readonly CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+  private readonly CACHE_DURATION = 5 * 60 * 1000 // 5 minutes - synchronisé avec backend Redis
   private readonly API_BASE = (() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (!apiUrl) {

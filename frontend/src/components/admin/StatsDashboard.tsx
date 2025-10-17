@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,8 +30,16 @@ export default function StatsDashboard() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const queryClient = useQueryClient();
   
-  // Utiliser le hook optimisé
+  // Utiliser le hook optimisé avec chargement parallèle
   const { data: students, isLoading, error, refetch } = useSubscriptions();
+  
+  // Précharger les données critiques en arrière-plan
+  useEffect(() => {
+    // Précharger les données si elles ne sont pas en cache
+    if (!students && !isLoading) {
+      refetch();
+    }
+  }, [students, isLoading, refetch]);
   
   
   const isAdmin = userRole === 'admin';

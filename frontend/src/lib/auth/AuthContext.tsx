@@ -161,7 +161,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         setProfileLoading(true)
         setIsConnecting(true)
+        
         try {
+          // Vérifier le cache du profil d'abord
+          const cachedProfile = localStorage.getItem(`userProfile_${firebaseUser.email}`)
+          const cacheTimestamp = localStorage.getItem(`userProfile_timestamp_${firebaseUser.email}`)
+          
+          // Cache valide pendant 1 heure (3600000 ms)
+          const CACHE_DURATION = 60 * 60 * 1000
+          const isCacheValid = cacheTimestamp && (Date.now() - parseInt(cacheTimestamp)) < CACHE_DURATION
+          
+          if (cachedProfile && isCacheValid) {
+            // Utiliser le cache
+            const coach = JSON.parse(cachedProfile)
+            setUserProfile(coach)
+            setUserRole(coach?.statut || 'coach')
+            setProfileLoading(false)
+            setIsConnecting(false)
+            return
+          }
+          
+          // Sinon, faire l'appel API
           const apiUrl = process.env.NEXT_PUBLIC_API_URL;
           if (!apiUrl) {
             throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
@@ -177,6 +197,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const coach = JSON.parse(text);
               setUserProfile(coach);
               setUserRole(coach?.statut || 'coach');
+              
+              // Mettre en cache le profil
+              localStorage.setItem(`userProfile_${firebaseUser.email}`, JSON.stringify(coach))
+              localStorage.setItem(`userProfile_timestamp_${firebaseUser.email}`, Date.now().toString())
             } else {
               // Pas de coach trouvé, utiliser les valeurs par défaut
               setUserProfile(null);

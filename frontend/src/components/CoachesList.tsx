@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Mail, Phone, X, User, Loader2 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface Coach {
   _id: string;
@@ -16,9 +16,17 @@ interface Coach {
 }
 
 const CoachesList = () => {
-   const { data: coaches, isLoading, error } = useCoaches()
+   const { data: coaches, isLoading, error, refetch } = useCoaches()
    const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null)
    const [isDialogOpen, setIsDialogOpen] = useState(false)
+   
+   // Précharger les données critiques en arrière-plan
+   useEffect(() => {
+     // Précharger les données si elles ne sont pas en cache
+     if (!coaches && !isLoading) {
+       refetch();
+     }
+   }, [coaches, isLoading, refetch]);
 
    // Filtrer les coaches (exclure celui avec prénom "chau")
    const filteredCoaches = coaches?.filter(coach => 
