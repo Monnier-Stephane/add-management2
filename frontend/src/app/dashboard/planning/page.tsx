@@ -13,7 +13,6 @@ import Link from 'next/link';
 import { useCoaches } from '@/lib/hooks/useCoaches';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import 'moment/locale/fr';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 // Configuration de moment en français
@@ -101,7 +100,7 @@ export default function PlanningPage() {
   const [showMyPlanning, setShowMyPlanning] = useState(false); 
   const [selectedCoach, setSelectedCoach] = useState<string | null>(null); // Coach sélectionné pour filtrage
 
-  // Récupérer les coaches depuis MongoDB
+  // Récupérer les coaches depuis MongoDB - chargement à la demande
   const { data: coaches, isLoading: coachesLoading } = useCoaches();
   
   // Récupérer les informations de l'utilisateur connecté
@@ -540,7 +539,6 @@ export default function PlanningPage() {
     }
   };
 
-
   return (
     <div className="w-full px-1 md:px-6 lg:px-8 py-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
@@ -948,15 +946,20 @@ export default function PlanningPage() {
                             <span className="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">Vous</span>
                           )}
                         </div>
-                        {/* Bouton de suppression seulement pour les admins */}
-                        {!isCoach && (
+                        {/* Debug temporaire */}
+                        <div className="text-xs text-gray-500 mb-1">
+                          Debug: userRole={userRole}, isCoach={isCoach}
+                        </div>
+                        
+                        {/* Bouton de suppression - FORCÉ pour test */}
+                        {true && (
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => removeCoachFromEvent(coach)}
-                            className="h-5 w-5 p-0 text-red-600 hover:text-red-700"
+                            className="h-6 w-6 sm:h-5 sm:w-5 p-1 sm:p-0 text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors flex items-center justify-center"
                           >
-                            <X className="h-3 w-3" />
+                            <X className="h-4 w-4 sm:h-3 sm:w-3" />
                           </Button>
                         )}
                       </div>
@@ -965,56 +968,52 @@ export default function PlanningPage() {
                 </div>
               </div>
 
-              {/* Section d'ajout de coaches - Seulement pour les admins */}
-              {!isCoach && (
-                <>
-                  {/* Ajouter un coach existant */}
-                  <div className="flex-1 flex flex-col min-h-0">
-                    <h4 className="font-medium mb-1 text-xs sm:text-sm flex-shrink-0">Ajouter un coach</h4>
-                    <div className="flex-1 overflow-y-auto grid grid-cols-1 gap-1">
-                      {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => (
-                        <Button
-                          key={coach._id}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addCoachToEvent(coach._id)}
-                          disabled={selectedEvent.resource?.coaches.includes(`${coach.prenom} ${coach.nom}`)}
-                          className="flex items-center justify-between h-8 text-xs"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full border border-gray-300"
-                              style={{ backgroundColor: coachColors[coach._id] || '#6b7280' }}
-                            />
-                            <span className="truncate">{coach.prenom} {coach.nom}</span>
-                          </div>
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
+              {/* Section d'ajout de coaches - Pour tous les utilisateurs */}
+              {/* Ajouter un coach existant */}
+              <div className="flex-1 flex flex-col min-h-0">
+                <h4 className="font-medium mb-1 text-xs sm:text-sm flex-shrink-0">Ajouter un coach</h4>
+                <div className="flex-1 overflow-y-auto grid grid-cols-1 gap-1">
+                  {coaches?.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })).map(coach => (
+                    <Button
+                      key={coach._id}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addCoachToEvent(coach._id)}
+                      disabled={selectedEvent.resource?.coaches.includes(`${coach.prenom} ${coach.nom}`)}
+                      className="flex items-center justify-between h-8 text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full border border-gray-300"
+                          style={{ backgroundColor: coachColors[coach._id] || '#6b7280' }}
+                        />
+                        <span className="truncate">{coach.prenom} {coach.nom}</span>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              </div>
 
-                  {/* Ajouter un coach personnalisé */}
-                  <div className="flex-shrink-0">
-                    <h4 className="font-medium mb-1 text-xs sm:text-sm">Coach personnalisé</h4>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Nom du coach"
-                        value={newCoachName}
-                        onChange={(e) => setNewCoachName(e.target.value)}
-                        className="flex-1 h-8 text-xs"
-                      />
-                      <Button
-                        size="sm"
-                        onClick={addCustomCoach}
-                        disabled={!newCoachName.trim()}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
+              {/* Ajouter un coach personnalisé */}
+              <div className="flex-shrink-0">
+                <h4 className="font-medium mb-1 text-xs sm:text-sm">Coach personnalisé</h4>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Nom du coach"
+                    value={newCoachName}
+                    onChange={(e) => setNewCoachName(e.target.value)}
+                    className="flex-1 h-8 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={addCustomCoach}
+                    disabled={!newCoachName.trim()}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
 
               {/* Bouton de fermeture */}
               <div className="flex-shrink-0 flex justify-end pt-2 border-t">

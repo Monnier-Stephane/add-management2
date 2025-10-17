@@ -172,23 +172,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const isCacheValid = cacheTimestamp && (Date.now() - parseInt(cacheTimestamp)) < CACHE_DURATION
           
           if (cachedProfile && isCacheValid) {
-            // Utiliser le cache
+            // Utiliser le cache - OPTIMISATION
             const coach = JSON.parse(cachedProfile)
             setUserProfile(coach)
             setUserRole(coach?.statut || 'coach')
             setProfileLoading(false)
             setIsConnecting(false)
+            
+            // Démarrer le timer de session immédiatement
+            setTimeout(() => {
+              startSessionTimer()
+            }, 100)
+            
             return
           }
           
-          // Sinon, faire l'appel API
+          // Sinon, faire l'appel API avec timeout
           const apiUrl = process.env.NEXT_PUBLIC_API_URL;
           if (!apiUrl) {
             throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
           }
           const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-         
-          const response = await fetch(`${cleanApiUrl}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`);
+          
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => {
+            console.warn('Request timeout, aborting...');
+            controller.abort();
+          }, 10000) // 10 secondes timeout
+          
+          const response = await fetch(`${cleanApiUrl}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`, {
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+          
+          clearTimeout(timeoutId)
           
           if (response.ok) {
             const text = await response.text();
@@ -198,8 +218,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUserProfile(coach);
               setUserRole(coach?.statut || 'coach');
               
-              // Mettre en cache le profil
-              localStorage.setItem(`userProfile_${firebaseUser.email}`, JSON.stringify(coach))
+              // Mettre en cache le profil avec compression
+              const compressedProfile = JSON.stringify(coach)
+              localStorage.setItem(`userProfile_${firebaseUser.email}`, compressedProfile)
               localStorage.setItem(`userProfile_timestamp_${firebaseUser.email}`, Date.now().toString())
             } else {
               // Pas de coach trouvé, utiliser les valeurs par défaut
@@ -211,7 +232,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (error) {
           console.error('Error fetching coach profile:', error);
-          setUserRole('coach');
+          
+          // Si c'est une erreur réseau (pas AbortError), essayer une fois de plus
+          if (error.name !== 'AbortError' && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+            console.warn('Network error, retrying once...');
+            try {
+              // Récupérer l'URL API pour le retry
+              const retryApiUrl = process.env.NEXT_PUBLIC_API_URL;
+              if (!retryApiUrl) {
+                throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+              }
+              const retryCleanApiUrl = retryApiUrl.endsWith('/') ? retryApiUrl.slice(0, -1) : retryApiUrl;
+              
+              const retryResponse = await fetch(`${retryCleanApiUrl}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+                }
+              });
+              
+              if (retryResponse.ok) {
+                const text = await retryResponse.text();
+                if (text.trim()) {
+                  const coach = JSON.parse(text);
+                  setUserProfile(coach);
+                  setUserRole(coach?.statut || 'coach');
+                  
+                  // Mettre en cache le profil
+                  localStorage.setItem(`userProfile_${firebaseUser.email}`, JSON.stringify(coach))
+                  localStorage.setItem(`userProfile_timestamp_${firebaseUser.email}`, Date.now().toString())
+                } else {
+                  setUserRole('coach');
+                }
+              } else {
+                setUserRole('coach');
+              }
+            } catch (retryError) {
+              console.error('Retry failed:', retryError);
+              setUserRole('coach');
+            }
+          } else {
+            // Pour AbortError ou autres erreurs, utiliser le rôle par défaut
+            setUserRole('coach');
+          }
         } finally {
           setProfileLoading(false)
           setIsConnecting(false)

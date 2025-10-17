@@ -28,6 +28,11 @@ export default function StatsDashboard() {
   const [showPendingDetails, setShowPendingDetails] = useState(false);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // Ne pas afficher si l'utilisateur n'est pas admin
+  if (userRole !== 'admin') {
+    return null;
+  }
   const queryClient = useQueryClient();
   
   // Utiliser le hook optimisé avec chargement parallèle

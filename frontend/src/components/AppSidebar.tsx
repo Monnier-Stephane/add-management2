@@ -12,6 +12,7 @@ import {
   SidebarMenuButton } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { LazyNavigation, usePrefetchPageData } from './LazyNavigation'
 import {
   Users,
   Calendar,
@@ -24,6 +25,7 @@ import {
 
 export function AppSidebar() {
   const { userRole, logout, user } = useAuth()
+  const { prefetchPlanning, prefetchCoaches } = usePrefetchPageData()
 
   const menuItems = [
     {
@@ -39,7 +41,8 @@ export function AppSidebar() {
     {
       title: "Planning des cours",
       url: "/dashboard/planning",
-      icon: Calendar
+      icon: Calendar,
+      prefetch: prefetchPlanning
     },
     {
       title: "Feuilles d'appel",
@@ -52,7 +55,8 @@ export function AppSidebar() {
     {
       title: "Gestion des coaches",
       url: "/dashboard/coaches",
-      icon: Shield
+      icon: Shield,
+      prefetch: prefetchCoaches
     },
     {
       title: "Import CSV",
@@ -84,10 +88,21 @@ export function AppSidebar() {
             {menuItems.map((item, index) => (
               <SidebarMenuItem key={index}>
                 <SidebarMenuButton asChild>
-                  <Link href={item.url} className="flex items-center gap-2">
-                    <item.icon className="w-4 h-4" />
-                    {item.title}
-                  </Link>
+                  {item.prefetch ? (
+                    <LazyNavigation 
+                      href={item.url} 
+                      prefetchData={item.prefetch}
+                      className="flex items-center gap-2"
+                    >
+                      <item.icon className="w-4 h-4" />
+                      {item.title}
+                    </LazyNavigation>
+                  ) : (
+                    <Link href={item.url} className="flex items-center gap-2">
+                      <item.icon className="w-4 h-4" />
+                      {item.title}
+                    </Link>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
@@ -101,10 +116,21 @@ export function AppSidebar() {
               {adminItems.map((item, index) => (
                 <SidebarMenuItem key={index}>
                   <SidebarMenuButton asChild>
-                    <Link href={item.url} className="flex items-center gap-2">
-                      <item.icon className="w-4 h-4" />
-                      {item.title}
-                    </Link>
+                    {item.prefetch ? (
+                      <LazyNavigation 
+                        href={item.url} 
+                        prefetchData={item.prefetch}
+                        className="flex items-center gap-2"
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.title}
+                      </LazyNavigation>
+                    ) : (
+                      <Link href={item.url} className="flex items-center gap-2">
+                        <item.icon className="w-4 h-4" />
+                        {item.title}
+                      </Link>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

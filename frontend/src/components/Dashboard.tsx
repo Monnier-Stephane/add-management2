@@ -7,6 +7,7 @@ import StatsDashboard from '@/components/admin/StatsDashboard'
 import CoachesList from '@/components/CoachesList'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { checkAndUpdateCache } from '@/lib/cache/clearCache'
 
 export function Dashboard() {
   const { userProfile, profileLoading, user, userRole } = useAuth()
@@ -14,6 +15,9 @@ export function Dashboard() {
   
   useEffect(() => {
     setIsMounted(true)
+    
+    // Vérifier et mettre à jour le cache au chargement
+    checkAndUpdateCache()
   }, [])
   
   // Éviter les erreurs d'hydratation en attendant que le composant soit monté
@@ -69,13 +73,10 @@ export function Dashboard() {
         </header>
         
         <main className="p-4">
-          
           {userProfile?.prenom ? (
             <>
-              {/* Statistiques pour tous */}
-              <StatsDashboard />
-              
-              {/* Liste des coaches pour tous */}
+              {/* Charger seulement les données essentielles du dashboard */}
+              {userRole === 'admin' && <StatsDashboard />}
               <CoachesList />
             </>
           ) : (

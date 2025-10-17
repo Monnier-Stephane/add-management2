@@ -21,6 +21,10 @@ export class CoachesService {
     
     // Invalider le cache
     await this.cacheManager.del('coaches:all');
+    // Invalider aussi le cache par email si l'email existe
+    if (result.email) {
+      await this.cacheManager.del(`coaches:email:${result.email}`);
+    }
     
     return result;
   }
@@ -61,6 +65,10 @@ export class CoachesService {
 
     // Invalider le cache
     await this.cacheManager.del('coaches:all');
+    // Invalider aussi le cache par email si l'email existe
+    if (updatedCoach.email) {
+      await this.cacheManager.del(`coaches:email:${updatedCoach.email}`);
+    }
     
     return updatedCoach;
   }
@@ -73,11 +81,29 @@ export class CoachesService {
 
     // Invalider le cache
     await this.cacheManager.del('coaches:all');
+    // Invalider aussi le cache par email si l'email existe
+    if (deletedCoach.email) {
+      await this.cacheManager.del(`coaches:email:${deletedCoach.email}`);
+    }
     
     return deletedCoach;
   }
 
   async findByEmail(email: string): Promise<Coach | null> {
-    return this.coachModel.findOne({ email }).exec();
+    const cacheKey = `coaches:email:${email}`;
+    
+    // Vérifier le cache
+    const cached = await this.cacheManager.get<Coach>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Si pas en cache, récupérer depuis MongoDB
+    const coach = await this.coachModel.findOne({ email }).exec();
+    
+    // Mettre en cache pour 5 minutes (même durée que les autres)
+    await this.cacheManager.set(cacheKey, coach, 300);
+    
+    return coach;
   }
 }

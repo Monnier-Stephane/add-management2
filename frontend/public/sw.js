@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'add-management-static-v2';
-const DYNAMIC_CACHE = 'add-management-dynamic-v2';
+const STATIC_CACHE = 'add-management-static-v4';
+const DYNAMIC_CACHE = 'add-management-dynamic-v4';
 
 const urlsToCache = [
   '/',
@@ -10,26 +10,40 @@ const urlsToCache = [
 
 // Installation du Service Worker
 self.addEventListener('install', (event) => {
+  console.log('🔄 Service Worker v4 - Installation en cours...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
     .then((cache) => cache.addAll(urlsToCache))
-    .then(() => self.skipWaiting())
-    .catch(() => self.skipWaiting())
+    .then(() => {
+      console.log('✅ Service Worker v4 - Installation terminée');
+      self.skipWaiting();
+    })
+    .catch((error) => {
+      console.error('❌ Service Worker v4 - Erreur installation:', error);
+      self.skipWaiting();
+    })
   );
 });
 
 // Activation du Service Worker
 self.addEventListener('activate', (event) => {
+  console.log('🔄 Service Worker v4 - Activation en cours...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
+      console.log('📦 Caches existants:', cacheNames);
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
+          // Supprimer TOUS les anciens caches (v2, v3, etc.)
+          if (!cacheName.includes('v4')) {
+            console.log('🗑️ Suppression du cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      console.log('✅ Service Worker v4 - Activation terminée, nettoyage des anciens caches');
+      return self.clients.claim();
+    })
   );
 });
 
@@ -105,7 +119,25 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// ... code existant ...
+// Gestion des messages pour forcer la mise à jour
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('🔄 Message reçu: Forcer la mise à jour du Service Worker');
+    self.skipWaiting();
+  }
+  
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    console.log('🗑️ Message reçu: Nettoyer le cache');
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          console.log('🗑️ Suppression du cache:', cacheName);
+          return caches.delete(cacheName);
+        })
+      );
+    });
+  }
+});
 
 // Gestion des notifications push
 self.addEventListener('push', (event) => {
