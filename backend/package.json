@@ -20,8 +20,10 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@nestjs/cache-manager": "^3.0.1",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
     "@nestjs/mapped-types": "^2.1.0",
     "@nestjs/mongoose": "^11.0.3",
@@ -29,12 +31,14 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
     "@types/multer": "^2.0.0",
+    "cache-manager-redis-store": "^3.0.1",
     "csv-parser": "^3.2.0",
     "dotenv": "^17.2.0",
     "mongodb": "^6.16.0",
     "mongoose": "^8.14.3",
     "multer": "^2.0.1",
     "node-xlsx": "^0.24.0",
+    "redis": "^5.8.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -48,6 +52,7 @@
     "@types/exceljs": "^0.5.3",
     "@types/mongoose": "^5.11.96",
     "@types/node": "^22.10.7",
+    "@types/redis": "^4.0.10",
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

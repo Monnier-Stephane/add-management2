@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
@@ -7,23 +7,48 @@ import {
   Subscription,
   SubscriptionDocument,
 } from './schemas/subscription.schema';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class SubscriptionsService {
   constructor(
     @InjectModel(Subscription.name)
     private subscriptionModel: Model<SubscriptionDocument>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async create(
     createSubscriptionDto: CreateSubscriptionDto,
   ): Promise<Subscription> {
     const newSubscription = new this.subscriptionModel(createSubscriptionDto);
-    return newSubscription.save();
+    const result = await newSubscription.save();
+    
+    // Invalider le cache
+    await this.cacheManager.del('subscriptions:all');
+    await this.cacheManager.del('subscriptions:stats');
+    
+    return result;
   }
 
   async findAll(): Promise<Subscription[]> {
-    return this.subscriptionModel.find().exec();
+    const cacheKey = 'subscriptions:all';
+    
+    // Vérifier le cache
+    const cached = await this.cacheManager.get<Subscription[]>(cacheKey);
+    if (cached) {
+      console.log('📦 Cache hit for subscriptions');
+      return cached;
+    }
+
+    // Récupérer depuis MongoDB
+    console.log('🔍 Fetching from MongoDB');
+    const data = await this.subscriptionModel.find().exec();
+    
+    // Mettre en cache (5 minutes)
+    await this.cacheManager.set(cacheKey, data, 300);
+    
+    return data;
   }
 
   async findOne(id: string): Promise<Subscription> {
@@ -44,6 +69,11 @@ export class SubscriptionsService {
     if (!updatedSubscription) {
       throw new NotFoundException(`Subscription with ID "${id}" not found`);
     }
+
+    // Invalider le cache
+    await this.cacheManager.del('subscriptions:all');
+    await this.cacheManager.del('subscriptions:stats');
+    
     return updatedSubscription;
   }
 
@@ -54,6 +84,11 @@ export class SubscriptionsService {
     if (!deletedSubscription) {
       throw new NotFoundException(`Subscription with ID "${id}" not found`);
     }
+
+    // Invalider le cache
+    await this.cacheManager.del('subscriptions:all');
+    await this.cacheManager.del('subscriptions:stats');
+    
     return deletedSubscription;
   }
 
@@ -63,6 +98,17 @@ export class SubscriptionsService {
   }
 
   async getStats() {
+    const cacheKey = 'subscriptions:stats';
+    
+    // Vérifier le cache
+    const cached = await this.cacheManager.get<any>(cacheKey);
+    if (cached) {
+      console.log('📦 Cache hit for stats');
+      return cached;
+    }
+
+    // Récupérer depuis MongoDB
+    console.log('🔍 Computing stats from MongoDB');
     const subscriptions = await this.subscriptionModel.find().exec();
     
     let total = subscriptions.length;
@@ -80,7 +126,7 @@ export class SubscriptionsService {
       else if (tarif.includes('adulte')) adultes++;
     });
 
-    return {
+    const stats = {
       total,
       attente,
       paye,
@@ -88,5 +134,10 @@ export class SubscriptionsService {
       ados,
       adultes
     };
+
+    // Mettre en cache (5 minutes)
+    await this.cacheManager.set(cacheKey, stats, 300);
+    
+    return stats;
   }
 }
