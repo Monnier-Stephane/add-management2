@@ -135,13 +135,20 @@ describe('SubscriptionsService', () => {
   });
 
   it('should return unique tarifs', async () => {
-    const mockTarifs = ['LUNDI 19h30 Bercy ADULTES', 'MERCREDI 12h15 Paris Châtelet ENFANTS', ''];
+    const mockTarifs = [
+      'LUNDI 19h30 Bercy ADULTES',
+      'MERCREDI 12h15 Paris Châtelet ENFANTS',
+      '',
+    ];
     (mockSubscriptionModel as any).distinct = jest.fn().mockReturnValueOnce({
       exec: jest.fn().mockResolvedValue(mockTarifs),
     });
 
     const result = await service.getUniqueTarifs();
-    expect(result).toEqual(['LUNDI 19h30 Bercy ADULTES', 'MERCREDI 12h15 Paris Châtelet ENFANTS']);
+    expect(result).toEqual([
+      'LUNDI 19h30 Bercy ADULTES',
+      'MERCREDI 12h15 Paris Châtelet ENFANTS',
+    ]);
   });
 
   it('should filter out empty and null tarifs', async () => {
@@ -166,7 +173,10 @@ describe('SubscriptionsService', () => {
   it('should return statistics for subscriptions', async () => {
     const mockSubscriptions = [
       { statutPaiement: 'payé', tarif: 'LUNDI 19h30 Bercy ADULTES' },
-      { statutPaiement: 'en attente', tarif: 'MERCREDI 12h15 Paris Châtelet ENFANTS' },
+      {
+        statutPaiement: 'en attente',
+        tarif: 'MERCREDI 12h15 Paris Châtelet ENFANTS',
+      },
       { statutPaiement: 'payé', tarif: 'SAMEDI 10h00 Choisy ADOS' },
       { statutPaiement: 'payé', tarif: 'DIMANCHE 11h30 Choisy ADULTES' },
       { statutPaiement: 'en attente', tarif: 'TARIF ENFANT' },
@@ -182,7 +192,7 @@ describe('SubscriptionsService', () => {
       paye: 3,
       enfants: 2,
       ados: 1,
-      adultes: 2
+      adultes: 2,
     });
   });
 
@@ -198,7 +208,7 @@ describe('SubscriptionsService', () => {
       paye: 0,
       enfants: 0,
       ados: 0,
-      adultes: 0
+      adultes: 0,
     });
   });
 
@@ -220,7 +230,7 @@ describe('SubscriptionsService', () => {
       paye: 2,
       enfants: 1,
       ados: 0,
-      adultes: 0
+      adultes: 0,
     });
   });
 
@@ -241,7 +251,7 @@ describe('SubscriptionsService', () => {
       paye: 3,
       enfants: 1,
       ados: 1,
-      adultes: 1
+      adultes: 1,
     });
   });
 
@@ -262,7 +272,7 @@ describe('SubscriptionsService', () => {
       paye: 3,
       enfants: 1,
       ados: 1,
-      adultes: 1
+      adultes: 1,
     });
   });
 
@@ -279,7 +289,7 @@ describe('SubscriptionsService', () => {
       paye: 0,
       enfants: 0,
       ados: 0,
-      adultes: 0
+      adultes: 0,
     });
   });
 
@@ -300,15 +310,13 @@ describe('SubscriptionsService', () => {
       paye: 3,
       enfants: 1,
       ados: 1,
-      adultes: 1
+      adultes: 1,
     });
   });
 
   it('should handle subscriptions with very long tarif strings in getStats', async () => {
     const longTarif = 'A'.repeat(1000) + 'ENFANT' + 'B'.repeat(1000);
-    const mockSubscriptions = [
-      { statutPaiement: 'payé', tarif: longTarif },
-    ];
+    const mockSubscriptions = [{ statutPaiement: 'payé', tarif: longTarif }];
     (mockSubscriptionModel as any).find.mockReturnValueOnce({
       exec: jest.fn().mockResolvedValue(mockSubscriptions),
     });
@@ -320,7 +328,7 @@ describe('SubscriptionsService', () => {
       paye: 1,
       enfants: 1,
       ados: 0,
-      adultes: 0
+      adultes: 0,
     });
   });
 });

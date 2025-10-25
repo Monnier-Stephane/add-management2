@@ -49,7 +49,8 @@ describe('CsvProcessorService', () => {
 
   describe('processCSVFile', () => {
     it('should process CSV file successfully', async () => {
-      const csvData = 'nom,prenom,email,telephone,dateDeNaissance,adresse,ville,codePostal,tarif\nDupont,Jean,jean@example.com,0123456789,1990-01-01,123 Rue Test,Paris,75001,Tarif A';
+      const csvData =
+        'nom,prenom,email,telephone,dateDeNaissance,adresse,ville,codePostal,tarif\nDupont,Jean,jean@example.com,0123456789,1990-01-01,123 Rue Test,Paris,75001,Tarif A';
       const buffer = Buffer.from(csvData);
 
       // Mock pour simuler qu'aucun enregistrement existant n'est trouvé
@@ -71,7 +72,8 @@ describe('CsvProcessorService', () => {
     });
 
     it('should handle empty CSV file', async () => {
-      const csvData = 'nom,prenom,email,telephone,dateDeNaissance,adresse,ville,codePostal,tarif\n';
+      const csvData =
+        'nom,prenom,email,telephone,dateDeNaissance,adresse,ville,codePostal,tarif\n';
       const buffer = Buffer.from(csvData);
 
       const result = await service.processCSVFile(buffer);
@@ -125,7 +127,8 @@ describe('CsvProcessorService', () => {
   describe('private methods', () => {
     it('should clean tariff values correctly', () => {
       // Test de la méthode privée via un appel public
-      const csvData = 'nom,prenom,email,telephone,dateDeNaissance,adresse,ville,codePostal,tarif\nDupont,Jean,jean@example.com,0123456789,1990-01-01,123 Rue Test,Paris,75001," Tarif A "';
+      const csvData =
+        'nom,prenom,email,telephone,dateDeNaissance,adresse,ville,codePostal,tarif\nDupont,Jean,jean@example.com,0123456789,1990-01-01,123 Rue Test,Paris,75001," Tarif A "';
       const buffer = Buffer.from(csvData);
 
       mockSubscriptionModel.findOne.mockReturnValue({
@@ -135,14 +138,15 @@ describe('CsvProcessorService', () => {
       const mockSave = jest.fn().mockResolvedValue(mockSubscription);
       mockSubscriptionModel.save = mockSave;
 
-      return service.processCSVFile(buffer).then(result => {
+      return service.processCSVFile(buffer).then((result) => {
         expect(result.totalRecords).toBe(1);
         expect(result.errors).toHaveLength(0);
       });
     });
 
     it('should clean phone numbers correctly', () => {
-      const csvData = 'nom,prenom,email,telephone,dateDeNaissance,adresse,ville,codePostal,tarif\nDupont,Jean,jean@example.com,01 23 45 67 89,1990-01-01,123 Rue Test,Paris,75001,Tarif A';
+      const csvData =
+        'nom,prenom,email,telephone,dateDeNaissance,adresse,ville,codePostal,tarif\nDupont,Jean,jean@example.com,01 23 45 67 89,1990-01-01,123 Rue Test,Paris,75001,Tarif A';
       const buffer = Buffer.from(csvData);
 
       mockSubscriptionModel.findOne.mockReturnValue({
@@ -152,7 +156,7 @@ describe('CsvProcessorService', () => {
       const mockSave = jest.fn().mockResolvedValue(mockSubscription);
       mockSubscriptionModel.save = mockSave;
 
-      return service.processCSVFile(buffer).then(result => {
+      return service.processCSVFile(buffer).then((result) => {
         expect(result.totalRecords).toBe(1);
         expect(result.errors).toHaveLength(0);
       });
