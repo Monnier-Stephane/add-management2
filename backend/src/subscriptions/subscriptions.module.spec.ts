@@ -9,9 +9,9 @@ describe('SubscriptionsModule', () => {
     module = await Test.createTestingModule({
       imports: [SubscriptionsModule],
     })
-    .overrideProvider(getModelToken('Subscription'))
-    .useValue({})
-    .compile();
+      .overrideProvider(getModelToken('Subscription'))
+      .useValue({})
+      .compile();
   });
 
   it('should be defined', () => {

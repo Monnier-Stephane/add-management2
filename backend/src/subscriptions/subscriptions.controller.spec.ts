@@ -49,8 +49,8 @@ describe('SubscriptionsController', () => {
 
   describe('create', () => {
     it('should create a subscription', async () => {
-      const createDto = { 
-        nom: 'Dupont', 
+      const createDto = {
+        nom: 'Dupont',
         prenom: 'Jean',
         email: 'jean@example.com',
         telephone: '0123456789',
@@ -58,7 +58,7 @@ describe('SubscriptionsController', () => {
         adresse: '123 Rue Test',
         ville: 'Paris',
         codePostal: '75001',
-        tarif: 'Tarif A'
+        tarif: 'Tarif A',
       };
       const expectedResult = { id: '1', ...createDto };
 
@@ -146,7 +146,9 @@ describe('SubscriptionsController', () => {
 
       const result = await controller.uploadCSV(mockFile);
 
-      expect(csvProcessorService.processCSVFile).toHaveBeenCalledWith(mockFile.buffer);
+      expect(csvProcessorService.processCSVFile).toHaveBeenCalledWith(
+        mockFile.buffer,
+      );
       expect(result).toEqual({
         success: true,
         message: 'Fichier CSV traité avec succès',
@@ -177,7 +179,9 @@ describe('SubscriptionsController', () => {
         buffer: Buffer.from('test data'),
       } as Express.Multer.File;
 
-      mockCsvProcessorService.processCSVFile.mockRejectedValue(new Error('Processing failed'));
+      mockCsvProcessorService.processCSVFile.mockRejectedValue(
+        new Error('Processing failed'),
+      );
 
       await expect(controller.uploadCSV(mockFile)).rejects.toThrow(
         new BadRequestException('Erreur lors du traitement: Processing failed'),
@@ -204,7 +208,9 @@ describe('SubscriptionsController', () => {
 
       const result = await controller.uploadExcel(mockFile);
 
-      expect(csvProcessorService.processExcelFile).toHaveBeenCalledWith(mockFile.buffer);
+      expect(csvProcessorService.processExcelFile).toHaveBeenCalledWith(
+        mockFile.buffer,
+      );
       expect(result).toEqual({
         success: true,
         message: 'Fichier Excel traité avec succès',
@@ -230,7 +236,9 @@ describe('SubscriptionsController', () => {
 
       const result = await controller.uploadExcel(mockFile);
 
-      expect(csvProcessorService.processCSVFile).toHaveBeenCalledWith(mockFile.buffer);
+      expect(csvProcessorService.processCSVFile).toHaveBeenCalledWith(
+        mockFile.buffer,
+      );
       expect(result).toEqual({
         success: true,
         message: 'Fichier CSV traité avec succès',
@@ -254,7 +262,9 @@ describe('SubscriptionsController', () => {
     it('should return unique tarifs', async () => {
       const expectedResult = ['Tarif A', 'Tarif B'];
 
-      mockSubscriptionsService.getUniqueTarifs.mockResolvedValue(expectedResult);
+      mockSubscriptionsService.getUniqueTarifs.mockResolvedValue(
+        expectedResult,
+      );
 
       const result = await controller.getUniqueTarifs();
 

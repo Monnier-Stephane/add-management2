@@ -23,17 +23,17 @@ export class SubscriptionsService {
   ): Promise<Subscription> {
     const newSubscription = new this.subscriptionModel(createSubscriptionDto);
     const result = await newSubscription.save();
-    
+
     // Invalider le cache
     await this.cacheManager.del('subscriptions:all');
     await this.cacheManager.del('subscriptions:stats');
-    
+
     return result;
   }
 
   async findAll(): Promise<Subscription[]> {
     const cacheKey = 'subscriptions:all';
-    
+
     // Vérifier le cache
     const cached = await this.cacheManager.get<Subscription[]>(cacheKey);
     if (cached) {
@@ -42,10 +42,10 @@ export class SubscriptionsService {
 
     // Récupérer depuis MongoDB
     const data = await this.subscriptionModel.find().exec();
-    
+
     // Mettre en cache (5 minutes)
     await this.cacheManager.set(cacheKey, data, 300);
-    
+
     return data;
   }
 
@@ -71,7 +71,7 @@ export class SubscriptionsService {
     // Invalider le cache
     await this.cacheManager.del('subscriptions:all');
     await this.cacheManager.del('subscriptions:stats');
-    
+
     return updatedSubscription;
   }
 
@@ -86,7 +86,7 @@ export class SubscriptionsService {
     // Invalider le cache
     await this.cacheManager.del('subscriptions:all');
     await this.cacheManager.del('subscriptions:stats');
-    
+
     return deletedSubscription;
   }
 
@@ -97,7 +97,7 @@ export class SubscriptionsService {
 
   async getStats() {
     const cacheKey = 'subscriptions:stats';
-    
+
     // Vérifier le cache
     const cached = await this.cacheManager.get<any>(cacheKey);
     if (cached) {
@@ -106,9 +106,13 @@ export class SubscriptionsService {
 
     // Récupérer depuis MongoDB
     const subscriptions = await this.subscriptionModel.find().exec();
-    
-    let total = subscriptions.length;
-    let attente = 0, paye = 0, enfants = 0, ados = 0, adultes = 0;
+
+    const total = subscriptions.length;
+    let attente = 0,
+      paye = 0,
+      enfants = 0,
+      ados = 0,
+      adultes = 0;
 
     subscriptions.forEach((item: any) => {
       // Payment status
@@ -128,12 +132,12 @@ export class SubscriptionsService {
       paye,
       enfants,
       ados,
-      adultes
+      adultes,
     };
 
     // Mettre en cache (5 minutes)
     await this.cacheManager.set(cacheKey, stats, 300);
-    
+
     return stats;
   }
 }

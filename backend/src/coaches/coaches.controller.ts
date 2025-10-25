@@ -36,8 +36,6 @@ export class CoachesController {
     return this.coachesService.findByEmail(email);
   }
 
-
-
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateCoachDto: UpdateCoachDto) {
     return this.coachesService.update(id, updateCoachDto);

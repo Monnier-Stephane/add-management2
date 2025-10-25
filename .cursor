@@ -30,3 +30,5 @@ extensions:
   - esbenp.prettier-vscode
   - ms-vscode.vscode-typescript-next
   - bradlc.vscode-tailwindcss 
+
+

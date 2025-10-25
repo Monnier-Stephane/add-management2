@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Loader2 } from 'lucide-react';
-import { ChevronDown, ChevronUp, Users, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, AlertCircle, RefreshCw, Users } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSubscriptions } from '@/lib/hooks/useSubscriptions';
 import { useQueryClient } from '@tanstack/react-query';
@@ -25,28 +25,12 @@ interface Student {
 
 export default function StatsDashboard() {
   const { userRole } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: students, isLoading, error, refetch } = useSubscriptions();
   const [showPendingDetails, setShowPendingDetails] = useState(false);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  // Ne pas afficher si l'utilisateur n'est pas admin
-  if (userRole !== 'admin') {
-    return null;
-  }
-  const queryClient = useQueryClient();
-  
-  // Utiliser le hook optimisé avec chargement parallèle
-  const { data: students, isLoading, error, refetch } = useSubscriptions();
-  
-  // Précharger les données critiques en arrière-plan
-  useEffect(() => {
-    // Précharger les données si elles ne sont pas en cache
-    if (!students && !isLoading) {
-      refetch();
-    }
-  }, [students, isLoading, refetch]);
-  
-  
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const isAdmin = userRole === 'admin';
 
   // Calculer les statistiques à partir des données
@@ -73,14 +57,9 @@ export default function StatsDashboard() {
     return { total, attente, paye, enfants, ados, adultes };
   })() : { total: 0, attente: 0, paye: 0, enfants: 0, ados: 0, adultes: 0 };
 
-  
-
-
   // Filtrer les élèves en attente avec vérification supplémentaire
   const pendingStudents = students && Array.isArray(students) ? 
     students.filter((item: Student) => item.statutPaiement === 'en attente') : [];
-
-  // Debug: Afficher les données pour vérifier
   
 
   const paiementData = [
@@ -93,6 +72,16 @@ export default function StatsDashboard() {
     { name: 'Adolescents', value: stats.ados },
     { name: 'Adultes', value: stats.adultes },
   ];
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true); // ✅ Bouton DÉSACTIVÉ
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      await refetch();
+    } finally {
+      setIsRefreshing(false); // ✅ Bouton RÉACTIVÉ automatiquement
+    }
+  };
 
   // Fonction pour marquer un élève comme payé
   const handleMarkAsPaid = async (studentId: string) => {
@@ -120,16 +109,10 @@ export default function StatsDashboard() {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Erreur HTTP: ${response.status}`);
       }
-
-      // Forcer le rechargement immédiat des données
-      await refetch();
-      
+ 
       // Invalider toutes les queries liées aux subscriptions
       await queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-      
-      // Forcer un refetch immédiat
-      await queryClient.refetchQueries({ queryKey: ['subscriptions'] });
-      
+            
       // Afficher la popup de confirmation
       setShowSuccessModal(true);
       
@@ -186,12 +169,6 @@ export default function StatsDashboard() {
         </div>
       )}
 
-      {/* Debug info - Toujours visible pour debug */}
-      <div className="bg-blue-50 p-4 rounded-lg border">
-        <div className="text-sm text-blue-800">
-          Debug - Rôle: {userRole} | Admin: {isAdmin ? 'Oui' : 'Non'} | Total: {stats.total} | En attente: {stats.attente} | Payé: {stats.paye}
-        </div>
-      </div>
       
       {/* Key metrics tiles */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -230,130 +207,161 @@ export default function StatsDashboard() {
       </div>
 
       {/* Pending payments section - Seulement pour les admins */}
-      {isAdmin && stats.attente > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <CardTitle className="flex items-center gap-2 text-orange-800">
-                <AlertCircle className="h-5 w-5" />
-                Paiements en attente ({stats.attente})
-              </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowPendingDetails(!showPendingDetails)}
-                className="flex items-center gap-2 w-full sm:w-auto"
-              >
-                {showPendingDetails ? (
-                  <>
-                    <ChevronUp className="h-4 w-4" />
-                    <span className="hidden sm:inline">Masquer les détails</span>
-                    <span className="sm:hidden">Masquer</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4" />
-                    <span className="hidden sm:inline">Voir les détails</span>
-                    <span className="sm:hidden">Voir</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-          {showPendingDetails && (
-            <CardContent>
-              <div className="space-y-3">
-                {pendingStudents
-                  .sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' }))
-                  .map((student) => (
-                  <div
-                    key={student._id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 sm:p-3 bg-white rounded-lg border border-orange-200"
-                  >
-                    <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg p-3 flex items-center justify-center flex-shrink-0 shadow-sm">
-  <Users className="h-5 w-5 text-orange-700" />
-</div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-gray-900 truncate">
-                          {student.prenom} {student.nom}
-                        </div>
-                        <div className="text-sm text-gray-600 space-y-1">
-                          {student.email && (
-                            <div className="break-words">📧 {student.email}</div>
-                          )}
-                          {student.telephone && (
-                            <div className="truncate">📞 {student.telephone}</div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2">
-                    <Badge 
-  variant="outline" 
-  className="text-orange-600 border-orange-300 text-xs sm:text-sm w-fit rounded-md px-3 py-1"
->
-  <span className="max-w-[140px] sm:max-w-none text-wrap">
-    {student.tarif}
-  </span>
-</Badge>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="w-full sm:w-auto text-xs sm:text-sm"
-                        onClick={() => handleMarkAsPaid(student._id)}
-                        disabled={isUpdating === student._id}
-                      >
-                        {isUpdating === student._id ? (
-                          <>
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                            Mise à jour...
-                          </>
-                        ) : (
-                          'Marquer comme payé'
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
+{isAdmin && stats.attente > 0 && (
+  <Card className="border-orange-200 bg-orange-50">
+    <CardHeader>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <CardTitle className="flex items-center justify-center gap-2 text-orange-800">
+          <AlertCircle className="h-5 w-5" />
+          Paiements en attente ({stats.attente})
+        </CardTitle>
+        
+        {/* ✅ Bouton de refresh centré */}
+        <div className="flex justify-center sm:justify-end">
+          <Button 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            {isRefreshing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="hidden sm:inline">Actualisation...</span>
+                <span className="sm:hidden">Actualisation...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                <span className="hidden sm:inline">Actualiser</span>
+                <span className="sm:hidden">Actualiser</span>
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+      
+      {/* ✅ Bouton "Voir les détails" séparé */}
+      <div className="flex justify-center sm:justify-end mt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowPendingDetails(!showPendingDetails)}
+          className="flex items-center gap-2 w-full sm:w-auto"
+        >
+          {showPendingDetails ? (
+            <>
+              <ChevronUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Masquer les détails</span>
+              <span className="sm:hidden">Masquer</span>
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-4 w-4" />
+              <span className="hidden sm:inline">Voir les détails</span>
+              <span className="sm:hidden">Voir</span>
+            </>
           )}
-        </Card>
-      )}
+        </Button>
+      </div>
+    </CardHeader>
+    
+    {showPendingDetails && (
+      <CardContent>
+        <div className="space-y-3">
+          {pendingStudents
+            .sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' }))
+            .map((student) => (
+            <div
+              key={student._id}
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 sm:p-3 bg-white rounded-lg border border-orange-200"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg p-3 flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Users className="h-5 w-5 text-orange-700" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-gray-900 truncate">
+                    {student.prenom} {student.nom}
+                  </div>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    {student.email && (
+                      <div className="break-words">📧 {student.email}</div>
+                    )}
+                    {student.telephone && (
+                      <div className="truncate">📞 {student.telephone}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2">
+                <Badge 
+                  variant="outline" 
+                  className="text-orange-600 border-orange-300 text-xs sm:text-sm w-fit rounded-md px-3 py-1"
+                >
+                  <span className="max-w-[140px] sm:max-w-none text-wrap">
+                    {student.tarif}
+                  </span>
+                </Badge>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
+                  onClick={() => handleMarkAsPaid(student._id)}
+                  disabled={isUpdating === student._id}
+                >
+                  {isUpdating === student._id ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      Mise à jour...
+                    </>
+                  ) : (
+                    'Marquer comme payé'
+                  )}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    )}
+  </Card>
+)}
 
       {/* Pie charts */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Payment status - Visible pour tous pour debug */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Statut de paiement</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={paiementData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  label
-                >
-                  {paiementData.map((entry, index) => (
-                    <Cell key={`cell-paiement-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      <div className={`grid gap-6 ${isAdmin ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+      {isAdmin && (
+  <Card>
+    <CardHeader>
+      <CardTitle>Statut de paiement</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <ResponsiveContainer width="100%" height={250}>
+        <PieChart>
+          <Pie
+            data={paiementData}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            outerRadius={80}
+            fill="#8884d8"
+            label
+          >
+            {paiementData.map((entry, index) => (
+              <Cell key={`cell-paiement-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+    </CardContent>
+  </Card>
+)}
 
-        {/* Distribution by category */}
+        {/* Répartition par catégorie - Visible pour tous */}
         <Card>
           <CardHeader>
             <CardTitle>Répartition par catégorie</CardTitle>

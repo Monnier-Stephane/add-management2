@@ -10,16 +10,18 @@ type ProtectedRouteProps = {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading, profileLoading } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !user|| profileLoading) {
+    // Redirect only when auth finished and no user
+    if (!loading && !user) {
       router.push('/login')
     }
-  }, [user, loading, router, profileLoading])
+  }, [user, loading, router])
 
-  if (loading || !user|| profileLoading) {
+  // Show loader while auth state is resolving
+  if (loading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">
