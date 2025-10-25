@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useEffect, useState, useContext, useRef, useCallback } from 'react'
+import { createContext, useEffect, useState, useContext } from 'react'
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
 import { auth } from './firebase'
 import { useRouter } from 'next/navigation'
@@ -9,15 +9,10 @@ type UserRole = 'coach' | 'admin'
 
 type AuthContextType = {
   user: User | null
-  profileLoading: boolean
   userProfile: { statut: string; nom: string; prenom: string; email: string } | null
   userRole: UserRole | null
-  isConnecting: boolean
   loading: boolean
   logout: () => Promise<void>
-  sessionExpired: boolean
-  timeRemaining: number
-  extendSession: () => void
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,12 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   userProfile: null,
   userRole: null,
   loading: true,
-  profileLoading: false,
   logout: async () => {},
-  isConnecting: false,
-  sessionExpired: false,
-  timeRemaining: 0,
-  extendSession: () => {},
 })
 
 export const useAuth = () => {
@@ -42,305 +32,55 @@ export const useAuth = () => {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<{ statut: string; nom: string; prenom: string; email: string } | null>(null)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
-  const [profileLoading, setProfileLoading] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [sessionExpired, setSessionExpired] = useState(false)
-  const [timeRemaining, setTimeRemaining] = useState(0)
   const router = useRouter()
-  
-  // Références pour les timers
-  const sessionTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const warningTimerRef = useRef<NodeJS.Timeout | null>(null)
-  
-  // Durée de session : 1 heure (3600000 ms)
-  const SESSION_DURATION = 60 * 60 * 1000
-  // Temps d'avertissement : 5 minutes avant expiration
-  const WARNING_TIME = 5 * 60 * 1000
-
-  // Fonction pour nettoyer les timers
-  const clearTimers = () => {
-    if (sessionTimerRef.current) {
-      clearTimeout(sessionTimerRef.current)
-      sessionTimerRef.current = null
-    }
-    if (warningTimerRef.current) {
-      clearTimeout(warningTimerRef.current)
-      warningTimerRef.current = null
-    }
-  }
-
-  // Fonction pour démarrer le timer de session
-  const startSessionTimer = () => {
-    clearTimers()
-    
-    // Sauvegarder le temps de début de session
-    const sessionStartTime = Date.now()
-    sessionStorage.setItem('sessionStartTime', sessionStartTime.toString())
-    
-    // Timer d'avertissement (5 minutes avant expiration)
-    warningTimerRef.current = setTimeout(() => {
-      setSessionExpired(true)
-      setTimeRemaining(WARNING_TIME)
-      
-      // Timer de décompte
-      const countdownInterval = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1000) {
-            clearInterval(countdownInterval)
-            handleAutoLogout()
-            return 0
-          }
-          return prev - 1000
-        })
-      }, 1000)
-      
-    }, SESSION_DURATION - WARNING_TIME)
-
-   
-    
-    // Timer principal d'expiration
-    sessionTimerRef.current = setTimeout(() => {
-      handleAutoLogout()
-    }, SESSION_DURATION)
-  }
-
-
-
-  // Fonction pour étendre la session
-  const extendSession = () => {
-    setSessionExpired(false)
-    setTimeRemaining(0)
-    startSessionTimer()
-  }
-
-  // Fonction de déconnexion automatique
-  const handleAutoLogout = useCallback(async () => {
-    try {
-      // Sauvegarder les données d'attendance avant la déconnexion
-      const attendanceData = localStorage.getItem('attendanceData')
-      
-      // Nettoyer sessionStorage mais préserver attendanceData
-      sessionStorage.clear()
-      
-      // Déconnexion Firebase
-      await signOut(auth)
-      
-      // Remettre les données d'attendance si elles existent
-      if (attendanceData) {
-        localStorage.setItem('attendanceData', attendanceData)
-      }
-      
-      // Nettoyer les cookies Firebase
-      document.cookie.split(';').forEach(cookie => {
-        const eqPos = cookie.indexOf('=')
-        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
-        if (name.includes('firebase')) {
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
-        }
-      })
-      
-      clearTimers()
-      setSessionExpired(false)
-      setTimeRemaining(0)
-      router.push('/login')
-    } catch (error) {
-      console.error('Erreur lors de la déconnexion automatique:', error)
-    }
-  }, [router])
 
   useEffect(() => {
-    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
       
       if (firebaseUser) {
-        setProfileLoading(true)
-        setIsConnecting(true)
-        
         try {
-          // Vérifier le cache du profil d'abord
-          const cachedProfile = localStorage.getItem(`userProfile_${firebaseUser.email}`)
-          const cacheTimestamp = localStorage.getItem(`userProfile_timestamp_${firebaseUser.email}`)
-          
-          // Cache valide pendant 1 heure (3600000 ms)
-          const CACHE_DURATION = 60 * 60 * 1000
-          const isCacheValid = cacheTimestamp && (Date.now() - parseInt(cacheTimestamp)) < CACHE_DURATION
-          
-          if (cachedProfile && isCacheValid) {
-            // Utiliser le cache - OPTIMISATION
-            const coach = JSON.parse(cachedProfile)
-            setUserProfile(coach)
-            setUserRole(coach?.statut || 'coach')
-            setProfileLoading(false)
-            setIsConnecting(false)
-            
-            // Démarrer le timer de session immédiatement
-            setTimeout(() => {
-              startSessionTimer()
-            }, 100)
-            
+          // Récupérer le profil depuis l'API
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL
+          if (!apiUrl) {
+            console.error('NEXT_PUBLIC_API_URL not configured')
+            setUserRole('coach')
             return
           }
-          
-          // Sinon, faire l'appel API avec timeout
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-          if (!apiUrl) {
-            throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-          }
-          const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-          
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => {
-            console.warn('Request timeout, aborting...');
-            controller.abort();
-          }, 10000) // 10 secondes timeout
-          
-          const response = await fetch(`${cleanApiUrl}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`, {
-            signal: controller.signal,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            }
-          });
-          
-          clearTimeout(timeoutId)
+
+          const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl
+          const response = await fetch(`${cleanApiUrl}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`)
           
           if (response.ok) {
-            const text = await response.text();
-
-            if (text.trim()) {
-              const coach = JSON.parse(text);
-              setUserProfile(coach);
-              setUserRole(coach?.statut || 'coach');
-              
-              // Mettre en cache le profil avec compression
-              const compressedProfile = JSON.stringify(coach)
-              localStorage.setItem(`userProfile_${firebaseUser.email}`, compressedProfile)
-              localStorage.setItem(`userProfile_timestamp_${firebaseUser.email}`, Date.now().toString())
-            } else {
-              // Pas de coach trouvé, utiliser les valeurs par défaut
-              setUserProfile(null);
-              setUserRole('coach');
-            }
+            const coach = await response.json()
+            setUserProfile(coach)
+            setUserRole(coach?.statut === 'admin' ? 'admin' : 'coach')
           } else {
-            setUserRole('coach');
+            setUserRole('coach')
           }
         } catch (error) {
-          console.error('Error fetching coach profile:', error);
-          
-          // Si c'est une erreur réseau (pas AbortError), essayer une fois de plus
-          if (error.name !== 'AbortError' && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
-            console.warn('Network error, retrying once...');
-            try {
-              // Récupérer l'URL API pour le retry
-              const retryApiUrl = process.env.NEXT_PUBLIC_API_URL;
-              if (!retryApiUrl) {
-                throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-              }
-              const retryCleanApiUrl = retryApiUrl.endsWith('/') ? retryApiUrl.slice(0, -1) : retryApiUrl;
-              
-              const retryResponse = await fetch(`${retryCleanApiUrl}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`, {
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json'
-                }
-              });
-              
-              if (retryResponse.ok) {
-                const text = await retryResponse.text();
-                if (text.trim()) {
-                  const coach = JSON.parse(text);
-                  setUserProfile(coach);
-                  setUserRole(coach?.statut || 'coach');
-                  
-                  // Mettre en cache le profil
-                  localStorage.setItem(`userProfile_${firebaseUser.email}`, JSON.stringify(coach))
-                  localStorage.setItem(`userProfile_timestamp_${firebaseUser.email}`, Date.now().toString())
-                } else {
-                  setUserRole('coach');
-                }
-              } else {
-                setUserRole('coach');
-              }
-            } catch (retryError) {
-              console.error('Retry failed:', retryError);
-              setUserRole('coach');
-            }
-          } else {
-            // Pour AbortError ou autres erreurs, utiliser le rôle par défaut
-            setUserRole('coach');
-          }
-        } finally {
-          setProfileLoading(false)
-          setIsConnecting(false)
+          console.error('Error fetching profile:', error)
+          setUserRole('coach')
         }
-        
-        // Vérifier la session après le chargement du profil
-const sessionStartTime = sessionStorage.getItem('sessionStartTime')
-if (sessionStartTime) {
-  const elapsed = Date.now() - parseInt(sessionStartTime)
-  // Ajouter une marge de sécurité pour éviter les déconnexions immédiates
-  if (elapsed >= SESSION_DURATION + 60000) { // +1 minute de marge
-    handleAutoLogout()
-    return
-  }
-}
-        
-        // Démarrer le timer de session avec un petit délai pour s'assurer que tout est chargé
-        setTimeout(() => {
-          startSessionTimer()
-        }, 1000)
       } else {
-        setUserProfile(null);
-        setUserRole(null);
-        clearTimers()
-        setSessionExpired(false)
-        setTimeRemaining(0)
+        setUserProfile(null)
+        setUserRole(null)
       }
-      
       setLoading(false)
     })
 
-    return () => {
-      unsubscribe()
-      clearTimers()
-    }
-  }, [SESSION_DURATION])
-
+    return () => unsubscribe()
+  }, [])
 
   const logout = async () => {
     try {
-      // Sauvegarder les données d'attendance avant la déconnexion
-      const attendanceData = localStorage.getItem('attendanceData')
-      
-      // Nettoyer sessionStorage mais préserver attendanceData
-      sessionStorage.clear()
-      
-      // Déconnexion Firebase
       await signOut(auth)
-      
-      // Remettre les données d'attendance si elles existent
-      if (attendanceData) {
-        localStorage.setItem('attendanceData', attendanceData)
-      }
-      
-      // Nettoyer les cookies Firebase
-      document.cookie.split(';').forEach(cookie => {
-        const eqPos = cookie.indexOf('=')
-        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
-        if (name.includes('firebase')) {
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
-        }
-      })
-      
-      clearTimers()
-      setSessionExpired(false)
-      setTimeRemaining(0)
+      setUserProfile(null)
+      setUserRole(null)
       router.push('/login')
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error)
@@ -353,12 +93,7 @@ if (sessionStartTime) {
       userProfile, 
       userRole, 
       loading, 
-      logout, 
-      sessionExpired, 
-      timeRemaining, 
-      extendSession,
-      profileLoading,
-      isConnecting
+      logout
     }}>
       {children}
     </AuthContext.Provider>

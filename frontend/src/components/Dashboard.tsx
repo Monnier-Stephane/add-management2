@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import { checkAndUpdateCache } from '@/lib/cache/clearCache'
 
 export function Dashboard() {
-  const { userProfile, profileLoading, user, userRole } = useAuth()
+  const { userProfile, user, userRole, loading } = useAuth()
   const [isMounted, setIsMounted] = useState(false)
   
   useEffect(() => {
@@ -21,7 +21,7 @@ export function Dashboard() {
   }, [])
   
   // Éviter les erreurs d'hydratation en attendant que le composant soit monté
-  if (!isMounted) {
+  if (!isMounted || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">
@@ -29,34 +29,6 @@ export function Dashboard() {
           <p className="text-gray-600">Chargement...</p>
         </div>
       </div>
-    )
-  }
-  
-  // Afficher le Dashboard même si le profil n'est pas encore chargé
-  // Les composants se chargeront en arrière-plan
-  if (profileLoading) {
-    return (
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <header className="flex h-16 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" />
-            <div className="text-sm text-gray-500">
-              Bonjour {user?.email || 'Utilisateur'}
-              <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Chargement...</span>
-            </div>
-          </header>
-          
-          <main className="p-4">
-            <div className="flex items-center justify-center py-12">
-              <div className="flex flex-col items-center gap-4">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                <p className="text-gray-600">Chargement de votre profil...</p>
-              </div>
-            </div>
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
     )
   }
 
@@ -76,7 +48,7 @@ export function Dashboard() {
           {userProfile?.prenom ? (
             <>
               {/* Charger seulement les données essentielles du dashboard */}
-              {userRole === 'admin' && <StatsDashboard />}
+              <StatsDashboard />
               <CoachesList />
             </>
           ) : (
