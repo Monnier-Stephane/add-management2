@@ -2,9 +2,36 @@ import React from 'react'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import AttendancePage from '../page'
 
+// Types pour le mock (basés sur CourseCardProps)
+interface Student {
+  id: string
+  nom: string
+  prenom: string
+  present: boolean
+  isTemporary?: boolean
+}
+
+interface Course {
+  id: string
+  nom: string
+  jour: string
+  heure: string
+  lieu: string
+  coach: string
+  eleves: Student[]
+}
+
+interface MockCourseCardProps {
+  course: Course
+  onPresenceChange: (courseId: string, studentId: string, present: boolean) => void
+  onRemoveTemporaryStudent: (courseId: string, studentId: string) => void
+  onAddTemporaryStudent: (courseId: string, nom: string, prenom: string) => void
+  onSaveAttendance?: (courseId: string) => void
+}
+
 // Mock the CourseCard component
 jest.mock('@/components/attendance/CourseCard', () => ({
-  CourseCard: ({ course, onPresenceChange, onRemoveTemporaryStudent, onAddTemporaryStudent, onSaveAttendance }: any) => (
+  CourseCard: ({ course, onPresenceChange, onRemoveTemporaryStudent, onAddTemporaryStudent, onSaveAttendance }: MockCourseCardProps) => (
     <div data-testid={`course-${course.id}`}>
       <div>{course.nom}</div>
       <button onClick={() => onPresenceChange(course.id, 'student-1', true)}>
@@ -16,9 +43,11 @@ jest.mock('@/components/attendance/CourseCard', () => ({
       <button onClick={() => onAddTemporaryStudent(course.id, 'Dupont', 'Jean')}>
         Add Student
       </button>
-      <button onClick={() => onSaveAttendance(course.id)}>
-        Save Attendance
-      </button>
+      {onSaveAttendance && (
+        <button onClick={() => onSaveAttendance(course.id)}>
+          Save Attendance
+        </button>
+      )}
     </div>
   )
 }))
