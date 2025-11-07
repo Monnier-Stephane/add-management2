@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { pageCache } from '@/lib/cache/pageCache'
 
 interface LazyNavigationProps {
   href: string
@@ -13,7 +12,7 @@ interface LazyNavigationProps {
 
 export const LazyNavigation = ({ href, children, className, prefetchData }: LazyNavigationProps) => {
   const router = useRouter()
-  const queryClient = useQueryClient()
+  
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -54,8 +53,8 @@ export const usePrefetchPageData = () => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return response.json();
       },
-      staleTime: 30 * 1000,
-      gcTime: 5 * 60 * 1000,
+      staleTime: 5 * 60 * 1000, // 🚀 5 minutes (au lieu de 30 secondes)
+      gcTime: 10 * 60 * 1000, // 10 minutes
     })
 
     // Précharger les assignations de planning
@@ -69,8 +68,8 @@ export const usePrefetchPageData = () => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return response.json();
       },
-      staleTime: 30 * 1000,
-      gcTime: 5 * 60 * 1000,
+      staleTime: 5 * 60 * 1000, // 🚀 5 minutes (au lieu de 30 secondes)
+      gcTime: 10 * 60 * 1000, // 10 minutes
     })
   }
 
@@ -86,8 +85,8 @@ export const usePrefetchPageData = () => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return response.json();
       },
-      staleTime: 30 * 1000,
-      gcTime: 5 * 60 * 1000,
+      staleTime: 5 * 60 * 1000, // 🚀 5 minutes (au lieu de 30 secondes)
+      gcTime: 10 * 60 * 1000, // 10 minutes
     })
   }
 

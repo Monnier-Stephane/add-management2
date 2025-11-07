@@ -10,12 +10,16 @@ export class PlanningController {
   constructor(private readonly planningService: PlanningService) {}
 
   @Post('assign-coach')
-  async assignCoach(@Body() data: { eventId: string; coachName: string }): Promise<PlanningAssignment> {
+  async assignCoach(
+    @Body() data: { eventId: string; coachName: string },
+  ): Promise<PlanningAssignment> {
     return this.planningService.assignCoach(data.eventId, data.coachName);
   }
 
   @Post('remove-coach')
-  async removeCoach(@Body() data: { eventId: string; coachName: string }): Promise<PlanningAssignment | null> {
+  async removeCoach(
+    @Body() data: { eventId: string; coachName: string },
+  ): Promise<PlanningAssignment | null> {
     return this.planningService.removeCoach(data.eventId, data.coachName);
   }
 

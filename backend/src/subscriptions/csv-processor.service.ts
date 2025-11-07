@@ -103,7 +103,10 @@ export class CsvProcessorService {
     };
   }
 
-  private async upsertRecord(cleanedData: CleanedData, results: ProcessingResult) {
+  private async upsertRecord(
+    cleanedData: CleanedData,
+    results: ProcessingResult,
+  ) {
     if (!cleanedData.email) return;
 
     const existingRecord = await this.subscriptionModel.findOne({
@@ -112,7 +115,11 @@ export class CsvProcessorService {
     });
 
     if (existingRecord) {
-      await this.subscriptionModel.findByIdAndUpdate(existingRecord._id, cleanedData, { new: true });
+      await this.subscriptionModel.findByIdAndUpdate(
+        existingRecord._id,
+        cleanedData,
+        { new: true },
+      );
       results.updatedRecords++;
     } else {
       await this.subscriptionModel.create(cleanedData);
@@ -179,10 +186,20 @@ export class CsvProcessorService {
   private mapExcelRecord(record: Record<string, any>) {
     return {
       nom: this.cleanString(
-        String(record['Nom adhérent'] || record['nom adherent'] || record['nomadherent'] || ''),
+        String(
+          record['Nom adhérent'] ||
+            record['nom adherent'] ||
+            record['nomadherent'] ||
+            '',
+        ),
       ),
       prenom: this.cleanString(
-        String(record['Prénom adhérent'] || record['prénom adherent'] || record['prenomadherent'] || ''),
+        String(
+          record['Prénom adhérent'] ||
+            record['prénom adherent'] ||
+            record['prenomadherent'] ||
+            '',
+        ),
       ),
       email: this.cleanString(
         String(
@@ -193,10 +210,20 @@ export class CsvProcessorService {
         ),
       ),
       telephone: this.cleanTelephone(
-        String(record['Numéro de téléphone'] || record['telephone'] || record['numerodetelephone'] || ''),
+        String(
+          record['Numéro de téléphone'] ||
+            record['telephone'] ||
+            record['numerodetelephone'] ||
+            '',
+        ),
       ),
       telephoneUrgence: this.cleanTelephone(
-        String(record['TELEPHONE URGENCE '] || record['telephone urgence'] || record['telephoneurgence'] || ''),
+        String(
+          record['TELEPHONE URGENCE '] ||
+            record['telephone urgence'] ||
+            record['telephoneurgence'] ||
+            '',
+        ),
       ),
       tarif: this.cleanTarif(String(record['Tarif'] || record['tarif'] || '')),
       dateDeNaissance: this.cleanDate(
@@ -207,15 +234,25 @@ export class CsvProcessorService {
             '',
         ),
       ),
-      adresse: this.cleanString(String(record['Adresse'] || record['adresse'] || '')),
+      adresse: this.cleanString(
+        String(record['Adresse'] || record['adresse'] || ''),
+      ),
       ville: this.cleanString(String(record['Ville'] || record['ville'] || '')),
       codePostal: this.cleanString(
-        String(record['Code Postal'] || record['code postal'] || record['codepostal'] || ''),
+        String(
+          record['Code Postal'] ||
+            record['code postal'] ||
+            record['codepostal'] ||
+            '',
+        ),
       ),
       dateInscription: new Date(),
       statutPaiement:
-        String(record['Statut de la commande'] || record['statut de la commande'] || '').toLowerCase() ===
-        'validé'
+        String(
+          record['Statut de la commande'] ||
+            record['statut de la commande'] ||
+            '',
+        ).toLowerCase() === 'validé'
           ? 'payé'
           : 'en attente',
       remarques: this.cleanString(
@@ -234,7 +271,11 @@ export class CsvProcessorService {
     try {
       const jsonData = this.parseExcel(fileBuffer);
       results.totalRecords = jsonData.length;
-      await this.handleRecords(jsonData, this.mapExcelRecord.bind(this), results);
+      await this.handleRecords(
+        jsonData,
+        this.mapExcelRecord.bind(this),
+        results,
+      );
       results.summary = this.generateSummary(results);
     } catch (error) {
       results.errors.push(`General error: ${String(error)}`);
@@ -242,7 +283,6 @@ export class CsvProcessorService {
     return results;
   }
 
-  
   private async parseCsv(fileBuffer: Buffer): Promise<CSVRecord[]> {
     const csvData: CSVRecord[] = [];
     await new Promise<void>((resolve, reject) => {

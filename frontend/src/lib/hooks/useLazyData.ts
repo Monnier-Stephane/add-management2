@@ -11,7 +11,13 @@ interface LazyDataOptions {
   gcTime?: number
 }
 
-export const useLazyData = ({ page, key, queryFn, staleTime = 30 * 1000, gcTime = 5 * 60 * 1000 }: LazyDataOptions) => {
+export const useLazyData = ({ 
+  page, 
+  key, 
+  queryFn, 
+  staleTime = 5 * 60 * 1000, // 🚀 5 minutes par défaut (au lieu de 30 secondes)
+  gcTime = 10 * 60 * 1000 // 10 minutes par défaut
+}: LazyDataOptions) => {
   const queryClient = useQueryClient()
   const queryKey = [page, key]
 
@@ -30,6 +36,8 @@ export const useLazyData = ({ page, key, queryFn, staleTime = 30 * 1000, gcTime 
     gcTime,
     enabled: false, // Ne pas charger automatiquement
     initialData: cachedData, // Utiliser les données du cache si disponibles
+    refetchOnWindowFocus: false, // 🚀 Pas de rechargement automatique
+    refetchOnMount: false, // 🚀 Pas de rechargement à chaque montage
   })
 
   // Fonction pour déclencher le chargement

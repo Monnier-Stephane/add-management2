@@ -12,26 +12,26 @@ import { Cache } from 'cache-manager';
 export class CoachesService {
   constructor(
     @InjectModel(Coach.name) private readonly coachModel: Model<CoachDocument>,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async create(createCoachDto: CreateCoachDto): Promise<Coach> {
     const newCoach = new this.coachModel(createCoachDto);
     const result = await newCoach.save();
-    
+
     // Invalider le cache
     await this.cacheManager.del('coaches:all');
     // Invalider aussi le cache par email si l'email existe
     if (result.email) {
       await this.cacheManager.del(`coaches:email:${result.email}`);
     }
-    
+
     return result;
   }
 
   async findAll(): Promise<Coach[]> {
     const cacheKey = 'coaches:all';
-    
+
     // Vérifier le cache
     const cached = await this.cacheManager.get<Coach[]>(cacheKey);
     if (cached) {
@@ -40,10 +40,10 @@ export class CoachesService {
 
     // Si pas en cache, récupérer depuis MongoDB
     const data = await this.coachModel.find().exec();
-    
+
     // Mettre en cache pour 5 minutes
     await this.cacheManager.set(cacheKey, data, 300);
-    
+
     return data;
   }
 
@@ -69,7 +69,7 @@ export class CoachesService {
     if (updatedCoach.email) {
       await this.cacheManager.del(`coaches:email:${updatedCoach.email}`);
     }
-    
+
     return updatedCoach;
   }
 
@@ -85,13 +85,13 @@ export class CoachesService {
     if (deletedCoach.email) {
       await this.cacheManager.del(`coaches:email:${deletedCoach.email}`);
     }
-    
+
     return deletedCoach;
   }
 
   async findByEmail(email: string): Promise<Coach | null> {
     const cacheKey = `coaches:email:${email}`;
-    
+
     // Vérifier le cache
     const cached = await this.cacheManager.get<Coach>(cacheKey);
     if (cached) {
@@ -100,10 +100,10 @@ export class CoachesService {
 
     // Si pas en cache, récupérer depuis MongoDB
     const coach = await this.coachModel.findOne({ email }).exec();
-    
+
     // Mettre en cache pour 5 minutes (même durée que les autres)
     await this.cacheManager.set(cacheKey, coach, 300);
-    
+
     return coach;
   }
 }
