@@ -93,11 +93,9 @@ export const forceServiceWorkerUpdate = async (): Promise<void> => {
 export const checkAndUpdateCache = async (): Promise<void> => {
   try {
     const lastVersion = localStorage.getItem('app_version');
-    const currentVersion = 'v4.0.0';
+    const currentVersion = 'v5.0.0'; // Incrémenter la version
     
     if (lastVersion !== currentVersion) {
-      console.log('🔄 Mise à jour détectée:', lastVersion, '→', currentVersion);
-      
       // Nettoyer le cache
       await clearAllCaches();
       
@@ -107,12 +105,8 @@ export const checkAndUpdateCache = async (): Promise<void> => {
       // Sauvegarder la nouvelle version
       localStorage.setItem('app_version', currentVersion);
       
-      console.log('✅ Mise à jour terminée');
-      
-      // NE PAS recharger automatiquement - laisser l'utilisateur continuer
-      // setTimeout(() => {
-      //   window.location.reload();
-      // }, 1000);
+      // Recharger la page pour appliquer les changements
+      window.location.reload();
     }
   } catch (error) {
     console.error('❌ Erreur lors de la vérification de la version:', error);

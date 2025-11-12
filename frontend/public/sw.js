@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'add-management-static-v4';
-const DYNAMIC_CACHE = 'add-management-dynamic-v4';
+const STATIC_CACHE = 'add-management-static-v5';
+const DYNAMIC_CACHE = 'add-management-dynamic-v5';
 
 const urlsToCache = [
   '/',
@@ -10,16 +10,16 @@ const urlsToCache = [
 
 // Installation du Service Worker
 self.addEventListener('install', (event) => {
-  console.log('🔄 Service Worker v4 - Installation en cours...');
+  console.log('🔄 Service Worker v5 - Installation en cours...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
     .then((cache) => cache.addAll(urlsToCache))
     .then(() => {
-      console.log('✅ Service Worker v4 - Installation terminée');
-      self.skipWaiting();
+      console.log('✅ Service Worker v5 - Installation terminée');
+      self.skipWaiting(); // Forcer l'activation immédiate
     })
     .catch((error) => {
-      console.error('❌ Service Worker v4 - Erreur installation:', error);
+      console.error('❌ Service Worker v5 - Erreur installation:', error);
       self.skipWaiting();
     })
   );
@@ -27,22 +27,21 @@ self.addEventListener('install', (event) => {
 
 // Activation du Service Worker
 self.addEventListener('activate', (event) => {
-  console.log('🔄 Service Worker v4 - Activation en cours...');
+  console.log('🔄 Service Worker v5 - Activation en cours...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
-      console.log('📦 Caches existants:', cacheNames);
       return Promise.all(
         cacheNames.map((cacheName) => {
-          // Supprimer TOUS les anciens caches (v2, v3, etc.)
-          if (!cacheName.includes('v4')) {
+          // Supprimer TOUS les anciens caches (v2, v3, v4, etc.)
+          if (!cacheName.includes('v5')) {
             console.log('🗑️ Suppression du cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      console.log('✅ Service Worker v4 - Activation terminée, nettoyage des anciens caches');
-      return self.clients.claim();
+      console.log('✅ Service Worker v5 - Activation terminée');
+      return self.clients.claim(); // Prendre le contrôle immédiatement
     })
   );
 });
