@@ -66,17 +66,6 @@ describe('CsvProcessorService', () => {
 
   describe('processExcelFile', () => {
     it('should process Excel file successfully', async () => {
-      // Mock Excel data
-      const mockExcelData = [
-        {
-          'Nom adhérent': 'Dupont',
-          'Prénom adhérent': 'Jean',
-          'Email facilement joignable ': 'jean@example.com',
-          'Numéro de téléphone': '0123456789',
-          Tarif: 'Tarif A',
-        },
-      ];
-
       // Mock xlsx.parse
       jest.doMock('node-xlsx', () => ({
         parse: jest.fn().mockReturnValue([

@@ -141,7 +141,7 @@ export class SubscriptionsController {
   }
 
   @Get('stats')
-  async getStats() {
+  async getStats(): Promise<{ total: number; attente: number; paye: number; enfants: number; ados: number; adultes: number }> {
     return this.subscriptionsService.getStats();
   }
 }

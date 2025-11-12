@@ -29,18 +29,20 @@ const [resetEmail, setResetEmail] = useState('')
 const [resetMessage, setResetMessage] = useState('')
   const router = useRouter()
 
-  const { user, loading: authLoading, profileLoading } = useAuth()
+  // 🚀 CORRECTION : Supprimer profileLoading, utiliser seulement loading
+  const { user, loading: authLoading } = useAuth()
 
   useEffect(() => {
-    if (user && !authLoading && !profileLoading) {
-      // Attendre que le profil soit chargé avant de rediriger
+    // 🚀 CORRECTION : Utiliser seulement authLoading (pas de profileLoading)
+    if (user && !authLoading) {
+      // Attendre un petit délai avant de rediriger
       const timer = setTimeout(() => {
         router.push('/dashboard')
-      }, 100) // Petit délai pour éviter les conflits
+      }, 100)
       
       return () => clearTimeout(timer)
     }
-  }, [user, authLoading, profileLoading, router])
+  }, [user, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()

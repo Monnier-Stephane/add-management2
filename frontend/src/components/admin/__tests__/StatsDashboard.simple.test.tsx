@@ -5,14 +5,19 @@ import StatsDashboard from '../StatsDashboard'
 // Mock fetch
 global.fetch = jest.fn()
 
+// Types pour les composants Recharts mockés
+interface RechartsComponentProps {
+  children?: React.ReactNode
+}
+
 // Mock Recharts components
 jest.mock('recharts', () => ({
-  PieChart: ({ children }: any) => <div data-testid="pie-chart">{children}</div>,
-  Pie: ({ children }: any) => <div data-testid="pie">{children}</div>,
-  Cell: ({ children }: any) => <div data-testid="cell">{children}</div>,
+  PieChart: ({ children }: RechartsComponentProps) => <div data-testid="pie-chart">{children}</div>,
+  Pie: ({ children }: RechartsComponentProps) => <div data-testid="pie">{children}</div>,
+  Cell: ({ children }: RechartsComponentProps) => <div data-testid="cell">{children}</div>,
   Tooltip: () => <div data-testid="tooltip">Tooltip</div>,
   Legend: () => <div data-testid="legend">Legend</div>,
-  ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,
+  ResponsiveContainer: ({ children }: RechartsComponentProps) => <div data-testid="responsive-container">{children}</div>,
 }))
 
 const mockSubscriptions = [

@@ -29,13 +29,13 @@ export const useCoaches = () => {
   return useQuery({
     queryKey: ['coaches'],
     queryFn: getCoaches,
-    staleTime: 30 * 1000, // 30 secondes - données fraîches
-    gcTime: 5 * 60 * 1000, // 5 minutes - garde en mémoire
+    staleTime: 5 * 60 * 1000, 
+    gcTime: 10 * 60 * 1000, 
     placeholderData: keepPreviousData,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    refetchOnWindowFocus: true, // Recharger au focus
-    refetchOnMount: true, // Recharger si nécessaire
+    refetchOnWindowFocus: false, 
+    refetchOnMount: false, 
   })
 }
 

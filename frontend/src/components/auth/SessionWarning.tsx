@@ -1,7 +1,6 @@
 'use client'
 
 import { useAuth } from '@/lib/auth/AuthContext'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Clock, RefreshCw } from 'lucide-react'
 import { useState, useEffect } from 'react'

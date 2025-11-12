@@ -20,7 +20,7 @@ class SentryQuotaService {
     try {
       const stored = localStorage?.getItem('sentry_event_count');
       this.eventCount = stored ? parseInt(stored) : 0;
-    } catch (error) {
+    } catch {
       this.eventCount = 0;
     }
   }
@@ -28,7 +28,7 @@ class SentryQuotaService {
   private saveEventCount() {
     try {
       localStorage?.setItem('sentry_event_count', this.eventCount.toString());
-    } catch (error) {
+    } catch {
       // localStorage non disponible (backend)
     }
   }

@@ -95,11 +95,11 @@ export class SubscriptionsService {
     return tarifs.filter((tarif) => tarif && tarif.trim() !== '');
   }
 
-  async getStats() {
+  async getStats(): Promise<{ total: number; attente: number; paye: number; enfants: number; ados: number; adultes: number }> {
     const cacheKey = 'subscriptions:stats';
 
     // Vérifier le cache
-    const cached = await this.cacheManager.get<any>(cacheKey);
+    const cached = await this.cacheManager.get<{ total: number; attente: number; paye: number; enfants: number; ados: number; adultes: number }>(cacheKey);
     if (cached) {
       return cached;
     }
@@ -114,7 +114,7 @@ export class SubscriptionsService {
       ados = 0,
       adultes = 0;
 
-    subscriptions.forEach((item: any) => {
+    subscriptions.forEach((item: Subscription) => {
       // Payment status
       if (item.statutPaiement === 'en attente') attente++;
       if (item.statutPaiement === 'payé') paye++;

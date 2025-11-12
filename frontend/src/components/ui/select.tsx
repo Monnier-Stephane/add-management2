@@ -2,8 +2,15 @@ import * as React from "react"
 import { Check, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+interface SelectProps {
+  children: React.ReactNode
+  value?: string
+  onValueChange?: (value: string) => void
+  [key: string]: unknown
+}
+
 // Functional Select components with state management
-const Select = ({ children, value, onValueChange, ...props }: any) => {
+const Select = ({ children, value, onValueChange, ...props }: SelectProps) => {
   const [isOpen, setIsOpen] = React.useState(false)
   const [selectedValue, setSelectedValue] = React.useState(value || "")
 
@@ -24,16 +31,16 @@ const Select = ({ children, value, onValueChange, ...props }: any) => {
         if (React.isValidElement(child)) {
           // Only pass the props that the child component expects
           if (child.type === SelectTrigger) {
-            return React.cloneElement(child as any, {
+            return React.cloneElement(child as React.ReactElement<{ isOpen: boolean; setIsOpen: (open: boolean) => void }>, {
               isOpen,
               setIsOpen
             })
           } else if (child.type === SelectValue) {
-            return React.cloneElement(child as any, {
+            return React.cloneElement(child as React.ReactElement<{ selectedValue: string }>, {
               selectedValue
             })
           } else if (child.type === SelectContent) {
-            return React.cloneElement(child as any, {
+            return React.cloneElement(child as React.ReactElement<{ isOpen: boolean; setIsOpen: (open: boolean) => void; onValueChange: (value: string) => void }>, {
               isOpen,
               setIsOpen,
               onValueChange: handleValueChange
@@ -47,11 +54,22 @@ const Select = ({ children, value, onValueChange, ...props }: any) => {
   )
 }
 
-const SelectGroup = ({ children, ...props }: any) => {
+interface SelectGroupProps {
+  children: React.ReactNode
+  [key: string]: unknown
+}
+
+const SelectGroup = ({ children, ...props }: SelectGroupProps) => {
   return <div {...props}>{children}</div>
 }
 
-const SelectValue = ({ placeholder, selectedValue, ...props }: any) => {
+interface SelectValueProps {
+  placeholder?: string
+  selectedValue?: string
+  [key: string]: unknown
+}
+
+const SelectValue = ({ placeholder, selectedValue, ...props }: SelectValueProps) => {
   // Filter out custom props - selectedValue is already extracted as parameter
   return <span {...props}>{selectedValue || placeholder}</span>
 }
@@ -121,7 +139,7 @@ const SelectContent = React.forwardRef<
       <div className="p-1">
         {React.Children.map(children, (child) => {
           if (React.isValidElement(child)) {
-            return React.cloneElement(child as any, {
+            return React.cloneElement(child as React.ReactElement<{ onValueChange?: (value: string) => void }>, {
               onValueChange
             })
           }

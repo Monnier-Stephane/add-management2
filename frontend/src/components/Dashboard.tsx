@@ -16,12 +16,14 @@ export function Dashboard() {
   useEffect(() => {
     setIsMounted(true)
     
-    // Vérifier et mettre à jour le cache au chargement
-    checkAndUpdateCache()
+    
+    checkAndUpdateCache().catch(error => {
+      console.warn('⚠️ Erreur lors de la vérification du cache:', error)
+    })
   }, [])
   
-  // Éviter les erreurs d'hydratation en attendant que le composant soit monté
-  if (!isMounted || loading) {
+  
+  if (!isMounted) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">
@@ -32,6 +34,7 @@ export function Dashboard() {
     )
   }
 
+  
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -39,26 +42,24 @@ export function Dashboard() {
         <header className="flex h-16 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <div className="text-sm text-gray-500">
+            {/* Afficher l'email immédiatement, puis le prénom quand disponible */}
             Bonjour {userProfile?.prenom || user?.email || 'Utilisateur'}
-            {userRole && <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{userRole}</span>}
+            {userRole && (
+              <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                {userRole}
+              </span>
+            )}
+            {loading && !userProfile && (
+              <span className="ml-2 text-xs text-gray-400">(chargement...)</span>
+            )}
           </div>
         </header>
         
         <main className="p-4">
-          {userProfile?.prenom ? (
-            <>
-              {/* Charger seulement les données essentielles du dashboard */}
-              <StatsDashboard />
-              <CoachesList />
-            </>
-          ) : (
-            <div className="flex items-center justify-center py-12">
-              <div className="flex flex-col items-center gap-4">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                <p className="text-gray-600">Chargement de vos données...</p>
-              </div>
-            </div>
-          )}
+         
+          {/* Les composants gèrent leur propre état de chargement */}
+          <StatsDashboard />
+          <CoachesList />
         </main>
       </SidebarInset>
     </SidebarProvider>
