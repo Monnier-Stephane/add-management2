@@ -1,9 +1,7 @@
-/* eslint-disable prettier/prettier */
-
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable prettier/prettier */
+
 import { Injectable, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -88,12 +86,12 @@ export class PlanningService {
     return data;
   }
 
-  async getTodayCourses(coachEmail?: string) {
+  async getTodayCourses(coachEmail?: string): Promise<unknown[]> {
     const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
     const cacheKey = `planning:today-courses:${coachEmail || 'all'}`;
 
     // Vérifier le cache
-    const cached = await this.cacheManager.get<any[]>(cacheKey);
+    const cached = await this.cacheManager.get<unknown[]>(cacheKey);
     if (cached) {
       return cached;
     }
