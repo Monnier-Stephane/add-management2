@@ -1,10 +1,5 @@
 'use client'
 
-interface ApiResponse<T> {
-  data: T
-  timestamp: number
-}
-
 class ApiService {
   private readonly API_BASE = (() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;

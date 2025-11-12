@@ -1,5 +1,5 @@
 export const auth = {
-  onAuthStateChanged: function(_auth: any, callback: (user: null | object) => void) { 
+  onAuthStateChanged: function(_auth: unknown, callback: (user: null | object) => void) { 
     callback(null);
     return function() {}; 
   },

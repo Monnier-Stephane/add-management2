@@ -724,36 +724,75 @@ export default function PlanningPage() {
         </CardHeader>
         
         <CardContent className="p-2 md:p-6">
-          <div className="h-[1400px]">
-          <style jsx>{`
+          <div className="h-[1800px]">
+          <style jsx global>{`
   .rbc-month-view .rbc-date-cell {
-  min-height: 350px !important;
-}
+    min-height: 700px !important;
+  }
 
-/* Hauteur encore plus grande sur mobile */
-@media (max-width: 768px) {
-  .rbc-month-view .rbc-date-cell {
-    min-height: 400px !important;
+  .rbc-month-view .rbc-day-bg {
+    min-height: 700px !important;
   }
-  
-  /* Réduire le padding sur mobile */
-  .rbc-calendar {
-    padding: 4px !important;
+
+  .rbc-month-view .rbc-row {
+    min-height: 700px !important;
   }
-  
-  .rbc-toolbar {
-    padding: 8px 4px !important;
-    margin-bottom: 8px !important;
+
+  /* Style spécifique pour le samedi (7e colonne) - encore plus haut */
+  .rbc-month-view .rbc-row .rbc-day-bg:nth-child(7),
+  .rbc-month-view .rbc-row .rbc-date-cell:nth-child(7) {
+    min-height: 1200px !important;
+    height: auto !important;
   }
-  
-  .rbc-header {
-    padding: 4px 2px !important;
+
+  /* S'assurer que le conteneur du samedi peut scroller si nécessaire */
+  .rbc-month-view .rbc-row .rbc-date-cell:nth-child(7) {
+    overflow: visible !important;
   }
-  
-  .rbc-date-cell {
-    padding: 2px !important;
+
+  .rbc-month-view .rbc-day-bg:nth-child(7) {
+    overflow: visible !important;
   }
-}
+
+  /* Hauteur encore plus grande sur mobile */
+  @media (max-width: 768px) {
+    .rbc-month-view .rbc-date-cell {
+      min-height: 750px !important;
+    }
+    
+    .rbc-month-view .rbc-day-bg {
+      min-height: 750px !important;
+    }
+    
+    .rbc-month-view .rbc-row {
+      min-height: 750px !important;
+    }
+    
+    /* Samedi encore plus haut sur mobile */
+    .rbc-month-view .rbc-row .rbc-day-bg:nth-child(7),
+    .rbc-month-view .rbc-row .rbc-date-cell:nth-child(7) {
+      min-height: 1300px !important;
+      height: auto !important;
+    }
+    
+    /* Réduire le padding sur mobile */
+    .rbc-calendar {
+      padding: 4px !important;
+    }
+    
+    .rbc-toolbar {
+      padding: 8px 4px !important;
+      margin-bottom: 8px !important;
+    }
+    
+    .rbc-header {
+      padding: 4px 2px !important;
+    }
+    
+    .rbc-date-cell {
+      padding: 2px !important;
+    }
+  }
 `}</style>
             <Calendar
               localizer={localizer}
