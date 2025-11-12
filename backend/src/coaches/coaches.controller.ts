@@ -32,8 +32,18 @@ export class CoachesController {
   }
 
   @Get('by-email/:email')
-  findByEmail(@Param('email') email: string) {
-    return this.coachesService.findByEmail(email);
+  async findByEmail(@Param('email') email: string) {
+    console.log('🔍 Recherche du coach par email:', email);
+    const coach = await this.coachesService.findByEmail(email);
+    console.log('📤 Coach retourné:', {
+      email: coach?.email,
+      prenom: coach?.prenom,
+      nom: coach?.nom,
+      statut: coach?.statut,
+      isNull: coach === null,
+      fullObject: coach,
+    });
+    return coach;
   }
 
   @Patch(':id')

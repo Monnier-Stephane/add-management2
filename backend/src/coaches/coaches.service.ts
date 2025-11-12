@@ -90,18 +90,44 @@ export class CoachesService {
   }
 
   async findByEmail(email: string): Promise<Coach | null> {
-    const cacheKey = `coaches:email:${email}`;
+    // Normaliser l'email en minuscules pour le cache
+    const normalizedEmail = email.toLowerCase();
+    const cacheKey = `coaches:email:${normalizedEmail}`;
     
-    // Vérifier le cache
+    console.log('🔍 [Service] Recherche coach par email:', email);
+    console.log('🔍 [Service] Email normalisé:', normalizedEmail);
+    
+    // Vérifier le cache avec l'email normalisé
     const cached = await this.cacheManager.get<Coach>(cacheKey);
     if (cached) {
+      console.log('✅ [Service] Coach trouvé dans le cache:', {
+        email: cached.email,
+        prenom: cached.prenom,
+        nom: cached.nom,
+        statut: cached.statut
+      });
       return cached;
     }
 
-    // Si pas en cache, récupérer depuis MongoDB
-    const coach = await this.coachModel.findOne({ email }).exec();
+    // Si pas en cache, récupérer depuis MongoDB avec recherche insensible à la casse
+    console.log('🔍 [Service] Recherche dans MongoDB (case-insensitive)...');
+    const coach = await this.coachModel.findOne({ 
+      email: { $regex: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+    }).exec();
     
-    // Mettre en cache pour 5 minutes (même durée que les autres)
+    console.log('📊 [Service] Résultat MongoDB:', {
+      email: coach?.email,
+      prenom: coach?.prenom,
+      nom: coach?.nom,
+      statut: coach?.statut,
+      isNull: coach === null,
+      hasPrenom: !!coach?.prenom,
+      hasNom: !!coach?.nom,
+      prenomType: typeof coach?.prenom,
+      nomType: typeof coach?.nom
+    });
+    
+    // Mettre en cache pour 5 minutes avec l'email normalisé
     await this.cacheManager.set(cacheKey, coach, 300);
     
     return coach;
