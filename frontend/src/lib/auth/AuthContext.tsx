@@ -39,41 +39,128 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
+    let isMounted = true
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!isMounted) return
+      
       setUser(firebaseUser)
       
       if (firebaseUser) {
+        setLoading(true)
         try {
-          // Récupérer le profil depuis l'API
           const apiUrl = process.env.NEXT_PUBLIC_API_URL
           if (!apiUrl) {
-            console.error('NEXT_PUBLIC_API_URL not configured')
-            setUserRole('coach')
+            if (isMounted) {
+              setUserRole('coach')
+              setLoading(false)
+            }
             return
           }
 
           const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl
-          const response = await fetch(`${cleanApiUrl}/coaches/by-email/${encodeURIComponent(firebaseUser.email!)}`)
+          const emailToSearch = firebaseUser.email!
+          const url = `${cleanApiUrl}/coaches/by-email/${encodeURIComponent(emailToSearch)}`
           
-          if (response.ok) {
-            const coach = await response.json()
+          const response = await fetch(url)
+          
+          if (!response.ok) {
+            if (isMounted) {
+              setUserRole('coach')
+              setLoading(false)
+            }
+            return
+          }
+
+          const clonedResponse = response.clone()
+          const text = await clonedResponse.text()
+          
+          if (!text || text.trim() === '' || text.trim() === 'null') {
+            // Essayer de récupérer la liste des coaches pour comparer
+            try {
+              const coachesResponse = await fetch(`${cleanApiUrl}/coaches`)
+              if (coachesResponse.ok) {
+                const allCoaches = await coachesResponse.json()
+                interface Coach {
+                  _id?: string;
+                  email?: string;
+                  prenom?: string;
+                  nom?: string;
+                  statut?: string;
+                  telephone?: string;
+                }
+                const matchingCoach = allCoaches.find((c: Coach) => 
+                  c.email?.toLowerCase() === emailToSearch.toLowerCase()
+                )
+                
+                if (matchingCoach) {
+                  if (isMounted) {
+                    setUserProfile({
+                      email: matchingCoach.email || '',
+                      prenom: matchingCoach.prenom || '',
+                      nom: matchingCoach.nom || '',
+                      statut: matchingCoach.statut || 'coach'
+                    })
+                    setUserRole(matchingCoach.statut === 'admin' ? 'admin' : 'coach')
+                    setLoading(false)
+                  }
+                  return
+                }
+              }
+            } catch {
+              // Erreur silencieuse lors de la récupération de la liste
+            }
+            
+            if (isMounted) {
+              setUserRole('coach')
+              setLoading(false)
+            }
+            return
+          }
+          
+          let coach = null
+          try {
+            coach = JSON.parse(text)
+          } catch {
+            if (isMounted) {
+              setUserRole('coach')
+              setLoading(false)
+            }
+            return
+          }
+          
+          if (!coach || typeof coach !== 'object' || Array.isArray(coach)) {
+            if (isMounted) {
+              setUserRole('coach')
+              setLoading(false)
+            }
+            return
+          }
+          
+          if (isMounted) {
             setUserProfile(coach)
             setUserRole(coach?.statut === 'admin' ? 'admin' : 'coach')
-          } else {
-            setUserRole('coach')
+            setLoading(false)
           }
-        } catch (error) {
-          console.error('Error fetching profile:', error)
-          setUserRole('coach')
+        } catch {
+          if (isMounted) {
+            setUserRole('coach')
+            setLoading(false)
+          }
         }
       } else {
-        setUserProfile(null)
-        setUserRole(null)
+        if (isMounted) {
+          setUserProfile(null)
+          setUserRole(null)
+          setLoading(false)
+        }
       }
-      setLoading(false)
     })
 
-    return () => unsubscribe()
+    return () => {
+      isMounted = false
+      unsubscribe()
+    }
   }, [])
 
   const logout = async () => {
@@ -82,8 +169,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserProfile(null)
       setUserRole(null)
       router.push('/login')
-    } catch (error) {
-      console.error('Erreur lors de la déconnexion:', error)
+    } catch {
+      // Erreur silencieuse lors de la déconnexion
     }
   }
 

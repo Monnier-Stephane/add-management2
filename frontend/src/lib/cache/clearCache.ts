@@ -113,8 +113,6 @@ export const checkAndUpdateCache = async (): Promise<void> => {
       // setTimeout(() => {
       //   window.location.reload();
       // }, 1000);
-    } else {
-      console.log('✅ Version à jour:', currentVersion);
     }
   } catch (error) {
     console.error('❌ Erreur lors de la vérification de la version:', error);

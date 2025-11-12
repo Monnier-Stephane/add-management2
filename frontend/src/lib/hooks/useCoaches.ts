@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 interface Coach {
   _id: string;
@@ -22,11 +23,13 @@ async function getCoaches(): Promise<Coach[]> {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
   const data = await response.json();
+  
+ 
   return data;
 }
 
 export const useCoaches = () => {
-  return useQuery({
+  const query = useQuery({
     queryKey: ['coaches'],
     queryFn: getCoaches,
     staleTime: 30 * 1000, // 30 secondes - données fraîches
@@ -36,6 +39,15 @@ export const useCoaches = () => {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     refetchOnWindowFocus: true, // Recharger au focus
     refetchOnMount: true, // Recharger si nécessaire
-  })
+  });
+
+  // Log supplémentaire quand les données changent
+  useEffect(() => {
+    if (query.data) {
+      console.log('🔄 Données coaches mises à jour:');
+    }
+  }, [query.data]);
+
+  return query;
 }
 

@@ -13,6 +13,10 @@ export function Dashboard() {
   const { userProfile, user, userRole, loading } = useAuth()
   const [isMounted, setIsMounted] = useState(false)
   
+  // Log pour déboguer
+  useEffect(() => {
+  }, [loading, userProfile, userRole])
+  
   useEffect(() => {
     setIsMounted(true)
     
