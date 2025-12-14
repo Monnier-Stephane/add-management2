@@ -8,14 +8,14 @@ import { PlanningModule } from './planning/planning.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule } from '@nestjs/config';
 import * as redisStore from 'cache-manager-redis-store';
-import { SentryModule } from '@sentry/nestjs/setup';
+// SentryModule retiré
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    SentryModule.forRoot(),
+    // SentryModule.forRoot(), ← Retiré
     CacheModule.register({
       store: redisStore,
       host: process.env.REDIS_HOST || 'localhost',

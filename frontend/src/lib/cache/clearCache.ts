@@ -96,7 +96,6 @@ export const checkAndUpdateCache = async (): Promise<void> => {
     const currentVersion = 'v4.0.0';
     
     if (lastVersion !== currentVersion) {
-      console.log('🔄 Mise à jour détectée:', lastVersion, '→', currentVersion);
       
       // Nettoyer le cache
       await clearAllCaches();
