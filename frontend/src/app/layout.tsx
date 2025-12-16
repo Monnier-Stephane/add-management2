@@ -1,22 +1,13 @@
-
 import React from 'react';
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { AuthProvider } from '@/lib/auth/AuthContext';
-import { SessionWarning } from '@/components/auth/SessionWarning';
-import { SessionExpiredModal } from '@/components/auth/SessionExpiredModal';
+//port { SessionWarning } from '@/components/auth/SessionWarning';
+//port { SessionExpiredModal } from '@/components/auth/SessionExpiredModal';
 import { ReactQueryProvider } from '@/lib/ReactQueryProvider';
 import { ScrollToTop } from '@/components/ui/ScrollToTop'
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      [elemName: string]: any;
-    }
-  }
-}
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -74,8 +65,6 @@ export default function RootLayout({
             <Navbar />
             {children}
             <ScrollToTop />
-            <SessionWarning />
-            <SessionExpiredModal />
           </AuthProvider>
         </ReactQueryProvider>
       </body>

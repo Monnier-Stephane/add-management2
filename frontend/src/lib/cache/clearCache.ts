@@ -105,8 +105,14 @@ export const checkAndUpdateCache = async (): Promise<void> => {
       // Sauvegarder la nouvelle version
       localStorage.setItem('app_version', currentVersion);
       
-      // Recharger la page pour appliquer les changements
-      window.location.reload();
+      console.log('✅ Mise à jour terminée');
+      
+      // NE PAS recharger automatiquement - laisser l'utilisateur continuer
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 1000);
+    } else {
+      console.log('✅ Version à jour:', currentVersion);
     }
   } catch (error) {
     console.error('❌ Erreur lors de la vérification de la version:', error);
