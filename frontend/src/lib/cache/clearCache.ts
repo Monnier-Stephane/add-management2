@@ -1,17 +1,24 @@
 'use client'
 
+// Fonction utilitaire pour les logs de debug (uniquement en développement)
+const debugLog = (...args: unknown[]): void => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(...args);
+  }
+};
+
 export const clearAllCaches = async (): Promise<void> => {
   try {
-    console.log('🧹 Début du nettoyage du cache...');
+    debugLog('🧹 Début du nettoyage du cache...');
     
     // Nettoyer le cache du navigateur
     if ('caches' in window) {
       const cacheNames = await caches.keys();
-      console.log('📦 Caches trouvés:', cacheNames);
+      debugLog('📦 Caches trouvés:', cacheNames);
       
       await Promise.all(
         cacheNames.map(cacheName => {
-          console.log('🗑️ Suppression du cache:', cacheName);
+          debugLog('🗑️ Suppression du cache:', cacheName);
           return caches.delete(cacheName);
         })
       );
@@ -20,11 +27,11 @@ export const clearAllCaches = async (): Promise<void> => {
     // Désinscrire le Service Worker
     if ('serviceWorker' in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations();
-      console.log('🔧 Service Workers trouvés:', registrations.length);
+      debugLog('🔧 Service Workers trouvés:', registrations.length);
       
       await Promise.all(
         registrations.map(registration => {
-          console.log('🗑️ Désinscription du Service Worker');
+          debugLog('🗑️ Désinscription du Service Worker');
           return registration.unregister();
         })
       );
@@ -56,7 +63,7 @@ export const clearAllCaches = async (): Promise<void> => {
       localStorage.setItem(key, value);
     });
 
-    console.log('✅ Cache nettoyé avec succès');
+    debugLog('✅ Cache nettoyé avec succès');
   } catch (error) {
     console.error('❌ Erreur lors du nettoyage:', error);
   }
@@ -64,7 +71,7 @@ export const clearAllCaches = async (): Promise<void> => {
 
 export const forceServiceWorkerUpdate = async (): Promise<void> => {
   try {
-    console.log('🔄 Forçage de la mise à jour du Service Worker...');
+    debugLog('🔄 Forçage de la mise à jour du Service Worker...');
     
     if ('serviceWorker' in navigator) {
       const registration = await navigator.serviceWorker.getRegistration();
@@ -84,7 +91,7 @@ export const forceServiceWorkerUpdate = async (): Promise<void> => {
       }
     }
     
-    console.log('✅ Service Worker mis à jour');
+    debugLog('✅ Service Worker mis à jour');
   } catch (error) {
     console.error('❌ Erreur lors de la mise à jour du Service Worker:', error);
   }
@@ -105,14 +112,14 @@ export const checkAndUpdateCache = async (): Promise<void> => {
       // Sauvegarder la nouvelle version
       localStorage.setItem('app_version', currentVersion);
       
-      console.log('✅ Mise à jour terminée');
+      debugLog('✅ Mise à jour terminée');
       
       // NE PAS recharger automatiquement - laisser l'utilisateur continuer
       // setTimeout(() => {
       //   window.location.reload();
       // }, 1000);
     } else {
-      console.log('✅ Version à jour:', currentVersion);
+      debugLog('✅ Version à jour:', currentVersion);
     }
   } catch (error) {
     console.error('❌ Erreur lors de la vérification de la version:', error);

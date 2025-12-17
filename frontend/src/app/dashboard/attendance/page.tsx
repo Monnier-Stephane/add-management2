@@ -20,7 +20,7 @@ interface Subscription {
   _id: string
   nom: string
   prenom: string
-  tarif: string
+  tarif: string | string[]
 }
 
 interface Course {
@@ -143,10 +143,15 @@ interface CourseData {
 // Fonctions utilitaires pour réduire l'imbrication
 const hasAdultsInCourse = (course: CourseData, subscriptions: Subscription[]): boolean => {
   return subscriptions.some((sub: Subscription) => {
-    const tarif = sub.tarif || ''
-    // Vérifier s'il y a des adultes qui correspondent exactement à ce cours
-    return checkCourseDayAndTime(course, tarif) && 
-           (tarif.includes('ADULTES') || tarif.includes('JEUNES ADULTES'))
+    // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
+    const tarifs = Array.isArray(sub.tarif) ? sub.tarif : [sub.tarif].filter(Boolean);
+    
+    // Vérifier si au moins un tarif correspond au cours et contient ADULTES
+    return tarifs.some((tarif: string) => {
+      const tarifStr = tarif || '';
+      return checkCourseDayAndTime(course, tarifStr) && 
+             (tarifStr.includes('ADULTES') || tarifStr.includes('JEUNES ADULTES'));
+    });
   })
 }
 
@@ -211,28 +216,34 @@ const filterStudentsForCourse = (course: CourseData, subscriptions: Subscription
   const isAdultCourseType = isAdultCourse(course)
   
   const students = subscriptions.filter((sub: Subscription) => {
-    const tarif = sub.tarif || ''
-    const isUnlimited = isUnlimitedOr2Courses(tarif)
+    // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
+    const tarifs = Array.isArray(sub.tarif) ? sub.tarif : [sub.tarif].filter(Boolean);
     
-    // Exclure spécifiquement les adultes du cours Mercredi 16h15 (cours adolescents)
-    if (course.jour === 'Mercredi' && course.heure === '16h15') {
-      // Seuls les adolescents peuvent être dans ce cours
-      return checkCourseDayAndTime(course, tarif) && !tarif.includes('ADULTES')
-    }
-    
-    // Exclure spécifiquement les adultes du cours Jeudi 18h (cours adolescents)
-    if (course.jour === 'Jeudi' && course.heure === '18h00') {
-      // Seuls les adolescents peuvent être dans ce cours
-      return checkCourseDayAndTime(course, tarif) && !tarif.includes('ADULTES')
-    }
-    
-    // Pour les élèves illimité, ils peuvent aller à tous les cours adultes
-    if (isUnlimited && (courseHasAdults || isAdultCourseType)) {
-      return true
-    }
-    
-    // Pour les autres élèves, vérifier la correspondance jour/heure
-    return checkCourseDayAndTime(course, tarif)
+    // Vérifier si au moins un tarif correspond aux critères
+    return tarifs.some((tarif: string) => {
+      const tarifStr = tarif || '';
+      const isUnlimited = isUnlimitedOr2Courses(tarifStr);
+      
+      // Exclure spécifiquement les adultes du cours Mercredi 16h15 (cours adolescents)
+      if (course.jour === 'Mercredi' && course.heure === '16h15') {
+        // Seuls les adolescents peuvent être dans ce cours
+        return checkCourseDayAndTime(course, tarifStr) && !tarifStr.includes('ADULTES');
+      }
+      
+      // Exclure spécifiquement les adultes du cours Jeudi 18h (cours adolescents)
+      if (course.jour === 'Jeudi' && course.heure === '18h00') {
+        // Seuls les adolescents peuvent être dans ce cours
+        return checkCourseDayAndTime(course, tarifStr) && !tarifStr.includes('ADULTES');
+      }
+      
+      // Pour les élèves illimité, ils peuvent aller à tous les cours adultes
+      if (isUnlimited && (courseHasAdults || isAdultCourseType)) {
+        return true;
+      }
+      
+      // Pour les autres élèves, vérifier la correspondance jour/heure
+      return checkCourseDayAndTime(course, tarifStr);
+    });
   })
   
   return students.map((sub: Subscription, index: number) => ({

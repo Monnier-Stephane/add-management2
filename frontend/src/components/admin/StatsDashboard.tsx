@@ -18,7 +18,7 @@ interface Student {
   nom: string;
   prenom: string;
   statutPaiement?: string;
-  tarif: string;
+  tarif: string | string[];
   email?: string;
   telephone?: string;
 }
@@ -48,10 +48,16 @@ export default function StatsDashboard() {
       if (item.statutPaiement === 'payé') paye++;
 
       // Categorization by pricing tier
-      const tarif = (item.tarif || '').toLowerCase();
-      if (tarif.includes('enfant')) enfants++;
-      else if (tarif.includes('ado')) ados++;
-      else if (tarif.includes('adulte')) adultes++;
+      // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
+      const tarifs = Array.isArray(item.tarif) ? item.tarif : [item.tarif].filter(Boolean);
+      
+      tarifs.forEach((tarif: string) => {
+        if (!tarif) return;
+        const tarifLower = (tarif || '').toLowerCase();
+        if (tarifLower.includes('enfant')) enfants++;
+        else if (tarifLower.includes('ado')) ados++;
+        else if (tarifLower.includes('adulte')) adultes++;
+      });
     });
 
     return { total, attente, paye, enfants, ados, adultes };
@@ -296,14 +302,40 @@ export default function StatsDashboard() {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2">
-                <Badge 
-                  variant="outline" 
-                  className="text-orange-600 border-orange-300 text-xs sm:text-sm w-fit rounded-md px-3 py-1"
-                >
-                  <span className="max-w-[140px] sm:max-w-none text-wrap">
-                    {student.tarif}
-                  </span>
-                </Badge>
+                <div className="flex flex-wrap gap-2">
+                  {Array.isArray(student.tarif) ? (
+                    student.tarif.length > 0 ? (
+                      student.tarif.map((tarif, index) => (
+                        <Badge 
+                          key={index}
+                          variant="outline" 
+                          className="text-orange-600 border-orange-300 text-xs sm:text-sm w-fit rounded-md px-3 py-1"
+                        >
+                          <span className="max-w-[140px] sm:max-w-none text-wrap">
+                            {tarif}
+                          </span>
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge variant="outline" className="text-gray-500 text-xs sm:text-sm">
+                        Aucun tarif
+                      </Badge>
+                    )
+                  ) : student.tarif ? (
+                    <Badge 
+                      variant="outline" 
+                      className="text-orange-600 border-orange-300 text-xs sm:text-sm w-fit rounded-md px-3 py-1"
+                    >
+                      <span className="max-w-[140px] sm:max-w-none text-wrap">
+                        {student.tarif}
+                      </span>
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-gray-500 text-xs sm:text-sm">
+                      Aucun tarif
+                    </Badge>
+                  )}
+                </div>
                 <Button 
                   size="sm" 
                   variant="outline"

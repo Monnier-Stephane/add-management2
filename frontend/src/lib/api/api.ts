@@ -7,6 +7,10 @@ interface ApiResponse<T> {
 
 class ApiService {
   private readonly API_BASE = (() => {
+    // En développement, toujours utiliser localhost
+    if (process.env.NODE_ENV === 'development' || typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      return 'http://localhost:3001';
+    }
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (!apiUrl) {
       console.warn('NEXT_PUBLIC_API_URL environment variable is not defined, using default');
@@ -31,7 +35,29 @@ class ApiService {
         })
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    
+          let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+          try {
+            const errorData = await response.json()
+            if (errorData.message) {
+              errorMessage = `${errorMessage} - ${errorData.message}`
+            } else if (typeof errorData === 'string') {
+              errorMessage = `${errorMessage} - ${errorData}`
+            } else {
+              errorMessage = `${errorMessage} - ${JSON.stringify(errorData)}`
+            }
+          } catch (e) {
+            // Si on ne peut pas parser la réponse, utiliser le texte brut
+            try {
+              const text = await response.text()
+              if (text) {
+                errorMessage = `${errorMessage} - ${text}`
+              }
+            } catch (e2) {
+              // Ignorer si on ne peut pas lire le texte
+            }
+          }
+          throw new Error(errorMessage)
         }
 
         const data = await response.json()

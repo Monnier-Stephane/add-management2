@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SubscriptionsService } from './subscriptions.service';
@@ -47,7 +48,7 @@ export class SubscriptionsController {
   }
 
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateSubscriptionDto: UpdateSubscriptionDto,
   ) {

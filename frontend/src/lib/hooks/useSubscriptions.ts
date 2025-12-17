@@ -9,7 +9,7 @@ interface Subscription {
   prenom: string
   email: string
   telephone?: string
-  tarif: string
+  tarif: string | string[]
   statutPaiement?: string
 }
 

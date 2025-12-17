@@ -32,8 +32,8 @@ export class Subscription {
   @Prop()
   codePostal: string;
 
-  @Prop()
-  tarif: string;
+  @Prop({ type: [String], default: [] })
+  tarif: string[];
 
   @Prop({ default: Date.now })
   dateInscription: Date;

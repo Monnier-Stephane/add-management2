@@ -21,12 +21,27 @@ export class SubscriptionsService {
   async create(
     createSubscriptionDto: CreateSubscriptionDto,
   ): Promise<Subscription> {
-    const newSubscription = new this.subscriptionModel(createSubscriptionDto);
+    // Normaliser tarif : convertir string en tableau si nécessaire
+    const normalizedDto = {
+      ...createSubscriptionDto,
+      tarif: Array.isArray(createSubscriptionDto.tarif)
+        ? createSubscriptionDto.tarif
+        : createSubscriptionDto.tarif
+          ? [createSubscriptionDto.tarif]
+          : [],
+    };
+
+    const newSubscription = new this.subscriptionModel(normalizedDto);
     const result = await newSubscription.save();
 
-    // Invalider le cache
-    await this.cacheManager.del('subscriptions:all');
-    await this.cacheManager.del('subscriptions:stats');
+    // Invalider le cache (ignorer les erreurs si Redis n'est pas disponible)
+    try {
+      await this.cacheManager.del('subscriptions:all');
+      await this.cacheManager.del('subscriptions:stats');
+      await this.cacheManager.del('subscriptions:tarifs:unique');
+    } catch (cacheError) {
+      console.warn('Cache invalidation failed (non-critical):', cacheError);
+    }
 
     return result;
   }
@@ -61,18 +76,74 @@ export class SubscriptionsService {
     id: string,
     updateSubscriptionDto: UpdateSubscriptionDto,
   ): Promise<Subscription> {
-    const updatedSubscription = await this.subscriptionModel
-      .findByIdAndUpdate(id, updateSubscriptionDto, { new: true })
-      .exec();
-    if (!updatedSubscription) {
-      throw new NotFoundException(`Subscription with ID "${id}" not found`);
+    let updateData: any = {};
+    try {
+      // Normaliser tarif : convertir string en tableau si nécessaire
+      if (updateSubscriptionDto.tarif !== undefined) {
+        updateData.tarif = Array.isArray(updateSubscriptionDto.tarif)
+          ? updateSubscriptionDto.tarif
+          : updateSubscriptionDto.tarif
+            ? [updateSubscriptionDto.tarif]
+            : [];
+      }
+      
+      // Normaliser dateDeNaissance : convertir string en Date si nécessaire
+      if (updateSubscriptionDto.dateDeNaissance !== undefined) {
+        const dateValue = updateSubscriptionDto.dateDeNaissance;
+        if (dateValue instanceof Date) {
+          updateData.dateDeNaissance = dateValue;
+        } else if (typeof dateValue === 'string') {
+          updateData.dateDeNaissance = new Date(dateValue);
+        } else {
+          updateData.dateDeNaissance = dateValue;
+        }
+      }
+      
+      // Copier tous les autres champs
+      if (updateSubscriptionDto.nom !== undefined) updateData.nom = updateSubscriptionDto.nom;
+      if (updateSubscriptionDto.prenom !== undefined) updateData.prenom = updateSubscriptionDto.prenom;
+      if (updateSubscriptionDto.email !== undefined) updateData.email = updateSubscriptionDto.email;
+      if (updateSubscriptionDto.telephone !== undefined) updateData.telephone = updateSubscriptionDto.telephone;
+      if (updateSubscriptionDto.telephoneUrgence !== undefined) updateData.telephoneUrgence = updateSubscriptionDto.telephoneUrgence;
+      if (updateSubscriptionDto.adresse !== undefined) updateData.adresse = updateSubscriptionDto.adresse;
+      if (updateSubscriptionDto.ville !== undefined) updateData.ville = updateSubscriptionDto.ville;
+      if (updateSubscriptionDto.codePostal !== undefined) updateData.codePostal = updateSubscriptionDto.codePostal;
+      if (updateSubscriptionDto.statutPaiement !== undefined) updateData.statutPaiement = updateSubscriptionDto.statutPaiement;
+      if (updateSubscriptionDto.remarques !== undefined) updateData.remarques = updateSubscriptionDto.remarques;
+
+      // Vérifier qu'il y a des données à mettre à jour
+      if (Object.keys(updateData).length === 0) {
+        throw new Error('Aucune donnée à mettre à jour');
+      }
+
+      // Mise à jour MongoDB - utiliser updateOne pour éviter les problèmes
+      await this.subscriptionModel.updateOne({ _id: id }, updateData).exec();
+      const updatedSubscription = await this.subscriptionModel.findById(id).exec();
+        
+      if (!updatedSubscription) {
+        throw new NotFoundException(`Subscription with ID "${id}" not found`);
+      }
+
+      // Invalider le cache (ignorer les erreurs si Redis n'est pas disponible)
+      try {
+        await this.cacheManager.del('subscriptions:all');
+        await this.cacheManager.del('subscriptions:stats');
+        await this.cacheManager.del('subscriptions:tarifs:unique');
+      } catch (cacheError) {
+        console.warn('Cache invalidation failed (non-critical):', cacheError);
+      }
+
+      return updatedSubscription;
+    } catch (error) {
+      console.error('❌ Error updating subscription:', error);
+      console.error('📥 Update DTO received:', JSON.stringify(updateSubscriptionDto, null, 2));
+      console.error('🔄 Update data prepared:', JSON.stringify(updateData, null, 2));
+      if (error instanceof Error) {
+        console.error('📝 Error message:', error.message);
+        console.error('📚 Error stack:', error.stack);
+      }
+      throw error;
     }
-
-    // Invalider le cache
-    await this.cacheManager.del('subscriptions:all');
-    await this.cacheManager.del('subscriptions:stats');
-
-    return updatedSubscription;
   }
 
   async remove(id: string): Promise<Subscription> {
@@ -83,16 +154,51 @@ export class SubscriptionsService {
       throw new NotFoundException(`Subscription with ID "${id}" not found`);
     }
 
-    // Invalider le cache
-    await this.cacheManager.del('subscriptions:all');
-    await this.cacheManager.del('subscriptions:stats');
+    // Invalider le cache (ignorer les erreurs si Redis n'est pas disponible)
+    try {
+      await this.cacheManager.del('subscriptions:all');
+      await this.cacheManager.del('subscriptions:stats');
+      await this.cacheManager.del('subscriptions:tarifs:unique');
+    } catch (cacheError) {
+      console.warn('Cache invalidation failed (non-critical):', cacheError);
+    }
 
     return deletedSubscription;
   }
 
   async getUniqueTarifs(): Promise<string[]> {
-    const tarifs = await this.subscriptionModel.distinct('tarif').exec();
-    return tarifs.filter((tarif) => tarif && tarif.trim() !== '');
+    const cacheKey = 'subscriptions:tarifs:unique';
+
+    // Vérifier le cache
+    const cached = await this.cacheManager.get<string[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Récupérer toutes les subscriptions avec leurs tarifs (tableaux)
+    const subscriptions = await this.subscriptionModel.find().select('tarif').exec();
+
+    // Extraire tous les tarifs uniques depuis les tableaux
+    const allTarifs = new Set<string>();
+    subscriptions.forEach((sub: any) => {
+      if (Array.isArray(sub.tarif)) {
+        sub.tarif.forEach((tarif) => {
+          if (tarif && typeof tarif === 'string' && tarif.trim() !== '') {
+            allTarifs.add(tarif.trim());
+          }
+        });
+      } else if (sub.tarif && typeof sub.tarif === 'string' && sub.tarif.trim() !== '') {
+        // Rétrocompatibilité : si tarif est encore un string (anciennes données)
+        allTarifs.add(sub.tarif.trim());
+      }
+    });
+
+    const result = Array.from(allTarifs).sort();
+
+    // Mettre en cache (5 minutes)
+    await this.cacheManager.set(cacheKey, result, 300);
+
+    return result;
   }
 
   async getStats() {
@@ -120,10 +226,16 @@ export class SubscriptionsService {
       if (item.statutPaiement === 'payé') paye++;
 
       // Categorization by pricing tier
-      const tarif = (item.tarif || '').toLowerCase();
-      if (tarif.includes('enfant')) enfants++;
-      else if (tarif.includes('ado')) ados++;
-      else if (tarif.includes('adulte')) adultes++;
+      // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
+      const tarifs = Array.isArray(item.tarif) ? item.tarif : [item.tarif].filter(Boolean);
+
+      tarifs.forEach((tarif: string) => {
+        if (!tarif) return;
+        const tarifLower = (tarif || '').toLowerCase();
+        if (tarifLower.includes('enfant')) enfants++;
+        else if (tarifLower.includes('ado')) ados++;
+        else if (tarifLower.includes('adulte')) adultes++;
+      });
     });
 
     const stats = {

@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth/AuthContext'
 import { Loader2 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Pencil, Trash2, Home, Phone, MapPin, CreditCard, FileText } from "lucide-react";
 import Link from "next/link";
 import { useSubscriptions, useUniqueTarifs } from '@/lib/hooks/useSubscriptions';
@@ -26,7 +27,7 @@ interface Student {
   adresse: string;
   ville: string;
   codePostal: string;
-  tarif: string;
+  tarif: string | string[];
   dateInscription: string;
   statutPaiement: 'payé' | 'en attente' | 'annulé';
   remarques?: string;
@@ -90,17 +91,23 @@ const StudentsPage = () => {
   // Function to categorize students by age
   const categorizeByAge = (student: Student): string => {
     // PRIORITÉ 1: Utiliser le tarif qui contient l'information d'âge
-    const tarif = (student.tarif || '').toLowerCase();
+    // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
+    const tarifs = Array.isArray(student.tarif) ? student.tarif : [student.tarif].filter(Boolean);
     
-    // Logique basée sur le tarif (plus fiable que les dates corrompues)
-    if (tarif.includes('enfant') || tarif.includes('5 à 8') || tarif.includes('9 à 11') || tarif.includes('7 à 11')) {
-      return 'enfants';
-    }
-    if (tarif.includes('ado') || tarif.includes('10 à 17') || tarif.includes('11 à 17') || tarif.includes('12 à 17')) {
-      return 'adolescents';
-    }
-    if (tarif.includes('adulte') || tarif.includes('18 à 20') || tarif.includes('jeunes adultes')) {
-      return 'adultes';
+    // Parcourir tous les tarifs pour trouver la catégorie
+    for (const tarif of tarifs) {
+      const tarifLower = (tarif || '').toLowerCase();
+      
+      // Logique basée sur le tarif (plus fiable que les dates corrompues)
+      if (tarifLower.includes('enfant') || tarifLower.includes('5 à 8') || tarifLower.includes('9 à 11') || tarifLower.includes('7 à 11')) {
+        return 'enfants';
+      }
+      if (tarifLower.includes('ado') || tarifLower.includes('10 à 17') || tarifLower.includes('11 à 17') || tarifLower.includes('12 à 17')) {
+        return 'adolescents';
+      }
+      if (tarifLower.includes('adulte') || tarifLower.includes('18 à 20') || tarifLower.includes('jeunes adultes')) {
+        return 'adultes';
+      }
     }
     
     // FALLBACK: Essayer de calculer l'âge si le tarif n'est pas clair
@@ -203,6 +210,13 @@ const StudentsPage = () => {
   // Fonction pour ouvrir le modal d'édition
   const handleEdit = (student: Student) => {
     setEditingStudent(student);
+    // Normaliser tarif : convertir string en tableau si nécessaire
+    const normalizedTarif = Array.isArray(student.tarif) 
+      ? student.tarif 
+      : student.tarif 
+        ? [student.tarif] 
+        : [];
+    
     setEditForm({
       nom: student.nom,
       prenom: student.prenom,
@@ -212,7 +226,7 @@ const StudentsPage = () => {
       adresse: student.adresse,
       ville: student.ville,
       codePostal: student.codePostal,
-      tarif: student.tarif,
+      tarif: normalizedTarif,
       statutPaiement: student.statutPaiement,
       remarques: student.remarques || '',
       jour: student.jour || '',
@@ -235,7 +249,34 @@ const StudentsPage = () => {
     }
 
     try {
-      await api.patch(`/subscriptions/${editingStudent._id}`, editForm);
+      // Préparer les données à envoyer - seulement les champs modifiés
+      const updateData: Record<string, any> = {};
+      
+      // Champs à envoyer (seulement ceux qui existent dans editForm)
+      const fieldsToCheck = [
+        'nom', 'prenom', 'email', 'telephone', 'telephoneUrgence',
+        'adresse', 'ville', 'codePostal', 'tarif', 'statutPaiement', 'remarques'
+      ];
+      
+      fieldsToCheck.forEach(field => {
+        if (editForm[field as keyof typeof editForm] !== undefined) {
+          updateData[field] = editForm[field as keyof typeof editForm];
+        }
+      });
+      
+      // Toujours inclure dateDeNaissance si disponible
+      if (editForm.dateDeNaissance || editingStudent.dateDeNaissance) {
+        updateData.dateDeNaissance = editForm.dateDeNaissance || editingStudent.dateDeNaissance;
+      }
+
+      // Nettoyer les valeurs vides pour les chaînes (sauf pour tarif qui peut être un tableau vide)
+      Object.keys(updateData).forEach(key => {
+        if (key !== 'tarif' && updateData[key] === '') {
+          delete updateData[key];
+        }
+      });
+
+      await api.patch(`/subscriptions/${editingStudent._id}`, updateData);
       
       // Rafraîchir les données
       refetch();
@@ -580,6 +621,30 @@ const StudentsPage = () => {
                 </div>
               </div>
 
+              {/* Tarifs */}
+              <div>
+                <Label className="text-sm font-medium text-gray-500">Tarifs</Label>
+                <div className="mt-1 space-y-1">
+                  {Array.isArray(selectedStudent.tarif) ? (
+                    selectedStudent.tarif.length > 0 ? (
+                      selectedStudent.tarif.map((tarif, index) => (
+                        <p key={index} className="text-base bg-gray-50 px-3 py-2 rounded border">
+                          {tarif}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="text-gray-500">Aucun tarif</p>
+                    )
+                  ) : selectedStudent.tarif ? (
+                    <p className="text-base bg-gray-50 px-3 py-2 rounded border">
+                      {selectedStudent.tarif}
+                    </p>
+                  ) : (
+                    <p className="text-gray-500">Aucun tarif</p>
+                  )}
+                </div>
+              </div>
+
               {/* Statut de paiement */}
               {/* Statut de paiement - Seulement pour les admins */}
 {isAdmin && (
@@ -706,27 +771,43 @@ const StudentsPage = () => {
               />
             </div>
             
-            <div>
-              <Label htmlFor="tarif" className="mb-2 block">Tarif</Label>
-              <Select
-                value={editForm.tarif || ''}
-                onValueChange={(value: string) => setEditForm({...editForm, tarif: value})}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sélectionner un tarif" />
-                </SelectTrigger>
-                <SelectContent className="max-w-[90vw] sm:max-w-none">
-                  {tarifsArray.map((tarif) => (
-                    <SelectItem 
-                      key={tarif} 
-                      value={tarif}
-                      className="text-xs sm:text-sm break-words whitespace-normal leading-relaxed"
-                    >
-                      {tarif}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="col-span-2">
+              <Label htmlFor="tarif" className="mb-2 block">Tarifs (sélection multiple)</Label>
+              <div className="border rounded-lg p-4 max-h-60 overflow-y-auto">
+                {tarifsArray.length > 0 ? (
+                  <div className="space-y-2">
+                    {tarifsArray.map((tarif) => {
+                      const selectedTarifs = Array.isArray(editForm.tarif) ? editForm.tarif : editForm.tarif ? [editForm.tarif] : [];
+                      const isChecked = selectedTarifs.includes(tarif);
+                      
+                      return (
+                        <div key={tarif} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`tarif-${tarif}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              const currentTarifs = Array.isArray(editForm.tarif) ? editForm.tarif : editForm.tarif ? [editForm.tarif] : [];
+                              if (checked) {
+                                setEditForm({...editForm, tarif: [...currentTarifs, tarif]});
+                              } else {
+                                setEditForm({...editForm, tarif: currentTarifs.filter(t => t !== tarif)});
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`tarif-${tarif}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                          >
+                            {tarif}
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Aucun tarif disponible</p>
+                )}
+              </div>
             </div>
             
             <div>
