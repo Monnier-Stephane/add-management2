@@ -35,7 +35,7 @@ class ApiService {
         })
 
         if (!response.ok) {
-    
+          // Construire le message d'erreur
           let errorMessage = `HTTP ${response.status}: ${response.statusText}`
           try {
             const errorData = await response.json()
@@ -57,13 +57,45 @@ class ApiService {
               // Ignorer si on ne peut pas lire le texte
             }
           }
+          
+          // Les erreurs 4xx (client errors) ne doivent jamais être retentées
+          // Elles indiquent des problèmes de validation, ressources manquantes, etc.
+          if (response.status >= 400 && response.status < 500) {
+            throw new Error(errorMessage)
+          }
+          
+          // Les erreurs 5xx (server errors) peuvent être retentées si ce n'est pas le dernier essai
+          // Car elles peuvent être temporaires (serveur surchargé, erreur temporaire, etc.)
+          if (response.status >= 500) {
+            if (i === retries - 1) {
+              // Dernier essai, lancer l'erreur
+              throw new Error(errorMessage)
+            }
+            // Sinon, continuer la boucle pour réessayer
+            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))) // Exponential backoff
+            continue
+          }
+          
+          // Par défaut, lancer l'erreur
           throw new Error(errorMessage)
         }
 
         const data = await response.json()
         return data
       } catch (error) {
-        if (i === retries - 1) throw error
+        // Si c'est une erreur HTTP 4xx, elle a déjà été lancée dans le bloc ci-dessus
+        // Ici on ne gère que les erreurs réseau (pas de réponse, timeout, etc.)
+        if (error instanceof Error && error.message.startsWith('HTTP 4')) {
+          // Erreur client (4xx), ne pas retenter
+          throw error
+        }
+        
+        // Si c'est le dernier essai, lancer l'erreur
+        if (i === retries - 1) {
+          throw error
+        }
+        
+        // Pour les erreurs réseau ou 5xx, attendre avant de réessayer
         await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))) // Exponential backoff
       }
     }

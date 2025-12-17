@@ -51,13 +51,27 @@ export default function StatsDashboard() {
       // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
       const tarifs = Array.isArray(item.tarif) ? item.tarif : [item.tarif].filter(Boolean);
       
-      tarifs.forEach((tarif: string) => {
-        if (!tarif) return;
+      // Déterminer la catégorie principale de la souscription (une seule catégorie par souscription)
+      let categoryFound = false;
+      for (const tarif of tarifs) {
+        if (!tarif) continue;
         const tarifLower = (tarif || '').toLowerCase();
-        if (tarifLower.includes('enfant')) enfants++;
-        else if (tarifLower.includes('ado')) ados++;
-        else if (tarifLower.includes('adulte')) adultes++;
-      });
+        
+        // Priorité : enfants > ados > adultes (première catégorie trouvée)
+        if (!categoryFound && tarifLower.includes('enfant')) {
+          enfants++;
+          categoryFound = true;
+          break; // Une souscription ne peut être que dans une catégorie
+        } else if (!categoryFound && tarifLower.includes('ado')) {
+          ados++;
+          categoryFound = true;
+          break;
+        } else if (!categoryFound && tarifLower.includes('adulte')) {
+          adultes++;
+          categoryFound = true;
+          break;
+        }
+      }
     });
 
     return { total, attente, paye, enfants, ados, adultes };
