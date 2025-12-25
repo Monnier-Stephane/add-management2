@@ -1,9 +1,5 @@
 'use client'
 
-interface ApiResponse<T> {
-  data: T
-  timestamp: number
-}
 
 class ApiService {
   private readonly API_BASE = (() => {
@@ -46,14 +42,14 @@ class ApiService {
             } else {
               errorMessage = `${errorMessage} - ${JSON.stringify(errorData)}`
             }
-          } catch (e) {
+          } catch {
             // Si on ne peut pas parser la réponse, utiliser le texte brut
             try {
               const text = await response.text()
               if (text) {
                 errorMessage = `${errorMessage} - ${text}`
               }
-            } catch (e2) {
+            } catch {
               // Ignorer si on ne peut pas lire le texte
             }
           }

@@ -4,6 +4,7 @@ import { createContext, useEffect, useState, useContext } from 'react'
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
 import { auth } from './firebase'
 import { useRouter } from 'next/navigation'
+import { api } from '@/lib/api/api'
 
 type UserRole = 'coach' | 'admin'
 
@@ -49,97 +50,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         setLoading(true)
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL
-          if (!apiUrl) {
-            if (isMounted) {
-              setUserRole('coach')
-              setLoading(false)
-            }
-            return
-          }
-
-          const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl
           const emailToSearch = firebaseUser.email!
-          const url = `${cleanApiUrl}/coaches/by-email/${encodeURIComponent(emailToSearch)}`
           
-          const response = await fetch(url)
-          
-          if (!response.ok) {
-            if (isMounted) {
-              setUserRole('coach')
-              setLoading(false)
-            }
-            return
-          }
-
-          const clonedResponse = response.clone()
-          const text = await clonedResponse.text()
-          
-          if (!text || text.trim() === '' || text.trim() === 'null') {
-            // Essayer de récupérer la liste des coaches pour comparer
-            try {
-              const coachesResponse = await fetch(`${cleanApiUrl}/coaches`)
-              if (coachesResponse.ok) {
-                const allCoaches = await coachesResponse.json()
-                interface Coach {
-                  _id?: string;
-                  email?: string;
-                  prenom?: string;
-                  nom?: string;
-                  statut?: string;
-                  telephone?: string;
-                }
-                const matchingCoach = allCoaches.find((c: Coach) => 
-                  c.email?.toLowerCase() === emailToSearch.toLowerCase()
-                )
-                
-                if (matchingCoach) {
-                  if (isMounted) {
-                    setUserProfile({
-                      email: matchingCoach.email || '',
-                      prenom: matchingCoach.prenom || '',
-                      nom: matchingCoach.nom || '',
-                      statut: matchingCoach.statut || 'coach'
-                    })
-                    setUserRole(matchingCoach.statut === 'admin' ? 'admin' : 'coach')
-                    setLoading(false)
-                  }
-                  return
-                }
-              }
-            } catch {
-              // Erreur silencieuse lors de la récupération de la liste
-            }
-            
-            if (isMounted) {
-              setUserRole('coach')
-              setLoading(false)
-            }
-            return
-          }
-          
-          let coach = null
           try {
-            coach = JSON.parse(text)
+            // Essayer d'abord l'endpoint spécifique
+            const coach = await api.get<any>(`/coaches/by-email/${encodeURIComponent(emailToSearch)}`)
+            
+            if (coach && typeof coach === 'object' && !Array.isArray(coach)) {
+              if (isMounted) {
+                setUserProfile(coach)
+                setUserRole(coach?.statut === 'admin' ? 'admin' : 'coach')
+                setLoading(false)
+              }
+              return
+            }
           } catch {
-            if (isMounted) {
-              setUserRole('coach')
-              setLoading(false)
-            }
-            return
+            // Si l'endpoint spécifique échoue, essayer la liste complète
           }
           
-          if (!coach || typeof coach !== 'object' || Array.isArray(coach)) {
-            if (isMounted) {
-              setUserRole('coach')
-              setLoading(false)
+          // Fallback : récupérer la liste des coaches pour comparer
+          try {
+            const allCoaches = await api.get<any[]>('/coaches')
+            interface Coach {
+              _id?: string;
+              email?: string;
+              prenom?: string;
+              nom?: string;
+              statut?: string;
+              telephone?: string;
             }
-            return
+            const matchingCoach = allCoaches.find((c: Coach) => 
+              c.email?.toLowerCase() === emailToSearch.toLowerCase()
+            )
+            
+            if (matchingCoach) {
+              if (isMounted) {
+                setUserProfile({
+                  email: matchingCoach.email || '',
+                  prenom: matchingCoach.prenom || '',
+                  nom: matchingCoach.nom || '',
+                  statut: matchingCoach.statut || 'coach'
+                })
+                setUserRole(matchingCoach.statut === 'admin' ? 'admin' : 'coach')
+                setLoading(false)
+              }
+              return
+            }
+          } catch {
+            // Erreur silencieuse lors de la récupération de la liste
           }
           
+          // Par défaut, assigner le rôle coach
           if (isMounted) {
-            setUserProfile(coach)
-            setUserRole(coach?.statut === 'admin' ? 'admin' : 'coach')
+            setUserRole('coach')
             setLoading(false)
           }
         } catch {
