@@ -2,6 +2,7 @@
 
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { api } from '../api/api'
 
 interface Coach {
   _id: string;
@@ -13,19 +14,7 @@ interface Coach {
 }
 
 async function getCoaches(): Promise<Coach[]> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) {
-    throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-  }
-  const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-  const response = await fetch(`${cleanApiUrl}/coaches`);
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  const data = await response.json();
-  
- 
-  return data;
+  return api.get<Coach[]>('/coaches');
 }
 
 export const useCoaches = () => {

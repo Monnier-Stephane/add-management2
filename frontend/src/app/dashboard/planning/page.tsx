@@ -6,7 +6,7 @@ import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-
+import { api } from '@/lib/api/api';
 import { Input } from '@/components/ui/input';
 import { Calendar as CalendarIcon, Plus, X, Users, Home, ClipboardList, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -225,7 +225,7 @@ export default function PlanningPage() {
   }; 
 
   useEffect(() => {
-    ;
+  
   
     // Charger seulement si on a les coaches
     if (coaches && coaches.length > 0) {
@@ -242,43 +242,21 @@ export default function PlanningPage() {
         
         // 3. Charger les assignations depuis l'API
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-          let cleanApiUrl: string;
+          const assignments = await api.get<any[]>('/planning/assignments');
           
-          if (!apiUrl) {
-            console.warn('NEXT_PUBLIC_API_URL environment variable is not defined, using default');
-            cleanApiUrl = 'http://localhost:3001';
-          } else {
-            cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+          if (Array.isArray(assignments)) {
+            setCachedAssignments(assignments);
             
-            // Validation de l'URL avant l'appel
-            try {
-              new URL(cleanApiUrl);
-            } catch (urlError) {
-              console.error('URL invalide:', cleanApiUrl, urlError);
-              throw new Error('URL invalide dans NEXT_PUBLIC_API_URL');
-            }
-          }
-          
-          const response = await fetch(`${cleanApiUrl}/planning/assignments`);
-          
-          if (response.ok) {
-            const assignments = await response.json();
-            
-            if (Array.isArray(assignments)) {
-              setCachedAssignments(assignments);
-              
-              setEvents(prev => prev.map(event => {
-                const assignment = assignments.find((a: any) => a.eventId === event.id);
-                return assignment ? {
-                  ...event,
-                  resource: {
-                    ...event.resource!,
-                    coaches: assignment.coaches || []
-                  }
-                } : event;
-              }));
-            }
+            setEvents(prev => prev.map(event => {
+              const assignment = assignments.find((a: any) => a.eventId === event.id);
+              return assignment ? {
+                ...event,
+                resource: {
+                  ...event.resource!,
+                  coaches: assignment.coaches || []
+                }
+              } : event;
+            }));
           }
         } catch (error) {
           console.error('Erreur lors du chargement des assignations:', error);
@@ -323,23 +301,10 @@ export default function PlanningPage() {
     
     // Sauvegarder en base de données
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) {
-        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-      }
-      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-      const response = await fetch(`${cleanApiUrl}/planning/assign-coach`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId: selectedEvent.id,
-          coachName: coachName
-        })
+      await api.post('/planning/assign-coach', {
+        eventId: selectedEvent.id,
+        coachName: coachName
       });
-      
-      if (!response.ok) {
-        throw new Error('Erreur lors de la sauvegarde');
-      }
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       alert('Erreur lors de la sauvegarde de l\'assignation');
@@ -374,23 +339,10 @@ export default function PlanningPage() {
 
     // Sauvegarder en base de données
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) {
-        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-      }
-      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-      const response = await fetch(`${cleanApiUrl}/planning/remove-coach`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId: selectedEvent.id,
-          coachName: coachName
-        })
+      await api.post('/planning/remove-coach', {
+        eventId: selectedEvent.id,
+        coachName: coachName
       });
-      
-      if (!response.ok) {
-        throw new Error('Erreur lors de la suppression');
-      }
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       alert('Erreur lors de la suppression de l\'assignation');
@@ -503,30 +455,21 @@ export default function PlanningPage() {
           
           // 3. Charger les assignations depuis l'API
           try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-            if (!apiUrl) {
-              throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-            }
-            const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-            const response = await fetch(`${cleanApiUrl}/planning/assignments`);
+            const assignments = await api.get<any[]>('/planning/assignments');
             
-            if (response.ok) {
-              const assignments = await response.json();
+            if (Array.isArray(assignments)) {
+              setCachedAssignments(assignments);
               
-              if (Array.isArray(assignments)) {
-                setCachedAssignments(assignments);
-                
-                setEvents(prev => prev.map(event => {
-                  const assignment = assignments.find((a: any) => a.eventId === event.id);
-                  return assignment ? {
-                    ...event,
-                    resource: {
-                      ...event.resource!,
-                      coaches: assignment.coaches || []
-                    }
-                  } : event;
-                }));
-              }
+              setEvents(prev => prev.map(event => {
+                const assignment = assignments.find((a: any) => a.eventId === event.id);
+                return assignment ? {
+                  ...event,
+                  resource: {
+                    ...event.resource!,
+                    coaches: assignment.coaches || []
+                  }
+                } : event;
+              }));
             }
           } catch (error) {
             console.error('Erreur lors du chargement des assignations:', error);
