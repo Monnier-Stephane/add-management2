@@ -1,5 +1,11 @@
-import StatsDashboard from '@/components/admin/StatsDashboard';
+'use client'
 
+import dynamic from 'next/dynamic'
+
+const StatsDashboard = dynamic(
+  () => import('@/components/admin/StatsDashboard'),
+  { ssr: false }
+)
 
 export default function AdminPage() {
   return (
