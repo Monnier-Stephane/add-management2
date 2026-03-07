@@ -6,7 +6,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "type": "module",
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch"

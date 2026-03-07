@@ -3,10 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { AuthProvider } from '@/lib/auth/AuthContext';
-//port { SessionWarning } from '@/components/auth/SessionWarning';
-//port { SessionExpiredModal } from '@/components/auth/SessionExpiredModal';
 import { ReactQueryProvider } from '@/lib/ReactQueryProvider';
 import { ScrollToTop } from '@/components/ui/ScrollToTop'
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

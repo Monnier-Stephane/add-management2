@@ -66,14 +66,3 @@ export function safeEncodeParam(value: string): string {
   }
 }
 
-/**
- * Obtient l'URL de base de l'API avec fallback
- */
-export function getApiBaseUrl(): string {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) {
-    console.warn('NEXT_PUBLIC_API_URL environment variable is not defined, using default');
-    return 'http://localhost:3001';
-  }
-  return apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-}

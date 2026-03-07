@@ -1,10 +1,15 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/AppSidebar'
-import StatsDashboard from '@/components/admin/StatsDashboard'
 import CoachesList from '@/components/CoachesList'
+
+const StatsDashboard = dynamic(
+  () => import('@/components/admin/StatsDashboard'),
+  { ssr: false }
+)
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { checkAndUpdateCache } from '@/lib/cache/clearCache'

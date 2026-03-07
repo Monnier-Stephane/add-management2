@@ -5,37 +5,9 @@ import { useAuth } from '@/lib/auth/AuthContext'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import { Clock } from 'lucide-react'
-import { useState, useEffect } from 'react'
 
 export function Navbar() {
   const { user, logout, sessionExpired, timeRemaining } = useAuth()
-  
-  // Calculer le temps restant total de la session
-  const getSessionTimeRemaining = () => {
-    if (typeof window === 'undefined') return 0
-    const sessionStartTime = sessionStorage.getItem('sessionStartTime')
-    if (!sessionStartTime) return 0
-    
-    const elapsed = Date.now() - parseInt(sessionStartTime)
-    const totalSessionTime = 60 * 60 * 1000 // 1 heure
-    const remaining = totalSessionTime - elapsed
-    return Math.max(0, remaining)
-  }
-  
-  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(0)
-  
-  useEffect(() => {
-    if (user && !sessionExpired) {
-      const updateTimer = () => {
-        setSessionTimeRemaining(getSessionTimeRemaining())
-      }
-      
-      updateTimer()
-      const interval = setInterval(updateTimer, 1000)
-      
-      return () => clearInterval(interval)
-    }
-  }, [user, sessionExpired])
   
   const handleLogout = async () => {
     try {
@@ -58,12 +30,12 @@ export function Navbar() {
         <div className="flex items-center gap-4">
           {user ? (
             <>
-              {/* Indicateur de session discret */}
-              {sessionTimeRemaining > 0 && !sessionExpired && (
+              {/* Compte à rebours de la session (même durée que la déconnexion auto) */}
+              {timeRemaining > 0 && !sessionExpired && (
                 <div className="flex items-center gap-2 text-gray-600 text-sm">
                   <Clock className="h-4 w-4" />
                   <span className="inline">
-                    {Math.floor(sessionTimeRemaining / 60000)}:{(Math.floor((sessionTimeRemaining % 60000) / 1000)).toString().padStart(2, '0')}
+                    {Math.floor(timeRemaining / 60000)}:{(Math.floor((timeRemaining % 60000) / 1000)).toString().padStart(2, '0')}
                   </span>
                 </div>
               )}

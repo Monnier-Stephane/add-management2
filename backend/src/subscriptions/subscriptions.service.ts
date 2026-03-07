@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
@@ -78,6 +78,11 @@ export class SubscriptionsService {
   ): Promise<Subscription> {
     let updateData: any = {};
     try {
+      // Valider l'ID MongoDB
+      if (!Types.ObjectId.isValid(id)) {
+        throw new BadRequestException(`ID invalide: "${id}"`);
+      }
+
       // Normaliser tarif : convertir string en tableau si nécessaire
       if (updateSubscriptionDto.tarif !== undefined) {
         updateData.tarif = Array.isArray(updateSubscriptionDto.tarif)
@@ -99,6 +104,39 @@ export class SubscriptionsService {
         }
       }
       
+      // Normaliser et valider statutPaiement
+      if (updateSubscriptionDto.statutPaiement !== undefined) {
+        const statut = String(updateSubscriptionDto.statutPaiement).trim().toLowerCase();
+        const statutsValides = ['payé', 'en attente', 'annulé'];
+        
+        // Normaliser les variations courantes
+        let statutNormalise: string;
+        if (statut === 'paye' || statut === 'payé') {
+          statutNormalise = 'payé';
+        } else if (statut === 'en attente' || statut === 'attente') {
+          statutNormalise = 'en attente';
+        } else if (statut === 'annule' || statut === 'annulé') {
+          statutNormalise = 'annulé';
+        } else {
+          // Essayer de trouver une correspondance exacte (sensible à la casse)
+          const statutOriginal = String(updateSubscriptionDto.statutPaiement).trim();
+          if (statutsValides.includes(statutOriginal)) {
+            statutNormalise = statutOriginal;
+          } else {
+            statutNormalise = statutOriginal;
+          }
+        }
+        
+        // Valider que le statut est dans l'enum
+        if (!statutsValides.includes(statutNormalise)) {
+          throw new BadRequestException(
+            `Statut de paiement invalide: "${updateSubscriptionDto.statutPaiement}". Valeurs acceptées: ${statutsValides.join(', ')}`
+          );
+        }
+        
+        updateData.statutPaiement = statutNormalise;
+      }
+      
       // Copier tous les autres champs
       if (updateSubscriptionDto.nom !== undefined) updateData.nom = updateSubscriptionDto.nom;
       if (updateSubscriptionDto.prenom !== undefined) updateData.prenom = updateSubscriptionDto.prenom;
@@ -108,16 +146,23 @@ export class SubscriptionsService {
       if (updateSubscriptionDto.adresse !== undefined) updateData.adresse = updateSubscriptionDto.adresse;
       if (updateSubscriptionDto.ville !== undefined) updateData.ville = updateSubscriptionDto.ville;
       if (updateSubscriptionDto.codePostal !== undefined) updateData.codePostal = updateSubscriptionDto.codePostal;
-      if (updateSubscriptionDto.statutPaiement !== undefined) updateData.statutPaiement = updateSubscriptionDto.statutPaiement;
       if (updateSubscriptionDto.remarques !== undefined) updateData.remarques = updateSubscriptionDto.remarques;
 
       // Vérifier qu'il y a des données à mettre à jour
       if (Object.keys(updateData).length === 0) {
-        throw new Error('Aucune donnée à mettre à jour');
+        throw new BadRequestException('Aucune donnée à mettre à jour');
       }
 
-      // Mise à jour MongoDB - utiliser updateOne pour éviter les problèmes
-      await this.subscriptionModel.updateOne({ _id: id }, updateData).exec();
+      // Mise à jour MongoDB - utiliser updateOne avec $set et ObjectId
+      const updateResult = await this.subscriptionModel.updateOne(
+        { _id: new Types.ObjectId(id) }, 
+        { $set: updateData }
+      ).exec();
+      
+      if (updateResult.matchedCount === 0) {
+        throw new NotFoundException(`Subscription with ID "${id}" not found`);
+      }
+      
       const updatedSubscription = await this.subscriptionModel.findById(id).exec();
         
       if (!updatedSubscription) {
@@ -142,7 +187,14 @@ export class SubscriptionsService {
         console.error('📝 Error message:', error.message);
         console.error('📚 Error stack:', error.stack);
       }
-      throw error;
+      // Si c'est déjà une exception HTTP, la relancer telle quelle
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+      // Sinon, envelopper dans une BadRequestException
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Erreur lors de la mise à jour'
+      );
     }
   }
 

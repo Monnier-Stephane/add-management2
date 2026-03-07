@@ -50,27 +50,12 @@ export default function StatsDashboard() {
       // Categorization by pricing tier
       // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
       const tarifs = Array.isArray(item.tarif) ? item.tarif : [item.tarif].filter(Boolean);
-      
-      // Déterminer la catégorie principale de la souscription (une seule catégorie par souscription)
-      let categoryFound = false;
-      for (const tarif of tarifs) {
-        if (!tarif) continue;
-        const tarifLower = (tarif || '').toLowerCase();
-        
-        // Priorité : enfants > ados > adultes (première catégorie trouvée)
-        if (!categoryFound && tarifLower.includes('enfant')) {
-          enfants++;
-          categoryFound = true;
-          break; // Une souscription ne peut être que dans une catégorie
-        } else if (!categoryFound && tarifLower.includes('ado')) {
-          ados++;
-          categoryFound = true;
-          break;
-        } else if (!categoryFound && tarifLower.includes('adulte')) {
-          adultes++;
-          categoryFound = true;
-          break;
-        }
+      const principalTarif = tarifs.length > 0 ? (tarifs[0] || '').trim() : '';
+      if (principalTarif) {
+        const tarifLower = principalTarif.toLowerCase();
+        if (tarifLower.includes('enfant')) enfants++;
+        else if (tarifLower.includes('ado')) ados++;
+        else if (tarifLower.includes('adulte')) adultes++;
       }
     });
 
