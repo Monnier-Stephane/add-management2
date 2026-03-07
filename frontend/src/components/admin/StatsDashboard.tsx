@@ -50,14 +50,13 @@ export default function StatsDashboard() {
       // Categorization by pricing tier
       // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
       const tarifs = Array.isArray(item.tarif) ? item.tarif : [item.tarif].filter(Boolean);
-      
-      tarifs.forEach((tarif: string) => {
-        if (!tarif) return;
-        const tarifLower = (tarif || '').toLowerCase();
+      const principalTarif = tarifs.length > 0 ? (tarifs[0] || '').trim() : '';
+      if (principalTarif) {
+        const tarifLower = principalTarif.toLowerCase();
         if (tarifLower.includes('enfant')) enfants++;
         else if (tarifLower.includes('ado')) ados++;
         else if (tarifLower.includes('adulte')) adultes++;
-      });
+      }
     });
 
     return { total, attente, paye, enfants, ados, adultes };
