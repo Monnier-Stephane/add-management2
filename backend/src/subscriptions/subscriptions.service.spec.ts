@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { SubscriptionsService } from './subscriptions.service';
 import { Subscription } from './schemas/subscription.schema';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 // Mock constructor to simulate Mongoose model
 const mockSave = jest.fn().mockResolvedValue({
@@ -23,17 +24,29 @@ const mockSubscriptionModel = jest.fn().mockImplementation(function (dto) {
 
 // Add static 'find' method to constructor
 (mockSubscriptionModel as any).find = jest.fn();
+const mockCacheManager = {
+  get: jest.fn(),
+  set: jest.fn(),
+  del: jest.fn(),
+};
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
 
   beforeEach(async () => {
+    mockCacheManager.get.mockResolvedValue(undefined);
+    mockCacheManager.set.mockResolvedValue(undefined);
+    mockCacheManager.del.mockResolvedValue(undefined);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SubscriptionsService,
         {
           provide: getModelToken(Subscription.name),
           useValue: mockSubscriptionModel,
+        },
+        {
+          provide: CACHE_MANAGER,
+          useValue: mockCacheManager,
         },
       ],
     }).compile();
@@ -84,7 +97,7 @@ describe('SubscriptionsService', () => {
       exec: jest.fn().mockResolvedValue(fakeSubscription),
     });
 
-    const result = await service.findOne('123');
+    const result = await service.findOne('507f1f77bcf86cd799439011');
     expect(result).toEqual(fakeSubscription);
   });
 
@@ -93,20 +106,24 @@ describe('SubscriptionsService', () => {
       exec: jest.fn().mockResolvedValue(null),
     });
 
-    await expect(service.findOne('123')).rejects.toThrow(
-      'Subscription with ID "123" not found',
+    await expect(service.findOne('507f1f77bcf86cd799439011')).rejects.toThrow(
+      'Subscription with ID "507f1f77bcf86cd799439011" not found',
     );
   });
 
   it('should update a subscription', async () => {
+    const id = '507f1f77bcf86cd799439011';
     const fakeSubscription = { nom: 'Dupont', prenom: 'Jean' };
-    (mockSubscriptionModel as any).findByIdAndUpdate = jest
-      .fn()
-      .mockReturnValueOnce({
-        exec: jest.fn().mockResolvedValue(fakeSubscription),
-      });
 
-    const result = await service.update('123', fakeSubscription);
+    (mockSubscriptionModel as any).updateOne = jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ matchedCount: 1 }),
+    });
+
+    (mockSubscriptionModel as any).findById = jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue(fakeSubscription),
+    });
+
+    const result = await service.update(id, fakeSubscription);
     expect(result).toEqual(fakeSubscription);
   });
 
@@ -118,7 +135,7 @@ describe('SubscriptionsService', () => {
         exec: jest.fn().mockResolvedValue(fakeSubscription),
       });
 
-    const result = await service.remove('123');
+    const result = await service.remove('507f1f77bcf86cd799439011');
     expect(result).toEqual(fakeSubscription);
   });
 
@@ -129,19 +146,26 @@ describe('SubscriptionsService', () => {
         exec: jest.fn().mockResolvedValue(null),
       });
 
-    await expect(service.remove('123')).rejects.toThrow(
-      'Subscription with ID "123" not found',
+    await expect(service.remove('507f1f77bcf86cd799439011')).rejects.toThrow(
+      'Subscription with ID "507f1f77bcf86cd799439011" not found',
     );
   });
 
   it('should return unique tarifs', async () => {
-    const mockTarifs = [
-      'LUNDI 19h30 Bercy ADULTES',
-      'MERCREDI 12h15 Paris Châtelet ENFANTS',
-      '',
+    const mockSubs = [
+      {
+        tarif: [
+          'LUNDI 19h30 Bercy ADULTES',
+          'MERCREDI 12h15 Paris Châtelet ENFANTS',
+          '',
+        ],
+      },
     ];
-    (mockSubscriptionModel as any).distinct = jest.fn().mockReturnValueOnce({
-      exec: jest.fn().mockResolvedValue(mockTarifs),
+
+    (mockSubscriptionModel as any).find.mockReturnValueOnce({
+      select: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockSubs),
+      }),
     });
 
     const result = await service.getUniqueTarifs();
@@ -152,18 +176,33 @@ describe('SubscriptionsService', () => {
   });
 
   it('should filter out empty and null tarifs', async () => {
-    const mockTarifs = ['Valid Tarif', '', null, 'Another Valid Tarif', '   '];
-    (mockSubscriptionModel as any).distinct = jest.fn().mockReturnValueOnce({
-      exec: jest.fn().mockResolvedValue(mockTarifs),
+    const mockSubs = [
+      {
+        tarif: [
+          'Valid Tarif',
+          '',
+          null as unknown as string,
+          'Another Valid Tarif',
+          '   ',
+        ],
+      },
+    ];
+
+    (mockSubscriptionModel as any).find.mockReturnValueOnce({
+      select: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockSubs),
+      }),
     });
 
     const result = await service.getUniqueTarifs();
-    expect(result).toEqual(['Valid Tarif', 'Another Valid Tarif']);
+    expect(result).toEqual(['Another Valid Tarif', 'Valid Tarif']);
   });
 
   it('should return empty array when no tarifs found', async () => {
-    (mockSubscriptionModel as any).distinct = jest.fn().mockReturnValueOnce({
-      exec: jest.fn().mockResolvedValue([]),
+    (mockSubscriptionModel as any).find.mockReturnValueOnce({
+      select: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue([]),
+      }),
     });
 
     const result = await service.getUniqueTarifs();

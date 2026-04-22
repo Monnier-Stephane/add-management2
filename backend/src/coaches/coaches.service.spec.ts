@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { CoachesService } from './coaches.service';
 import { Coach } from './schemas/coach.schema';
 import { CreateCoachDto } from './dto/create-coach.dto';
@@ -15,10 +16,20 @@ describe('CoachesService', () => {
     nom: 'Test',
     prenom: 'Coach',
     email: 'test@example.com',
+    telephone: '0600000000',
     statut: 'coach',
   };
 
+  const mockCacheManager = {
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+  };
+
   beforeEach(async () => {
+    mockCacheManager.get.mockResolvedValue(undefined);
+    mockCacheManager.set.mockResolvedValue(undefined);
+    mockCacheManager.del.mockResolvedValue(undefined);
     // Mock du constructeur avec méthodes statiques
     mockCoachModel = jest.fn().mockImplementation(() => ({
       save: jest.fn().mockResolvedValue(mockCoach),
@@ -39,6 +50,10 @@ describe('CoachesService', () => {
           provide: getModelToken(Coach.name),
           useValue: mockCoachModel,
         },
+        {
+          provide: CACHE_MANAGER,
+          useValue: mockCacheManager,
+        },
       ],
     }).compile();
 
@@ -55,6 +70,7 @@ describe('CoachesService', () => {
         nom: 'Test',
         prenom: 'Coach',
         email: 'test@example.com',
+        telephone: '0600000000',
       };
 
       // Mock de l'instance retournée par le constructeur
@@ -161,7 +177,9 @@ describe('CoachesService', () => {
 
       const result = await service.findByEmail(email);
 
-      expect(mockCoachModel.findOne).toHaveBeenCalledWith({ email });
+      expect(mockCoachModel.findOne).toHaveBeenCalledWith({
+        email: { $regex: /^test@example\.com$/i },
+      });
       expect(mockCoachModel.exec).toHaveBeenCalled();
       expect(result).toEqual(mockCoach);
     });

@@ -1,5 +1,6 @@
 /* eslint-disable prettier/prettier */
 import { Test, TestingModule } from '@nestjs/testing';
+import { CacheModule } from '@nestjs/cache-manager';
 import { CoachesModule } from './coaches.module';
 import { getModelToken } from '@nestjs/mongoose';
 
@@ -8,7 +9,7 @@ describe('CoachesModule', () => {
 
   beforeEach(async () => {
     module = await Test.createTestingModule({
-      imports: [CoachesModule],
+      imports: [CacheModule.register({ isGlobal: true }), CoachesModule],
     })
       .overrideProvider(getModelToken('Coach'))
       .useValue({})

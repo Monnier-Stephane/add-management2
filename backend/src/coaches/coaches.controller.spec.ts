@@ -14,6 +14,7 @@ describe('CoachesController', () => {
     nom: 'Test',
     prenom: 'Coach',
     email: 'test@example.com',
+    telephone: '0600000000',
     statut: 'coach',
   };
 
@@ -51,6 +52,7 @@ describe('CoachesController', () => {
         nom: 'Test',
         prenom: 'Coach',
         email: 'test@example.com',
+        telephone: '0600000000',
       };
 
       jest.spyOn(service, 'create').mockResolvedValue(mockCoach as Coach);
