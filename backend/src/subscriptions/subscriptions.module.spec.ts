@@ -8,10 +8,7 @@ describe('SubscriptionsModule', () => {
 
   beforeEach(async () => {
     module = await Test.createTestingModule({
-      imports: [
-        CacheModule.register({ isGlobal: true }),
-        SubscriptionsModule,
-      ],
+      imports: [CacheModule.register({ isGlobal: true }), SubscriptionsModule],
     })
       .overrideProvider(getModelToken('Subscription'))
       .useValue({})

@@ -1,5 +1,3 @@
-/* eslint-disable prettier/prettier */
-
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -11,6 +9,20 @@ import { PlanningAssignment } from './schemas/planning-assignment.schema';
 import { Coach } from '../coaches/schemas/coach.schema';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+
+
+export interface TodayCourse {
+  id: string;
+  name: string;
+  time: string;
+  students: number;
+  location: string;
+  coachId: string;
+  coachName: string;
+  coachEmail: string;
+  date: string;
+  assignedCoaches?: string[];
+}
 
 @Injectable()
 export class PlanningService {
@@ -82,12 +94,12 @@ export class PlanningService {
     return data;
   }
 
-  async getTodayCourses(coachEmail?: string) {
+  async getTodayCourses(coachEmail?: string): Promise<TodayCourse[]> {
     const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
     const cacheKey = `planning:today-courses:${coachEmail || 'all'}`;
     
     // Vérifier le cache
-    const cached = await this.cacheManager.get<any[]>(cacheKey);
+    const cached = await this.cacheManager.get<TodayCourse[]>(cacheKey);
     if (cached) {
       return cached;
     }
@@ -162,7 +174,7 @@ export class PlanningService {
       console.error('❌ Erreur lors de la récupération des coaches:', error);
       
       // Fallback avec des données mockées
-      const fallbackCourses = [
+      const fallbackCourses: TodayCourse[] = [
         {
           id: 'fallback-1',
           name: 'Parkour Niveau 1',

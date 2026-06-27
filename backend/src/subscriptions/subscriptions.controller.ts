@@ -24,6 +24,14 @@ interface ProcessingResult {
   summary: string;
 }
 
+interface SubscriptionStats {
+  total: number;
+  attente: number;
+  paye: number;
+  enfants: number;
+  ados: number;
+  adultes: number;
+}
 
 @Controller('subscriptions')
 export class SubscriptionsController {
@@ -137,13 +145,12 @@ export class SubscriptionsController {
   }
 
   @Get('tarifs/unique')
-  getUniqueTarifs() {
+  getUniqueTarifs(): Promise<string[]> {
     return this.subscriptionsService.getUniqueTarifs();
   }
 
   @Get('stats')
-  async getStats() {
+  async getStats(): Promise<SubscriptionStats> {
     return this.subscriptionsService.getStats();
   }
-
 }

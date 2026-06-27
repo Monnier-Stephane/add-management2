@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Inject, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -9,6 +14,15 @@ import {
   Subscription,
   SubscriptionDocument,
 } from './schemas/subscription.schema';
+
+export interface SubscriptionStats {
+  total: number;
+  attente: number;
+  paye: number;
+  enfants: number;
+  ados: number;
+  adultes: number;
+}
 
 @Injectable()
 export class SubscriptionsService {
@@ -76,7 +90,7 @@ export class SubscriptionsService {
     id: string,
     updateSubscriptionDto: UpdateSubscriptionDto,
   ): Promise<Subscription> {
-    let updateData: any = {};
+    const updateData: Partial<UpdateSubscriptionDto> = {};
     try {
       // Valider l'ID MongoDB
       if (!Types.ObjectId.isValid(id)) {
@@ -91,7 +105,7 @@ export class SubscriptionsService {
             ? [updateSubscriptionDto.tarif]
             : [];
       }
-      
+
       // Normaliser dateDeNaissance : convertir string en Date si nécessaire
       if (updateSubscriptionDto.dateDeNaissance !== undefined) {
         const dateValue = updateSubscriptionDto.dateDeNaissance;
@@ -103,12 +117,14 @@ export class SubscriptionsService {
           updateData.dateDeNaissance = dateValue;
         }
       }
-      
+
       // Normaliser et valider statutPaiement
       if (updateSubscriptionDto.statutPaiement !== undefined) {
-        const statut = String(updateSubscriptionDto.statutPaiement).trim().toLowerCase();
+        const statut = String(updateSubscriptionDto.statutPaiement)
+          .trim()
+          .toLowerCase();
         const statutsValides = ['payé', 'en attente', 'annulé'];
-        
+
         // Normaliser les variations courantes
         let statutNormalise: string;
         if (statut === 'paye' || statut === 'payé') {
@@ -119,34 +135,45 @@ export class SubscriptionsService {
           statutNormalise = 'annulé';
         } else {
           // Essayer de trouver une correspondance exacte (sensible à la casse)
-          const statutOriginal = String(updateSubscriptionDto.statutPaiement).trim();
+          const statutOriginal = String(
+            updateSubscriptionDto.statutPaiement,
+          ).trim();
           if (statutsValides.includes(statutOriginal)) {
             statutNormalise = statutOriginal;
           } else {
             statutNormalise = statutOriginal;
           }
         }
-        
+
         // Valider que le statut est dans l'enum
         if (!statutsValides.includes(statutNormalise)) {
           throw new BadRequestException(
-            `Statut de paiement invalide: "${updateSubscriptionDto.statutPaiement}". Valeurs acceptées: ${statutsValides.join(', ')}`
+            `Statut de paiement invalide: "${updateSubscriptionDto.statutPaiement}". Valeurs acceptées: ${statutsValides.join(', ')}`,
           );
         }
-        
+
         updateData.statutPaiement = statutNormalise;
       }
-      
+
       // Copier tous les autres champs
-      if (updateSubscriptionDto.nom !== undefined) updateData.nom = updateSubscriptionDto.nom;
-      if (updateSubscriptionDto.prenom !== undefined) updateData.prenom = updateSubscriptionDto.prenom;
-      if (updateSubscriptionDto.email !== undefined) updateData.email = updateSubscriptionDto.email;
-      if (updateSubscriptionDto.telephone !== undefined) updateData.telephone = updateSubscriptionDto.telephone;
-      if (updateSubscriptionDto.telephoneUrgence !== undefined) updateData.telephoneUrgence = updateSubscriptionDto.telephoneUrgence;
-      if (updateSubscriptionDto.adresse !== undefined) updateData.adresse = updateSubscriptionDto.adresse;
-      if (updateSubscriptionDto.ville !== undefined) updateData.ville = updateSubscriptionDto.ville;
-      if (updateSubscriptionDto.codePostal !== undefined) updateData.codePostal = updateSubscriptionDto.codePostal;
-      if (updateSubscriptionDto.remarques !== undefined) updateData.remarques = updateSubscriptionDto.remarques;
+      if (updateSubscriptionDto.nom !== undefined)
+        updateData.nom = updateSubscriptionDto.nom;
+      if (updateSubscriptionDto.prenom !== undefined)
+        updateData.prenom = updateSubscriptionDto.prenom;
+      if (updateSubscriptionDto.email !== undefined)
+        updateData.email = updateSubscriptionDto.email;
+      if (updateSubscriptionDto.telephone !== undefined)
+        updateData.telephone = updateSubscriptionDto.telephone;
+      if (updateSubscriptionDto.telephoneUrgence !== undefined)
+        updateData.telephoneUrgence = updateSubscriptionDto.telephoneUrgence;
+      if (updateSubscriptionDto.adresse !== undefined)
+        updateData.adresse = updateSubscriptionDto.adresse;
+      if (updateSubscriptionDto.ville !== undefined)
+        updateData.ville = updateSubscriptionDto.ville;
+      if (updateSubscriptionDto.codePostal !== undefined)
+        updateData.codePostal = updateSubscriptionDto.codePostal;
+      if (updateSubscriptionDto.remarques !== undefined)
+        updateData.remarques = updateSubscriptionDto.remarques;
 
       // Vérifier qu'il y a des données à mettre à jour
       if (Object.keys(updateData).length === 0) {
@@ -154,17 +181,18 @@ export class SubscriptionsService {
       }
 
       // Mise à jour MongoDB - utiliser updateOne avec $set et ObjectId
-      const updateResult = await this.subscriptionModel.updateOne(
-        { _id: new Types.ObjectId(id) }, 
-        { $set: updateData }
-      ).exec();
-      
+      const updateResult = await this.subscriptionModel
+        .updateOne({ _id: new Types.ObjectId(id) }, { $set: updateData })
+        .exec();
+
       if (updateResult.matchedCount === 0) {
         throw new NotFoundException(`Subscription with ID "${id}" not found`);
       }
-      
-      const updatedSubscription = await this.subscriptionModel.findById(id).exec();
-        
+
+      const updatedSubscription = await this.subscriptionModel
+        .findById(id)
+        .exec();
+
       if (!updatedSubscription) {
         throw new NotFoundException(`Subscription with ID "${id}" not found`);
       }
@@ -181,19 +209,30 @@ export class SubscriptionsService {
       return updatedSubscription;
     } catch (error) {
       console.error('❌ Error updating subscription:', error);
-      console.error('📥 Update DTO received:', JSON.stringify(updateSubscriptionDto, null, 2));
-      console.error('🔄 Update data prepared:', JSON.stringify(updateData, null, 2));
+      console.error(
+        '📥 Update DTO received:',
+        JSON.stringify(updateSubscriptionDto, null, 2),
+      );
+      console.error(
+        '🔄 Update data prepared:',
+        JSON.stringify(updateData, null, 2),
+      );
       if (error instanceof Error) {
         console.error('📝 Error message:', error.message);
         console.error('📚 Error stack:', error.stack);
       }
       // Si c'est déjà une exception HTTP, la relancer telle quelle
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       // Sinon, envelopper dans une BadRequestException
       throw new BadRequestException(
-        error instanceof Error ? error.message : 'Erreur lors de la mise à jour'
+        error instanceof Error
+          ? error.message
+          : 'Erreur lors de la mise à jour',
       );
     }
   }
@@ -228,20 +267,27 @@ export class SubscriptionsService {
     }
 
     // Récupérer toutes les subscriptions avec leurs tarifs (tableaux)
-    const subscriptions = await this.subscriptionModel.find().select('tarif').exec();
+    const subscriptions = await this.subscriptionModel
+      .find()
+      .select('tarif')
+      .exec();
 
     // Extraire tous les tarifs uniques depuis les tableaux
     const allTarifs = new Set<string>();
-    subscriptions.forEach((sub: any) => {
-      if (Array.isArray(sub.tarif)) {
-        sub.tarif.forEach((tarif) => {
-          if (tarif && typeof tarif === 'string' && tarif.trim() !== '') {
-            allTarifs.add(tarif.trim());
-          }
-        });
-      } else if (sub.tarif && typeof sub.tarif === 'string' && sub.tarif.trim() !== '') {
-        // Rétrocompatibilité : si tarif est encore un string (anciennes données)
-        allTarifs.add(sub.tarif.trim());
+    subscriptions.forEach((sub) => {
+      const tarifValue = sub.tarif as string[] | string | undefined;
+      const tarifs = Array.isArray(tarifValue)
+        ? tarifValue
+        : tarifValue
+          ? [tarifValue]
+          : [];
+
+      for (const tarif of tarifs) {
+        if (typeof tarif !== 'string') continue;
+        const trimmed = tarif.trim();
+        if (trimmed !== '') {
+          allTarifs.add(trimmed);
+        }
       }
     });
 
@@ -253,11 +299,11 @@ export class SubscriptionsService {
     return result;
   }
 
-  async getStats() {
+  async getStats(): Promise<SubscriptionStats> {
     const cacheKey = 'subscriptions:stats';
 
     // Vérifier le cache
-    const cached = await this.cacheManager.get<any>(cacheKey);
+    const cached = await this.cacheManager.get<SubscriptionStats>(cacheKey);
     if (cached) {
       return cached;
     }
@@ -272,21 +318,23 @@ export class SubscriptionsService {
       ados = 0,
       adultes = 0;
 
-    subscriptions.forEach((item: any) => {
+    subscriptions.forEach((item) => {
       // Payment status
       if (item.statutPaiement === 'en attente') attente++;
       if (item.statutPaiement === 'payé') paye++;
 
       // Categorization by pricing tier
       // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
-      const tarifs = Array.isArray(item.tarif) ? item.tarif : [item.tarif].filter(Boolean);
+      const tarifs = Array.isArray(item.tarif)
+        ? item.tarif
+        : [item.tarif].filter(Boolean);
 
       // Déterminer la catégorie principale de la souscription (une seule catégorie par souscription)
       let categoryFound = false;
       for (const tarif of tarifs) {
         if (!tarif) continue;
         const tarifLower = (tarif || '').toLowerCase();
-        
+
         // Priorité : enfants > ados > adultes (première catégorie trouvée)
         if (!categoryFound && tarifLower.includes('enfant')) {
           enfants++;
@@ -304,7 +352,7 @@ export class SubscriptionsService {
       }
     });
 
-    const stats = {
+    const stats: SubscriptionStats = {
       total,
       attente,
       paye,

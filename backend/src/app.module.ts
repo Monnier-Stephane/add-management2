@@ -16,7 +16,7 @@ import { FirebaseAuthGuard } from './auth/firebase-auth.guard';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    
+
     CacheModule.register({
       store: redisStore,
       host: process.env.REDIS_HOST || 'localhost',

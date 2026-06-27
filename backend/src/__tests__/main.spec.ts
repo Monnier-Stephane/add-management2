@@ -1,12 +1,34 @@
+jest.mock('../auth/firebase-auth.guard', () => ({
+  FirebaseAuthGuard: class {
+    canActivate() {
+      return true;
+    }
+  },
+}));
+
+jest.mock('../auth/firebase-admin', () => ({
+  getFirebaseAdmin: jest.fn(),
+}));
+
+jest.mock('firebase-admin/auth', () => ({
+  getAuth: jest.fn(() => ({
+    verifyIdToken: jest.fn(),
+  })),
+}));
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
 
 // Mock NestFactory
-jest.mock('@nestjs/core', () => ({
-  NestFactory: {
-    create: jest.fn(),
-  },
-}));
+jest.mock('@nestjs/core', () => {
+  const actual = jest.requireActual('@nestjs/core');
+  return {
+    ...actual,
+    NestFactory: {
+      create: jest.fn(),
+    },
+  };
+});
 
 // Mock process.env
 const originalEnv = process.env;
