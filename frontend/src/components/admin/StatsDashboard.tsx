@@ -10,6 +10,7 @@ import { ChevronDown, ChevronUp, AlertCircle, RefreshCw, Users } from 'lucide-re
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSubscriptions } from '@/lib/hooks/useSubscriptions';
 import { useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api/api'
 
 const COLORS = ['#4ade80', '#60a5fa', '#fbbf24', '#f87171', '#a78bfa'];
 
@@ -79,12 +80,12 @@ export default function StatsDashboard() {
   ];
 
   const handleRefresh = async () => {
-    setIsRefreshing(true); // ✅ Bouton DÉSACTIVÉ
+    setIsRefreshing(true); 
     try {
       await queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
       await refetch();
     } finally {
-      setIsRefreshing(false); // ✅ Bouton RÉACTIVÉ automatiquement
+      setIsRefreshing(false); 
     }
   };
 
@@ -92,40 +93,17 @@ export default function StatsDashboard() {
   const handleMarkAsPaid = async (studentId: string) => {
     try {
       setIsUpdating(studentId);
-      
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) {
-        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-      }
-      
-      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-      const response = await fetch(`${cleanApiUrl}/subscriptions/${studentId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        },
-        body: JSON.stringify({ statutPaiement: 'payé' }),
+
+      await api.patch(`/subscriptions/${studentId}`, {
+        statutPaiement: 'payé',
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Erreur HTTP: ${response.status}`);
-      }
- 
-      // Invalider toutes les queries liées aux subscriptions
       await queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-            
-      // Afficher la popup de confirmation
+
       setShowSuccessModal(true);
-      
-      // Masquer la popup après 3 secondes
       setTimeout(() => {
         setShowSuccessModal(false);
       }, 3000);
-      
     } catch (error) {
       console.error('Erreur lors de la mise à jour du statut:', error);
       alert(`Erreur lors de la mise à jour: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);

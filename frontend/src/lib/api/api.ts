@@ -1,9 +1,11 @@
 'use client'
 
+import { auth } from '@/lib/auth/firebase'
+
 
 class ApiService {
   private readonly API_BASE = (() => {
-    // En développement, toujours utiliser localhost
+    
     if (process.env.NODE_ENV === 'development' || typeof window !== 'undefined' && window.location.hostname === 'localhost') {
       return 'http://localhost:3001';
     }
@@ -15,6 +17,12 @@ class ApiService {
     return apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
   })()
 
+  private async getAuthToken(): Promise<string | null> {
+    const user = auth.currentUser
+    if (!user) return null
+    return user.getIdToken()
+  }
+
   private async fetchWithRetry<T>(
     endpoint: string, 
     options: RequestInit = {}, 
@@ -22,9 +30,14 @@ class ApiService {
   ): Promise<T> {
     for (let i = 0; i < retries; i++) {
       try {
+        const token = await this.getAuthToken()
+        const authHeaders: Record<string, string> = token
+          ? { Authorization: `Bearer ${token}` }
+          : {}
         const response = await fetch(`${this.API_BASE}${endpoint}`, {
           headers: {
             'Content-Type': 'application/json',
+            ...authHeaders,
             ...options.headers,
           },
           ...options,

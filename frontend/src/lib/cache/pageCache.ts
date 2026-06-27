@@ -17,8 +17,13 @@ class PageCacheService {
     return Date.now() - timestamp < this.CACHE_DURATION
   }
 
+  private isStorageAvailable(): boolean {
+    return typeof window !== 'undefined'
+  }
+
   // Sauvegarder les données d'une page
   setPageData(page: string, key: string, data: unknown): void {
+    if (!this.isStorageAvailable()) return
     try {
       const cacheData: PageCacheData = {
         data,
@@ -33,6 +38,7 @@ class PageCacheService {
 
   // Récupérer les données d'une page
   getPageData(page: string, key: string): unknown | null {
+    if (!this.isStorageAvailable()) return null
     try {
       const cached = localStorage.getItem(this.getCacheKey(page, key))
       if (!cached) return null
@@ -53,6 +59,7 @@ class PageCacheService {
 
   // Nettoyer les données d'une page
   clearPageData(page: string, key: string): void {
+    if (!this.isStorageAvailable()) return
     try {
       localStorage.removeItem(this.getCacheKey(page, key))
     } catch (error) {
@@ -62,6 +69,7 @@ class PageCacheService {
 
   // Nettoyer toutes les données d'une page
   clearPage(page: string): void {
+    if (!this.isStorageAvailable()) return
     try {
       const keys = Object.keys(localStorage)
       keys.forEach(key => {
@@ -76,6 +84,7 @@ class PageCacheService {
 
   // Nettoyer tout le cache
   clearAllCache(): void {
+    if (!this.isStorageAvailable()) return
     try {
       const keys = Object.keys(localStorage)
       keys.forEach(key => {
@@ -90,6 +99,7 @@ class PageCacheService {
 
   // Obtenir les statistiques du cache
   getCacheStats(): { totalKeys: number; pages: string[] } {
+    if (!this.isStorageAvailable()) return { totalKeys: 0, pages: [] }
     try {
       const keys = Object.keys(localStorage)
       const cacheKeys = keys.filter(key => key.startsWith('pageCache_'))

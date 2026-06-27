@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Edit, Save, X, Home, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
+import { api } from '@/lib/api/api';
 
 interface Coach {
   _id: string;
@@ -90,29 +91,10 @@ const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSave = async (coachId: string) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) {
-        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-      }
-      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-      const response = await fetch(`${cleanApiUrl}/coaches/${coachId}`, {
-        method: 'PATCH', // Changé de PUT à PATCH
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editForm),
-      });
+      await api.patch(`/coaches/${coachId}`, editForm);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Erreur HTTP: ${response.status}`);
-      }
-
-      // Fermer le modal d'édition et afficher la confirmation
       setEditingCoach(null);
       setShowSuccessModal(true);
-      
-      // Recharger les données avec React Query
       refetch();
     } catch (error) {
       console.error('Erreur détaillée:', error);
@@ -134,31 +116,12 @@ const [isDeleting, setIsDeleting] = useState(false);
   const handleCreate = async () => {
     try {
       setIsCreating(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) {
-        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-      }
-      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-      
-      const response = await fetch(`${cleanApiUrl}/coaches`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(createForm),
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Erreur HTTP: ${response.status}`);
-      }
-  
-      // Fermer le modal et recharger
+
+      await api.post('/coaches', createForm);
+
       setShowCreateModal(false);
       setCreateForm({ nom: '', prenom: '', email: '', telephone: '', statut: 'coach' });
       setShowSuccessModal(true);
-      
-      // Recharger les données avec React Query
       refetch();
     } catch (error) {
       console.error('Erreur lors de la création:', error);
@@ -171,31 +134,13 @@ const [isDeleting, setIsDeleting] = useState(false);
   const handleDelete = async (coachId: string) => {
     try {
       setIsDeleting(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) {
-        throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-      }
-      const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-      
-      const response = await fetch(`${cleanApiUrl}/coaches/${coachId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Erreur HTTP: ${response.status}`);
-      }
-  
-      // Fermer les modals et recharger
+
+      await api.delete(`/coaches/${coachId}`);
+
       setDeletingCoach(null);
       setShowDeleteModal(false);
       setEditingCoach(null);
       setShowSuccessModal(true);
-      
-      // Recharger les données avec React Query
       refetch();
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
