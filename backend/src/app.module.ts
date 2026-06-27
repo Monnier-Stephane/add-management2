@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
@@ -8,14 +9,14 @@ import { PlanningModule } from './planning/planning.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule } from '@nestjs/config';
 import * as redisStore from 'cache-manager-redis-store';
-// SentryModule retiré
+import { FirebaseAuthGuard } from './auth/firebase-auth.guard';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    // SentryModule.forRoot(), ← Retiré
+    
     CacheModule.register({
       store: redisStore,
       host: process.env.REDIS_HOST || 'localhost',
@@ -34,6 +35,12 @@ import * as redisStore from 'cache-manager-redis-store';
     PlanningModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: FirebaseAuthGuard,
+    },
+  ],
 })
 export class AppModule {}

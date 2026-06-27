@@ -1,9 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { getFirebaseAdmin } from './auth/firebase-admin';
 
 export async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
+  getFirebaseAdmin();
+  console.log('Firebase Admin initialisé');
   // Configuration CORS pour autoriser le frontend Vercel
   app.enableCors({
     origin: [
