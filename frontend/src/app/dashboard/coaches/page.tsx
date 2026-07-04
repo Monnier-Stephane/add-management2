@@ -23,12 +23,8 @@ interface Coach {
   statut: 'coach' | 'admin';
 }
 
-const CoachesPage = () => {
-  return (
-    <ProtectedRoute>
-      <CoachesContent />
-    </ProtectedRoute>
-  )
+export default function CoachesPage() {
+  return <CoachesContent />
 }
 
 const CoachesContent = () => {
@@ -467,4 +463,3 @@ const [isDeleting, setIsDeleting] = useState(false);
 }
 
 
-export default CoachesPage;
