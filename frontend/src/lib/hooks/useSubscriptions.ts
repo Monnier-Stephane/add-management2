@@ -3,14 +3,24 @@
 import { useQuery } from "@tanstack/react-query"
 import { api } from '../api/api'
 
-interface Subscription {
+export interface Subscription {
   _id: string
   nom: string
   prenom: string
   email: string
   telephone?: string
+  telephoneUrgence?: string
+  dateDeNaissance?: string
+  adresse?: string
+  ville?: string
+  codePostal?: string
   tarif: string | string[]
-  statutPaiement?: string
+  dateInscription?: string
+  statutPaiement?: 'payé' | 'en attente' | 'annulé'
+  remarques?: string
+  jour?: string
+  lieu?: string
+  heure?: string
 }
 
 export const useSubscriptions = () => {
