@@ -97,11 +97,6 @@ export class CoachesService {
     // Vérifier le cache avec l'email normalisé
     const cached = await this.cacheManager.get<Coach>(cacheKey);
     if (cached) {
-      console.log('✅ [Service] Coach trouvé dans le cache:', {
-        prenom: cached.prenom,
-        nom: cached.nom,
-        statut: cached.statut
-      });
       return cached;
     }
 

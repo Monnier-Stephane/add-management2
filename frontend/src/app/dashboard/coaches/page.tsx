@@ -1,6 +1,5 @@
 'use client'
 
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useCoaches } from "@/lib/hooks/useCoaches";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
