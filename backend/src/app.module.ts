@@ -10,6 +10,9 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule } from '@nestjs/config';
 import * as redisStore from 'cache-manager-redis-store';
 import { FirebaseAuthGuard } from './auth/firebase-auth.guard';
+import { AuthModule } from './auth/auth.module';
+import { RolesGuard } from './auth/roles.guard';
+
 
 @Module({
   imports: [
@@ -33,6 +36,7 @@ import { FirebaseAuthGuard } from './auth/firebase-auth.guard';
     SubscriptionsModule,
     CoachesModule,
     PlanningModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [
@@ -40,6 +44,10 @@ import { FirebaseAuthGuard } from './auth/firebase-auth.guard';
     {
       provide: APP_GUARD,
       useClass: FirebaseAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })

@@ -132,4 +132,10 @@ export class CoachesService {
     
     return coach;
   }
+
+  async findByEmailForAuth(email: string): Promise<CoachDocument | null> {
+    return this.coachModel.findOne({
+      email: { $regex: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+    }).exec();
+  }
 }

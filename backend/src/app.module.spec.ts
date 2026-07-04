@@ -6,6 +6,14 @@ jest.mock('./auth/firebase-auth.guard', () => ({
   },
 }));
 
+jest.mock('./auth/roles.guard', () => ({
+  RolesGuard: class {
+    canActivate() {
+      return true;
+    }
+  },
+}));
+
 jest.mock('./auth/firebase-admin', () => ({
   getFirebaseAdmin: jest.fn(),
 }));
