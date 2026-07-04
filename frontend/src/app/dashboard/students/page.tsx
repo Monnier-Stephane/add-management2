@@ -250,7 +250,7 @@ const StudentsPage = () => {
 
     try {
       // Préparer les données à envoyer - seulement les champs modifiés
-      const updateData: Record<string, any> = {};
+      const updateData: Record<string, string | number | boolean | null | undefined> = {};
       
       // Champs à envoyer (seulement ceux qui existent dans editForm)
       const fieldsToCheck = [

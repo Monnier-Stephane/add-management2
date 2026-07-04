@@ -11,6 +11,19 @@ interface PlanningAssignment {
   updatedAt: string
 }
 
+interface TodayCourse {
+  id: string
+  name: string
+  time: string
+  students: number
+  location: string
+  coachId: string
+  coachName: string
+  coachEmail: string
+  date: string
+  assignedCoaches?: string[]
+}
+
 export const usePlanningAssignments = () => {
   return useQuery({
     queryKey: ['planning', 'assignments'],
@@ -31,7 +44,7 @@ export const useTodayCourses = (coachEmail?: string) => {
     
   return useQuery({
     queryKey: ['planning', 'today-courses', coachEmail || 'all'],
-    queryFn: () => api.get<any[]>(endpoint),
+    queryFn: () => api.get<TodayCourse[]>(endpoint),
     staleTime: 5 * 60 * 1000, 
     gcTime: 10 * 60 * 1000, 
     retry: 3,
