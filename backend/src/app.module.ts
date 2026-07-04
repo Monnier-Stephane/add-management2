@@ -13,7 +13,6 @@ import { FirebaseAuthGuard } from './auth/firebase-auth.guard';
 import { AuthModule } from './auth/auth.module';
 import { RolesGuard } from './auth/roles.guard';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({

@@ -48,7 +48,6 @@ export class CoachesController {
     return this.coachesService.findOne(id);
   }
 
-
   @Patch(':id')
   @Roles('admin')
   update(@Param('id') id: string, @Body() updateCoachDto: UpdateCoachDto) {
