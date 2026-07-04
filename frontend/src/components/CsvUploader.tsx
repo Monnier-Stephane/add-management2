@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { auth } from '@/lib/auth/firebase'
 
 interface ProcessingResult {
   totalRecords: number;
@@ -50,9 +51,16 @@ export function CsvUploader() {
         throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
       }
       const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      const token = await auth.currentUser?.getIdToken()
+if (!token) {
+  throw new Error('You must be logged in to upload a file')
+}
       const response = await fetch(`${cleanApiUrl}/subscriptions/upload-excel`, {
         method: 'POST',
         body: formData,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (!response.ok) {
