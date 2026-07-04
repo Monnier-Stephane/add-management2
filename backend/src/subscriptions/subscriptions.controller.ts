@@ -11,7 +11,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { SubscriptionsService } from './subscriptions.service';
+import { SubscriptionsService, SubscriptionStats } from './subscriptions.service';
 import { CsvProcessorService } from './csv-processor.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
@@ -22,15 +22,6 @@ interface ProcessingResult {
   updatedRecords: number;
   errors: string[];
   summary: string;
-}
-
-interface SubscriptionStats {
-  total: number;
-  attente: number;
-  paye: number;
-  enfants: number;
-  ados: number;
-  adultes: number;
 }
 
 @Controller('subscriptions')
@@ -153,4 +144,5 @@ export class SubscriptionsController {
   async getStats(): Promise<SubscriptionStats> {
     return this.subscriptionsService.getStats();
   }
+
 }
