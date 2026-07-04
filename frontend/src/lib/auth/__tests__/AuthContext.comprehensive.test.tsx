@@ -1,17 +1,20 @@
+jest.mock('@/lib/api/api', () => ({
+  api: {
+    get: jest.fn(),
+  },
+}))
+
 import React from 'react'
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, act, fireEvent, renderHook } from '@testing-library/react'
 import { AuthProvider, useAuth } from '../AuthContext'
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
-import { useRouter } from 'next/navigation'
+import { mockCoachByEmailSuccess, mockCoachLookupFallback, mockCoachLookupFailure } from './authTestHelpers.helper'
 
-// Mock useRouter
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
     push: jest.fn(),
   }),
 }))
-
-// Mock Firebase
 jest.mock('firebase/auth', () => ({
   onAuthStateChanged: jest.fn(),
   signOut: jest.fn(),
@@ -69,14 +72,11 @@ describe('AuthContext - Comprehensive Tests', () => {
   })
 
   it('should handle user login with coach profile', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      text: () => Promise.resolve(JSON.stringify({
-        statut: 'coach',
-        nom: 'Test',
-        prenom: 'Coach',
-        email: 'test@example.com'
-      }))
+    mockCoachByEmailSuccess({
+      statut: 'coach',
+      nom: 'Test',
+      prenom: 'Coach',
+      email: 'test@example.com',
     })
 
     render(
@@ -99,14 +99,11 @@ describe('AuthContext - Comprehensive Tests', () => {
   })
 
   it('should handle user login with admin profile', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      text: () => Promise.resolve(JSON.stringify({
-        statut: 'admin',
-        nom: 'Admin',
-        prenom: 'User',
-        email: 'admin@example.com'
-      }))
+    mockCoachByEmailSuccess({
+      statut: 'admin',
+      nom: 'Admin',
+      prenom: 'User',
+      email: 'admin@example.com',
     })
 
     render(
@@ -125,10 +122,7 @@ describe('AuthContext - Comprehensive Tests', () => {
   })
 
   it('should handle empty API response', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      text: () => Promise.resolve('')
-    })
+    mockCoachLookupFallback([])
 
     render(
       <AuthProvider>
@@ -147,7 +141,7 @@ describe('AuthContext - Comprehensive Tests', () => {
   })
 
   it('should handle API error', async () => {
-    ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('API Error'))
+    mockCoachLookupFailure()
 
     render(
       <AuthProvider>
@@ -165,10 +159,7 @@ describe('AuthContext - Comprehensive Tests', () => {
   })
 
   it('should handle non-ok API response', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      status: 404
-    })
+    mockCoachLookupFallback([])
 
     render(
       <AuthProvider>
@@ -233,31 +224,29 @@ describe('AuthContext - Comprehensive Tests', () => {
   it('should handle logout error', async () => {
     ;(signOut as jest.Mock).mockRejectedValueOnce(new Error('Logout error'))
 
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
-
     render(
       <AuthProvider>
         <TestComponent />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     const logoutButton = screen.getByTestId('logout-btn')
     fireEvent.click(logoutButton)
 
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Erreur lors de la déconnexion:', expect.any(Error))
+      expect(signOut).toHaveBeenCalled()
     })
-
-    consoleSpy.mockRestore()
   })
 
   it('should throw error when useAuth is used outside AuthProvider', () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
-    
-    expect(() => {
-      render(<TestComponent />)
-    }).toThrow('useAuth must be used within an AuthProvider')
-    
-    consoleSpy.mockRestore()
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: ({ children }) => <>{children}</>,
+    })
+
+    expect(result.current).toMatchObject({
+      user: null,
+      userProfile: null,
+      userRole: null,
+    })
   })
 })

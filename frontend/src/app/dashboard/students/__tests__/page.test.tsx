@@ -1,58 +1,100 @@
+import '@/test-utils/setupDashboardTests'
 import React from 'react'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { renderWithProviders as render, screen, waitFor, fireEvent } from '@/test-utils/renderWithProviders'
+import { mockUseSubscriptions, mockUseUniqueTarifs } from '@/test-utils/setupDashboardTests'
 import StudentsPage from '../page'
-
-// Mock fetch
-global.fetch = jest.fn()
 
 const mockStudents = [
   {
     _id: '1',
     nom: 'Dupont',
     prenom: 'Jean',
+    email: 'jean@example.com',
+    telephone: '0123456789',
     dateDeNaissance: '2010-01-01',
-    tarif: 'ENFANTS 5 à 8 ans'
+    adresse: '1 rue Test',
+    ville: 'Paris',
+    codePostal: '75001',
+    tarif: 'ENFANTS 5 à 8 ans',
+    dateInscription: '2024-01-01',
+    statutPaiement: 'payé' as const,
+    jour: 'Samedi',
+    lieu: 'Châtelet',
+    heure: '10h',
   },
   {
     _id: '2',
     nom: 'Martin',
     prenom: 'Marie',
+    email: 'marie@example.com',
+    telephone: '0123456789',
     dateDeNaissance: '2005-06-15',
-    tarif: 'ADOS 10 à 17 ans'
+    adresse: '2 rue Test',
+    ville: 'Paris',
+    codePostal: '75002',
+    tarif: 'ADOS 10 à 17 ans',
+    dateInscription: '2024-01-01',
+    statutPaiement: 'en attente' as const,
+    jour: 'Samedi',
+    lieu: 'Châtelet',
+    heure: '10h',
   },
   {
     _id: '3',
     nom: 'Bernard',
     prenom: 'Pierre',
+    email: 'pierre@example.com',
+    telephone: '0123456789',
     dateDeNaissance: '1995-03-20',
-    tarif: 'ADULTES 18 à 20 ans'
-  }
+    adresse: '3 rue Test',
+    ville: 'Paris',
+    codePostal: '75003',
+    tarif: 'ADULTES 18 à 20 ans',
+    dateInscription: '2024-01-01',
+    statutPaiement: 'payé' as const,
+    jour: 'Samedi',
+    lieu: 'Châtelet',
+    heure: '10h',
+  },
 ]
+
+function mockLoadedStudents(students = mockStudents) {
+  mockUseSubscriptions.mockReturnValue({
+    data: students,
+    isLoading: false,
+    error: null,
+    refetch: jest.fn(),
+  })
+  mockUseUniqueTarifs.mockReturnValue({
+    data: ['Tarif A', 'Tarif B'],
+    isLoading: false,
+    error: null,
+  })
+}
 
 describe('StudentsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(global.fetch as jest.Mock).mockClear()
+    mockUseSubscriptions.mockReturnValue({
+      data: [],
+      isLoading: true,
+      error: null,
+      refetch: jest.fn(),
+    })
+    mockUseUniqueTarifs.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    })
   })
 
   it('should render loading state initially', () => {
     render(<StudentsPage />)
-    
     expect(screen.getByText('Chargement des élèves...')).toBeInTheDocument()
   })
 
   it('should render back to dashboard button', async () => {
-    // Mock both API calls
-    ;(global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockStudents)
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(['Tarif A', 'Tarif B'])
-      })
-
+    mockLoadedStudents()
     render(<StudentsPage />)
 
     await waitFor(() => {
@@ -61,54 +103,35 @@ describe('StudentsPage', () => {
   })
 
   it('should handle search functionality', async () => {
-    // Mock both API calls
-    ;(global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockStudents)
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(['Tarif A', 'Tarif B'])
-      })
-
+    mockLoadedStudents()
     render(<StudentsPage />)
 
     await waitFor(() => {
       const searchInput = screen.getByPlaceholderText('Rechercher un élève...')
-      expect(searchInput).toBeInTheDocument()
-      
       fireEvent.change(searchInput, { target: { value: 'Jean' } })
       expect(searchInput).toHaveValue('Jean')
     })
   })
 
   it('should render students after successful API call', async () => {
-    // Mock both API calls
-    ;(global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockStudents)
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(['Tarif A', 'Tarif B'])
-      })
-
+    mockLoadedStudents()
     render(<StudentsPage />)
 
     await waitFor(() => {
       expect(screen.getByText('Liste des élèves par cours')).toBeInTheDocument()
+      expect(screen.getByText(/Enfants \(0-11 ans\)/)).toBeInTheDocument()
+      expect(screen.getByText(/Adolescents \(12-17 ans\)/)).toBeInTheDocument()
+      expect(screen.getByText(/Adultes \(18\+ ans\)/)).toBeInTheDocument()
     })
-
-    // Check if tabs are rendered
-    expect(screen.getByText('Enfants')).toBeInTheDocument()
-    expect(screen.getByText('Adolescents')).toBeInTheDocument()
-    expect(screen.getByText('Adultes')).toBeInTheDocument()
   })
 
   it('should handle API error', async () => {
-    ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('API Error'))
+    mockUseSubscriptions.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('API Error'),
+      refetch: jest.fn(),
+    })
 
     render(<StudentsPage />)
 
@@ -118,88 +141,78 @@ describe('StudentsPage', () => {
   })
 
   it('should categorize students by age correctly', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockStudents)
-    })
-
+    mockLoadedStudents()
     render(<StudentsPage />)
 
     await waitFor(() => {
-      // Check if students are categorized correctly
-      expect(screen.getByText('Jean Dupont')).toBeInTheDocument()
-      expect(screen.getByText('Marie Martin')).toBeInTheDocument()
-      expect(screen.getByText('Pierre Bernard')).toBeInTheDocument()
+      expect(screen.getByText('DUPONT')).toBeInTheDocument()
+      expect(screen.getByText('jean')).toBeInTheDocument()
+      expect(screen.getByText(/Enfants \(0-11 ans\) \(1\)/)).toBeInTheDocument()
+      expect(screen.getByText(/Adolescents \(12-17 ans\) \(1\)/)).toBeInTheDocument()
+      expect(screen.getByText(/Adultes \(18\+ ans\) \(1\)/)).toBeInTheDocument()
     })
   })
 
   it('should handle invalid date of birth', async () => {
-    const studentsWithInvalidDates = [
+    mockLoadedStudents([
       {
         _id: '1',
         nom: 'Test',
         prenom: 'Student',
-        dateDeNaissance: '+042835-12-31T23:00:00.000Z', // Invalid date
-        tarif: 'ENFANTS 5 à 8 ans'
-      }
-    ]
-
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(studentsWithInvalidDates)
-    })
+        email: 'test@example.com',
+        telephone: '0123456789',
+        dateDeNaissance: '+042835-12-31T23:00:00.000Z',
+        adresse: '1 rue Test',
+        ville: 'Paris',
+        codePostal: '75001',
+        tarif: 'ENFANTS 5 à 8 ans',
+        dateInscription: '2024-01-01',
+        statutPaiement: 'payé' as const,
+        jour: 'Samedi',
+        lieu: 'Châtelet',
+        heure: '10h',
+      },
+    ])
 
     render(<StudentsPage />)
 
     await waitFor(() => {
-      // Should still render the student but categorize by tarif
-      expect(screen.getByText('Student Test')).toBeInTheDocument()
+      expect(screen.getByText('TEST')).toBeInTheDocument()
+      expect(screen.getByText('student')).toBeInTheDocument()
     })
   })
 
   it('should prioritize tarif over calculated age', async () => {
-    const studentsWithTarifPriority = [
+    mockLoadedStudents([
       {
         _id: '1',
         nom: 'Test',
         prenom: 'Student',
-        dateDeNaissance: '1990-01-01', // Would be adult by age
-        tarif: 'ENFANTS 5 à 8 ans' // But tarif says child
-      }
-    ]
-
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(studentsWithTarifPriority)
-    })
-
-    render(<StudentsPage />)
-
-    await waitFor(() => {
-      // Should be categorized as child based on tarif
-      expect(screen.getByText('Student Test')).toBeInTheDocument()
-    })
-  })
-
-  it('should render back to dashboard button', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockStudents)
-    })
+        email: 'test@example.com',
+        telephone: '0123456789',
+        dateDeNaissance: '1990-01-01',
+        adresse: '1 rue Test',
+        ville: 'Paris',
+        codePostal: '75001',
+        tarif: 'ENFANTS 5 à 8 ans',
+        dateInscription: '2024-01-01',
+        statutPaiement: 'payé' as const,
+        jour: 'Samedi',
+        lieu: 'Châtelet',
+        heure: '10h',
+      },
+    ])
 
     render(<StudentsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Retour au Dashboard')).toBeInTheDocument()
+      expect(screen.getByText('TEST')).toBeInTheDocument()
+      expect(screen.getByText('student')).toBeInTheDocument()
     })
   })
 
   it('should handle empty data', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve([])
-    })
-
+    mockLoadedStudents([])
     render(<StudentsPage />)
 
     await waitFor(() => {
@@ -208,33 +221,28 @@ describe('StudentsPage', () => {
   })
 
   it('should switch between tabs', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockStudents)
-    })
-
+    mockLoadedStudents()
     render(<StudentsPage />)
 
     await waitFor(() => {
-      const enfantsTab = screen.getByText('Enfants')
+      const enfantsTab = screen.getByText(/Enfants \(0-11 ans\)/)
       fireEvent.click(enfantsTab)
-      
-      // Should show children tab content
       expect(enfantsTab).toBeInTheDocument()
     })
   })
 
   it('should handle HTTP error response', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error'
+    mockUseSubscriptions.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('HTTP 500: Internal Server Error'),
+      refetch: jest.fn(),
     })
 
     render(<StudentsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Erreur: Erreur lors du chargement des élèves')).toBeInTheDocument()
+      expect(screen.getByText(/Erreur lors du chargement des élèves/)).toBeInTheDocument()
     })
   })
 })

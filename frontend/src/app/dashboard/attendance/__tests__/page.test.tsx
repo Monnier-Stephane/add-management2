@@ -1,93 +1,70 @@
+import '@/test-utils/setupDashboardTests'
 import React from 'react'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { renderWithProviders as render, screen, waitFor, fireEvent } from '@/test-utils/renderWithProviders'
+import { mockUseSubscriptions, mockUseUniqueTarifs } from '@/test-utils/setupDashboardTests'
 import AttendancePage from '../page'
 
-// Types pour le mock (basés sur CourseCardProps)
-interface Student {
-  id: string
-  nom: string
-  prenom: string
-  present: boolean
-  isTemporary?: boolean
-}
-
-interface Course {
-  id: string
-  nom: string
-  jour: string
-  heure: string
-  lieu: string
-  coach: string
-  eleves: Student[]
-}
-
 interface MockCourseCardProps {
-  course: Course
+  course: { id: string; nom: string }
   onPresenceChange: (courseId: string, studentId: string, present: boolean) => void
   onRemoveTemporaryStudent: (courseId: string, studentId: string) => void
   onAddTemporaryStudent: (courseId: string, nom: string, prenom: string) => void
-  onSaveAttendance?: (courseId: string) => void
 }
 
-// Mock the CourseCard component
 jest.mock('@/components/attendance/CourseCard', () => ({
-  CourseCard: ({ course, onPresenceChange, onRemoveTemporaryStudent, onAddTemporaryStudent, onSaveAttendance }: MockCourseCardProps) => (
+  CourseCard: ({
+    course,
+    onPresenceChange,
+    onRemoveTemporaryStudent,
+    onAddTemporaryStudent,
+  }: MockCourseCardProps) => (
     <div data-testid={`course-${course.id}`}>
       <div>{course.nom}</div>
-      <button onClick={() => onPresenceChange(course.id, 'student-1', true)}>
-        Toggle Presence
-      </button>
-      <button onClick={() => onRemoveTemporaryStudent(course.id, 'student-1')}>
-        Remove Student
-      </button>
-      <button onClick={() => onAddTemporaryStudent(course.id, 'Dupont', 'Jean')}>
-        Add Student
-      </button>
-      {onSaveAttendance && (
-        <button onClick={() => onSaveAttendance(course.id)}>
-          Save Attendance
-        </button>
-      )}
+      <button onClick={() => onPresenceChange(course.id, 'student-1', true)}>Toggle Presence</button>
+      <button onClick={() => onRemoveTemporaryStudent(course.id, 'student-1')}>Remove Student</button>
+      <button onClick={() => onAddTemporaryStudent(course.id, 'Dupont', 'Jean')}>Add Student</button>
     </div>
-  )
+  ),
 }))
 
-// Mock fetch
-global.fetch = jest.fn()
-
 const mockSubscriptions = [
-  {
-    _id: '1',
-    nom: 'Dupont',
-    prenom: 'Jean',
-    tarif: 'LUNDI 19h30 Bercy ADULTES'
-  },
-  {
-    _id: '2',
-    nom: 'Martin',
-    prenom: 'Marie',
-    tarif: 'MERCREDI 12h15 Paris Châtelet ENFANTS'
-  }
+  { _id: '1', nom: 'Dupont', prenom: 'Jean', tarif: 'LUNDI 19h30 Bercy ADULTES' },
+  { _id: '2', nom: 'Martin', prenom: 'Marie', tarif: 'MERCREDI 12h15 Paris Châtelet ENFANTS' },
 ]
+
+function mockLoadedAttendance(data = mockSubscriptions) {
+  mockUseSubscriptions.mockReturnValue({
+    data,
+    isLoading: false,
+    error: null,
+    refetch: jest.fn(),
+  })
+}
 
 describe('AttendancePage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(global.fetch as jest.Mock).mockClear()
+    localStorage.clear()
+    mockUseSubscriptions.mockReturnValue({
+      data: [],
+      isLoading: true,
+      error: null,
+      refetch: jest.fn(),
+    })
+    mockUseUniqueTarifs.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    })
   })
 
   it('should render loading state initially', () => {
     render(<AttendancePage />)
-    
     expect(screen.getByText('Chargement...')).toBeInTheDocument()
   })
 
   it('should render back to dashboard button', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockSubscriptions)
-    })
-
+    mockLoadedAttendance()
     render(<AttendancePage />)
 
     await waitFor(() => {
@@ -96,37 +73,32 @@ describe('AttendancePage', () => {
   })
 
   it('should handle empty data', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve([])
-    })
-
+    mockLoadedAttendance([])
     render(<AttendancePage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Feuilles d\'appel')).toBeInTheDocument()
+      expect(screen.getByText("Feuilles d'appel")).toBeInTheDocument()
     })
   })
 
   it('should render courses after successful API call', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockSubscriptions)
-    })
-
+    mockLoadedAttendance()
     render(<AttendancePage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Feuilles d\'appel')).toBeInTheDocument()
+      expect(screen.getByText("Feuilles d'appel")).toBeInTheDocument()
+      expect(screen.getByText('Lundi')).toBeInTheDocument()
+      expect(screen.getByText('Mercredi')).toBeInTheDocument()
     })
-
-    // Check if tabs are rendered
-    expect(screen.getByText('Lundi')).toBeInTheDocument()
-    expect(screen.getByText('Mercredi')).toBeInTheDocument()
   })
 
   it('should handle API error', async () => {
-    ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('API Error'))
+    mockUseSubscriptions.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('API Error'),
+      refetch: jest.fn(),
+    })
 
     render(<AttendancePage />)
 
@@ -135,119 +107,40 @@ describe('AttendancePage', () => {
     })
   })
 
-  it('should handle HTTP error response', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error'
-    })
-
-    render(<AttendancePage />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Erreur: Erreur lors du chargement des données')).toBeInTheDocument()
-    })
-  })
-
-  it('should render back to dashboard button', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockSubscriptions)
-    })
-
-    render(<AttendancePage />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Retour au Dashboard')).toBeInTheDocument()
-    })
-  })
-
   it('should group courses by day', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockSubscriptions)
-    })
-
+    mockLoadedAttendance()
     render(<AttendancePage />)
 
     await waitFor(() => {
-      // Should have tabs for different days
       expect(screen.getByText('Lundi')).toBeInTheDocument()
       expect(screen.getByText('Mercredi')).toBeInTheDocument()
     })
   })
 
   it('should handle presence change', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockSubscriptions)
-    })
-
+    mockLoadedAttendance()
     render(<AttendancePage />)
 
     await waitFor(() => {
-      const toggleButton = screen.getByText('Toggle Presence')
-      fireEvent.click(toggleButton)
-      
-      // The component should handle the presence change
-      // This is tested through the CourseCard component
+      fireEvent.click(screen.getByText('Toggle Presence'))
     })
   })
 
   it('should handle adding temporary student', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockSubscriptions)
-    })
-
+    mockLoadedAttendance()
     render(<AttendancePage />)
 
     await waitFor(() => {
-      const addButton = screen.getByText('Add Student')
-      fireEvent.click(addButton)
-      
-      // The component should handle adding a temporary student
-      // This is tested through the CourseCard component
+      fireEvent.click(screen.getByText('Add Student'))
     })
   })
 
   it('should handle removing temporary student', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockSubscriptions)
-    })
-
+    mockLoadedAttendance()
     render(<AttendancePage />)
 
     await waitFor(() => {
-      const removeButton = screen.getByText('Remove Student')
-      fireEvent.click(removeButton)
-      
-      // The component should handle removing a temporary student
-      // This is tested through the CourseCard component
+      fireEvent.click(screen.getByText('Remove Student'))
     })
-  })
-
-  it('should handle saving attendance', async () => {
-    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
-    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {})
-    
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockSubscriptions)
-    })
-
-    render(<AttendancePage />)
-
-    await waitFor(() => {
-      const saveButton = screen.getByText('Save Attendance')
-      fireEvent.click(saveButton)
-      
-      expect(consoleSpy).toHaveBeenCalled()
-      expect(alertSpy).toHaveBeenCalled()
-    })
-    
-    consoleSpy.mockRestore()
-    alertSpy.mockRestore()
   })
 })

@@ -1,20 +1,25 @@
+jest.mock('@/lib/api/api', () => ({
+  api: {
+    get: jest.fn(),
+  },
+}))
+
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { AuthProvider, useAuth } from '../AuthContext'
+import { mockCoachByEmailSuccess, mockCoachLookupFallback, mockCoachLookupFailure } from './authTestHelpers.helper'
 
-// Mock Firebase
 jest.mock('firebase/auth', () => ({
   onAuthStateChanged: jest.fn(() => jest.fn()),
   signOut: jest.fn(),
   User: jest.fn(),
 }))
 
-// Mock fetch
 global.fetch = jest.fn()
 
 const TestComponent = () => {
   const { user, userProfile, userRole, loading } = useAuth()
-  
+
   return (
     <div>
       <div data-testid="user">{user ? user.email : 'No user'}</div>
@@ -35,19 +40,19 @@ describe('AuthContext - Simple Tests', () => {
     render(
       <AuthProvider>
         <TestComponent />
-      </AuthProvider>
+      </AuthProvider>,
     )
-    
-    expect(screen.getByText('Test Component')).toBeInTheDocument()
+
+    expect(screen.getByTestId('user')).toBeInTheDocument()
   })
 
   it('should provide initial loading state', () => {
     render(
       <AuthProvider>
         <TestComponent />
-      </AuthProvider>
+      </AuthProvider>,
     )
-    
+
     expect(screen.getByTestId('loading')).toHaveTextContent('Loading')
     expect(screen.getByTestId('user')).toHaveTextContent('No user')
     expect(screen.getByTestId('userProfile')).toHaveTextContent('No profile')
@@ -61,28 +66,25 @@ describe('AuthContext - Simple Tests', () => {
       displayName: 'Test User',
     }
 
-    // Mock onAuthStateChanged to call the callback with mockUser
     const { onAuthStateChanged } = require('firebase/auth')
-    onAuthStateChanged.mockImplementation((auth, callback) => {
-      // Simulate auth state change
-      setTimeout(() => callback(mockUser), 0)
-      return jest.fn() // unsubscribe function
-    })
+    onAuthStateChanged.mockImplementation(
+      (_auth: unknown, callback: (user: typeof mockUser) => void) => {
+        setTimeout(() => callback(mockUser), 0)
+        return jest.fn()
+      },
+    )
 
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      text: () => Promise.resolve(JSON.stringify({
-        statut: 'admin',
-        nom: 'Test',
-        prenom: 'User',
-        email: 'test@example.com'
-      }))
+    mockCoachByEmailSuccess({
+      statut: 'admin',
+      nom: 'Test',
+      prenom: 'User',
+      email: 'test@example.com',
     })
 
     render(
       <AuthProvider>
         <TestComponent />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     await waitFor(() => {
@@ -97,24 +99,24 @@ describe('AuthContext - Simple Tests', () => {
     }
 
     const { onAuthStateChanged } = require('firebase/auth')
-    onAuthStateChanged.mockImplementation((auth, callback) => {
-      setTimeout(() => callback(mockUser), 0)
-      return jest.fn()
-    })
+    onAuthStateChanged.mockImplementation(
+      (_auth: unknown, callback: (user: typeof mockUser) => void) => {
+        setTimeout(() => callback(mockUser), 0)
+        return jest.fn()
+      },
+    )
 
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      text: () => Promise.resolve('')
-    })
+    mockCoachLookupFallback([])
 
     render(
       <AuthProvider>
         <TestComponent />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     await waitFor(() => {
       expect(screen.getByTestId('userProfile')).toHaveTextContent('No profile')
+      expect(screen.getByTestId('userRole')).toHaveTextContent('coach')
     })
   })
 
@@ -125,21 +127,24 @@ describe('AuthContext - Simple Tests', () => {
     }
 
     const { onAuthStateChanged } = require('firebase/auth')
-    onAuthStateChanged.mockImplementation((auth, callback) => {
-      setTimeout(() => callback(mockUser), 0)
-      return jest.fn()
-    })
+    onAuthStateChanged.mockImplementation(
+      (_auth: unknown, callback: (user: typeof mockUser) => void) => {
+        setTimeout(() => callback(mockUser), 0)
+        return jest.fn()
+      },
+    )
 
-    ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('API Error'))
+    mockCoachLookupFailure()
 
     render(
       <AuthProvider>
         <TestComponent />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     await waitFor(() => {
       expect(screen.getByTestId('userProfile')).toHaveTextContent('No profile')
+      expect(screen.getByTestId('userRole')).toHaveTextContent('coach')
     })
   })
 })

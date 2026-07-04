@@ -1,7 +1,19 @@
 import '@testing-library/jest-dom'
+import { TextDecoder, TextEncoder } from 'util'
+
+global.TextEncoder = TextEncoder
+global.TextDecoder = TextDecoder
 
 // Mock fetch globally
 global.fetch = jest.fn()
+
+jest.mock('@/lib/auth/firebase', () => ({
+  auth: {
+    currentUser: {
+      getIdToken: jest.fn().mockResolvedValue('test-token'),
+    },
+  },
+}))
 
 // Mock window.alert
 global.alert = jest.fn()
@@ -14,10 +26,16 @@ global.console = {
   error: jest.fn(),
 }
 
-// Mock Firebase
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+  }),
+  useSearchParams: () => new URLSearchParams(),
+}))
+
 jest.mock('firebase/auth', () => ({
   getAuth: jest.fn(),
-  onAuthStateChanged: jest.fn(),
+  onAuthStateChanged: jest.fn(() => jest.fn()),
   signOut: jest.fn(),
   User: jest.fn(),
 }))
