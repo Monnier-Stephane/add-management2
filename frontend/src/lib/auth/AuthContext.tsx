@@ -11,9 +11,33 @@ const SESSION_STORAGE_KEY = 'sessionStartTime'
 
 type UserRole = 'coach' | 'admin'
 
+interface Coach {
+  _id?: string
+  email?: string
+  prenom?: string
+  nom?: string
+  statut?: string
+  telephone?: string
+}
+
+type UserProfile = {
+  statut: string
+  nom: string
+  prenom: string
+  email: string
+}
+
+function toUserProfile(coach: Coach): UserProfile {
+  return {
+    email: coach.email ?? '',
+    prenom: coach.prenom ?? '',
+    nom: coach.nom ?? '',
+    statut: coach.statut ?? 'coach',
+  }
+}
 type AuthContextType = {
   user: User | null
-  userProfile: { statut: string; nom: string; prenom: string; email: string } | null
+  userProfile: UserProfile | null
   userRole: UserRole | null
   loading: boolean
   logout: () => Promise<void>
@@ -43,7 +67,7 @@ export const useAuth = () => {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [userProfile, setUserProfile] = useState<{ statut: string; nom: string; prenom: string; email: string } | null>(null)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [sessionExpired, setSessionExpired] = useState(false)
@@ -71,12 +95,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           try {
             // Essayer d'abord l'endpoint spécifique
-            const coach = await api.get<any>(`/coaches/by-email/${encodeURIComponent(emailToSearch)}`)
+            const coach = await api.get<Coach | null>(`/coaches/by-email/${encodeURIComponent(emailToSearch)}`)
             
             if (coach && typeof coach === 'object' && !Array.isArray(coach)) {
               if (isMounted) {
-                setUserProfile(coach)
-                setUserRole(coach?.statut === 'admin' ? 'admin' : 'coach')
+                setUserProfile(toUserProfile(coach))
+                setUserRole(coach.statut === 'admin' ? 'admin' : 'coach')
                 setLoading(false)
               }
               return
@@ -87,27 +111,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           // Fallback : récupérer la liste des coaches pour comparer
           try {
-            const allCoaches = await api.get<any[]>('/coaches')
-            interface Coach {
-              _id?: string;
-              email?: string;
-              prenom?: string;
-              nom?: string;
-              statut?: string;
-              telephone?: string;
-            }
+            const allCoaches = await api.get<Coach[]>('/coaches')
+            
             const matchingCoach = allCoaches.find((c: Coach) => 
               c.email?.toLowerCase() === emailToSearch.toLowerCase()
             )
             
             if (matchingCoach) {
               if (isMounted) {
-                setUserProfile({
-                  email: matchingCoach.email || '',
-                  prenom: matchingCoach.prenom || '',
-                  nom: matchingCoach.nom || '',
-                  statut: matchingCoach.statut || 'coach'
-                })
+                setUserProfile(toUserProfile(matchingCoach))
                 setUserRole(matchingCoach.statut === 'admin' ? 'admin' : 'coach')
                 setLoading(false)
               }

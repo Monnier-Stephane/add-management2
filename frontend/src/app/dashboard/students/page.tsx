@@ -13,29 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Checkbox } from "@/components/ui/checkbox";
 import { Pencil, Trash2, Home, Phone, MapPin, CreditCard, FileText } from "lucide-react";
 import Link from "next/link";
-import { useSubscriptions, useUniqueTarifs } from '@/lib/hooks/useSubscriptions';
+import { useSubscriptions, useUniqueTarifs, type Subscription } from '@/lib/hooks/useSubscriptions';
 import { api } from '@/lib/api/api';
 
-interface Student {
-  _id: string;
-  nom: string;
-  prenom: string;
-  email: string;
-  telephone: string;
-  telephoneUrgence?: string;
-  dateDeNaissance: string;
-  adresse: string;
-  ville: string;
-  codePostal: string;
-  tarif: string | string[];
-  dateInscription: string;
-  statutPaiement: 'payé' | 'en attente' | 'annulé';
-  remarques?: string;
-  // Champs pour les cours (à ajouter au backend)
-  jour?: string;
-  lieu?: string;
-  heure?: string;
-}
+type Student = Subscription;
 
 const StudentsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -56,13 +37,15 @@ const StudentsPage = () => {
   const { data: uniqueTarifs } = useUniqueTarifs();
   
   // Typage explicite pour éviter les erreurs TypeScript
-  const studentsArray = Array.isArray(students) ? students : [];
+  const studentsArray: Student[] = Array.isArray(students) ? students : [];
   const tarifsArray = Array.isArray(uniqueTarifs) ? uniqueTarifs : [];
 
   // Plus besoin de useEffect pour charger les données, les hooks s'en chargent
 
   // Function to calculate age from date of birth
-  const calculateAge = (dateOfBirth: string): number => {
+  const calculateAge = (dateOfBirth: string | undefined): number => {
+    if (!dateOfBirth) return 0;
+
     const today = new Date();
     const birthDate = new Date(dateOfBirth);
     
@@ -250,17 +233,18 @@ const StudentsPage = () => {
 
     try {
       // Préparer les données à envoyer - seulement les champs modifiés
-      const updateData: Record<string, any> = {};
+      const updateData: Record<string, string | string[] | undefined> = {};
       
       // Champs à envoyer (seulement ceux qui existent dans editForm)
-      const fieldsToCheck = [
+      const fieldsToCheck: (keyof Student)[] = [
         'nom', 'prenom', 'email', 'telephone', 'telephoneUrgence',
         'adresse', 'ville', 'codePostal', 'tarif', 'statutPaiement', 'remarques'
       ];
       
-      fieldsToCheck.forEach(field => {
-        if (editForm[field as keyof typeof editForm] !== undefined) {
-          updateData[field] = editForm[field as keyof typeof editForm];
+      fieldsToCheck.forEach((field) => {
+        const value = editForm[field];
+        if (value !== undefined) {
+          updateData[field] = value as string | string[] | undefined;
         }
       });
       
@@ -270,7 +254,7 @@ const StudentsPage = () => {
       }
 
       // Nettoyer les valeurs vides pour les chaînes (sauf pour tarif qui peut être un tableau vide)
-      Object.keys(updateData).forEach(key => {
+      (Object.keys(updateData) as string[]).forEach((key) => {
         if (key !== 'tarif' && updateData[key] === '') {
           delete updateData[key];
         }

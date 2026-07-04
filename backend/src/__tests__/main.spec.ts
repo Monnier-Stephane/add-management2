@@ -55,13 +55,15 @@ describe('Main Bootstrap', () => {
   });
 
   it('should create app and enable CORS', async () => {
+    delete process.env.PORT;
+
     const { bootstrap } = await import('../main');
 
     await bootstrap();
 
     expect(NestFactory.create).toHaveBeenCalledWith(AppModule);
     expect(mockApp.enableCors).toHaveBeenCalled();
-    expect(mockApp.listen).toHaveBeenCalledWith('3001', '0.0.0.0');
+    expect(mockApp.listen).toHaveBeenCalledWith(3001, '0.0.0.0');
   });
 
   it('should include FRONTEND_URL in CORS origins', async () => {

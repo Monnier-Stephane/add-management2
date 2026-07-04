@@ -10,6 +10,16 @@ interface TodayCourse {
   location?: string
 }
 
+interface ApiCourse {
+  id: string
+  name: string
+  date: string
+  time: string
+  coachName: string
+  assignedCoaches?: string[]
+  location?: string
+}
+
 export function useTodayCourses() {
   const [todayCourses, setTodayCourses] = useState<TodayCourse[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,7 +54,7 @@ export function useTodayCourses() {
                 const courses = await response.json()
         
         // Convertir les cours en format compatible
-        const todayCourses = courses.map((course: any) => {
+        const todayCourses = courses.map((course: ApiCourse) => {
           // Créer une date valide
           const courseDateTime = new Date(`${course.date}T${course.time}`)
           

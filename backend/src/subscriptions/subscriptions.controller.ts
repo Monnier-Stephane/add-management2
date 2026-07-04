@@ -18,6 +18,7 @@ import {
 import { CsvProcessorService } from './csv-processor.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import { Roles } from '../auth/roles.decorator';
 
 interface ProcessingResult {
   totalRecords: number;
@@ -35,6 +36,7 @@ export class SubscriptionsController {
   ) {}
 
   @Post()
+  @Roles('admin')
   create(@Body() createSubscriptionDto: CreateSubscriptionDto) {
     return this.subscriptionsService.create(createSubscriptionDto);
   }
@@ -50,6 +52,7 @@ export class SubscriptionsController {
   }
 
   @Patch(':id')
+  @Roles('admin')
   async update(
     @Param('id') id: string,
     @Body() updateSubscriptionDto: UpdateSubscriptionDto,
@@ -58,11 +61,13 @@ export class SubscriptionsController {
   }
 
   @Delete(':id')
+  @Roles('admin')
   remove(@Param('id') id: string) {
     return this.subscriptionsService.remove(id);
   }
 
   @Post('upload-csv')
+  @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
   async uploadCSV(@UploadedFile() file: Express.Multer.File): Promise<{
     success: boolean;
@@ -95,6 +100,7 @@ export class SubscriptionsController {
 
   // Nouvel endpoint pour Excel
   @Post('upload-excel')
+  @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
   async uploadExcel(@UploadedFile() file: Express.Multer.File): Promise<{
     success: boolean;
@@ -144,6 +150,7 @@ export class SubscriptionsController {
   }
 
   @Get('stats')
+  @Roles('admin')
   async getStats(): Promise<SubscriptionStats> {
     return this.subscriptionsService.getStats();
   }

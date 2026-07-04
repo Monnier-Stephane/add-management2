@@ -6,6 +6,14 @@ jest.mock('./auth/firebase-auth.guard', () => ({
   },
 }));
 
+jest.mock('./auth/roles.guard', () => ({
+  RolesGuard: class {
+    canActivate() {
+      return true;
+    }
+  },
+}));
+
 jest.mock('./auth/firebase-admin', () => ({
   getFirebaseAdmin: jest.fn(),
 }));
@@ -30,6 +38,10 @@ jest.mock('./coaches/coaches.module', () => ({
 
 jest.mock('./planning/planning.module', () => ({
   PlanningModule: class PlanningModule {},
+}));
+
+jest.mock('./auth/auth.module', () => ({
+  AuthModule: class AuthModule {},
 }));
 
 import { Test, TestingModule } from '@nestjs/testing';
