@@ -1,3 +1,11 @@
+jest.mock('@nestjs/mongoose', () => ({
+  MongooseModule: {
+    forRoot: jest.fn().mockReturnValue({
+      module: class MockMongooseRootModule {},
+    }),
+  },
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { DatabaseModule } from './database.module';
 

@@ -16,6 +16,22 @@ jest.mock('firebase-admin/auth', () => ({
   })),
 }));
 
+jest.mock('./database/database.module', () => ({
+  DatabaseModule: class DatabaseModule {},
+}));
+
+jest.mock('./subscriptions/subscriptions.module', () => ({
+  SubscriptionsModule: class SubscriptionsModule {},
+}));
+
+jest.mock('./coaches/coaches.module', () => ({
+  CoachesModule: class CoachesModule {},
+}));
+
+jest.mock('./planning/planning.module', () => ({
+  PlanningModule: class PlanningModule {},
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from './app.module';
 

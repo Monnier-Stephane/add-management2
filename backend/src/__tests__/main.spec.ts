@@ -19,9 +19,9 @@ jest.mock('firebase-admin/auth', () => ({
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
 
-// Mock NestFactory
 jest.mock('@nestjs/core', () => {
-  const actual = jest.requireActual('@nestjs/core');
+  const actual =
+    jest.requireActual<typeof import('@nestjs/core')>('@nestjs/core');
   return {
     ...actual,
     NestFactory: {
@@ -30,11 +30,13 @@ jest.mock('@nestjs/core', () => {
   };
 });
 
-// Mock process.env
 const originalEnv = process.env;
 
 describe('Main Bootstrap', () => {
-  let mockApp: any;
+  let mockApp: {
+    enableCors: jest.Mock;
+    listen: jest.Mock;
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -45,7 +47,6 @@ describe('Main Bootstrap', () => {
     };
     (NestFactory.create as jest.Mock).mockResolvedValue(mockApp);
 
-    // Reset process.env
     process.env = { ...originalEnv };
   });
 
@@ -54,14 +55,27 @@ describe('Main Bootstrap', () => {
   });
 
   it('should create app and enable CORS', async () => {
-    // Import and execute the bootstrap function
     const { bootstrap } = await import('../main');
 
     await bootstrap();
 
     expect(NestFactory.create).toHaveBeenCalledWith(AppModule);
     expect(mockApp.enableCors).toHaveBeenCalled();
-    expect(mockApp.listen).toHaveBeenCalledWith('3001'); // Default port as string from env
+    expect(mockApp.listen).toHaveBeenCalledWith('3001', '0.0.0.0');
+  });
+
+  it('should include FRONTEND_URL in CORS origins', async () => {
+    process.env.FRONTEND_URL = 'https://add-management2.vercel.app/';
+
+    const { bootstrap, getCorsOrigins } = await import('../main');
+
+    await bootstrap();
+
+    const corsConfig = mockApp.enableCors.mock.calls[0][0] as {
+      origin: string[];
+    };
+    expect(corsConfig.origin).toEqual(getCorsOrigins());
+    expect(corsConfig.origin).toContain('https://add-management2.vercel.app');
   });
 
   it('should use custom port from environment', async () => {
@@ -71,7 +85,7 @@ describe('Main Bootstrap', () => {
 
     await bootstrap();
 
-    expect(mockApp.listen).toHaveBeenCalledWith('4000');
+    expect(mockApp.listen).toHaveBeenCalledWith('4000', '0.0.0.0');
   });
 
   it('should handle app creation errors', async () => {
@@ -99,7 +113,7 @@ describe('Main Bootstrap', () => {
 
     await bootstrap();
 
-    expect(mockApp.listen).toHaveBeenCalledWith(3001); // Default port as number
+    expect(mockApp.listen).toHaveBeenCalledWith(3001, '0.0.0.0');
   });
 
   it('should handle empty port environment variable', async () => {
@@ -109,26 +123,26 @@ describe('Main Bootstrap', () => {
 
     await bootstrap();
 
-    expect(mockApp.listen).toHaveBeenCalledWith(''); // Empty string is passed as-is
+    expect(mockApp.listen).toHaveBeenCalledWith('', '0.0.0.0');
   });
 
   it('should handle null port environment variable', async () => {
-    process.env.PORT = null as any;
+    process.env.PORT = null as unknown as string;
 
     const { bootstrap } = await import('../main');
 
     await bootstrap();
 
-    expect(mockApp.listen).toHaveBeenCalledWith(3001); // Default port as number
+    expect(mockApp.listen).toHaveBeenCalledWith(3001, '0.0.0.0');
   });
 
   it('should handle undefined port environment variable with nullish coalescing', async () => {
-    process.env.PORT = undefined as any;
+    process.env.PORT = undefined as unknown as string;
 
     const { bootstrap } = await import('../main');
 
     await bootstrap();
 
-    expect(mockApp.listen).toHaveBeenCalledWith(3001); // Default port as number
+    expect(mockApp.listen).toHaveBeenCalledWith(3001, '0.0.0.0');
   });
 });

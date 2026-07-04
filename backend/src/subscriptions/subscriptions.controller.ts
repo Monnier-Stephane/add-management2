@@ -11,7 +11,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { SubscriptionsService, SubscriptionStats } from './subscriptions.service';
+import {
+  SubscriptionsService,
+  SubscriptionStats,
+} from './subscriptions.service';
 import { CsvProcessorService } from './csv-processor.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
@@ -144,5 +147,4 @@ export class SubscriptionsController {
   async getStats(): Promise<SubscriptionStats> {
     return this.subscriptionsService.getStats();
   }
-
 }

@@ -94,6 +94,9 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI || 'mongodb://localhost:27017/test' }}
           REDIS_HOST: localhost
           REDIS_PORT: 6379
+          FIREBASE_PROJECT_ID: test-project
+          FIREBASE_CLIENT_EMAIL: firebase@test-project.iam.gserviceaccount.com
+          FIREBASE_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----\n"
 
       - name: Run E2E tests
         working-directory: ./backend
@@ -103,4 +106,7 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI || 'mongodb://localhost:27017/test' }}
           REDIS_HOST: localhost
           REDIS_PORT: 6379
+          FIREBASE_PROJECT_ID: test-project
+          FIREBASE_CLIENT_EMAIL: firebase@test-project.iam.gserviceaccount.com
+          FIREBASE_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----\n"
 
