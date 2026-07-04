@@ -40,6 +40,10 @@ jest.mock('./planning/planning.module', () => ({
   PlanningModule: class PlanningModule {},
 }));
 
+jest.mock('./auth/auth.module', () => ({
+  AuthModule: class AuthModule {},
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from './app.module';
 
