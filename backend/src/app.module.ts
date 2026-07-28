@@ -5,7 +5,6 @@ import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { CoachesModule } from './coaches/coaches.module';
-import { PlanningModule } from './planning/planning.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule } from '@nestjs/config';
 import * as redisStore from 'cache-manager-redis-store';
@@ -34,7 +33,6 @@ import { RolesGuard } from './auth/roles.guard';
     DatabaseModule,
     SubscriptionsModule,
     CoachesModule,
-    PlanningModule,
     AuthModule,
   ],
   controllers: [AppController],

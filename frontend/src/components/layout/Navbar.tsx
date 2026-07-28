@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
-import { Clock } from 'lucide-react'
 
 export function Navbar() {
   const { user, logout, sessionExpired, timeRemaining } = useAuth()
@@ -30,28 +29,7 @@ export function Navbar() {
         <div className="flex items-center gap-4">
           {user ? (
             <>
-              {/* Compte à rebours de la session (même durée que la déconnexion auto) */}
-              {timeRemaining > 0 && !sessionExpired && (
-                <div className="flex items-center gap-2 text-gray-600 text-sm">
-                  <Clock className="h-4 w-4" />
-                  <span className="inline">
-                    {Math.floor(timeRemaining / 60000)}:{(Math.floor((timeRemaining % 60000) / 1000)).toString().padStart(2, '0')}
-                  </span>
-                </div>
-              )}
-              
-              {/* Alerte de session expirée */}
-              {sessionExpired && timeRemaining > 0 && (
-                <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-full px-3 py-1 text-orange-700 text-sm">
-                  <div className="relative">
-                    <Clock className="h-4 w-4" />
-                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                  </div>
-                  <span className="font-medium">
-                    {Math.floor(timeRemaining / 60000)}:{(Math.floor((timeRemaining % 60000) / 1000)).toString().padStart(2, '0')}
-                  </span>
-                </div>
-              )}
+             
               
               <Button variant="outline" onClick={handleLogout}>
                 Déconnexion

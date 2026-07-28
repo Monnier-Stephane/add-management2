@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 jest.mock('./auth/firebase-auth.guard', () => ({
   FirebaseAuthGuard: class {
     canActivate() {
@@ -36,9 +38,6 @@ jest.mock('./coaches/coaches.module', () => ({
   CoachesModule: class CoachesModule {},
 }));
 
-jest.mock('./planning/planning.module', () => ({
-  PlanningModule: class PlanningModule {},
-}));
 
 jest.mock('./auth/auth.module', () => ({
   AuthModule: class AuthModule {},
