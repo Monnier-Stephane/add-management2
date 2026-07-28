@@ -25,7 +25,7 @@ import {
 
 export function AppSidebar() {
   const { userRole, logout, user } = useAuth()
-  const { prefetchPlanning, prefetchCoaches } = usePrefetchPageData()
+  const { prefetchCoaches } = usePrefetchPageData()
 
   const menuItems = [
     {
@@ -37,12 +37,6 @@ export function AppSidebar() {
       title: "Liste des adhérents",
       url: "/dashboard/students",
       icon: Users
-    },
-    {
-      title: "Planning des cours",
-      url: "/dashboard/planning",
-      icon: Calendar,
-      prefetch: prefetchPlanning
     },
     {
       title: "Feuilles d'appel",
@@ -85,27 +79,16 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarMenu>
-            {menuItems.map((item, index) => (
-              <SidebarMenuItem key={index}>
-                <SidebarMenuButton asChild>
-                  {item.prefetch ? (
-                    <LazyNavigation 
-                      href={item.url} 
-                      prefetchData={item.prefetch}
-                      className="flex items-center gap-2"
-                    >
-                      <item.icon className="w-4 h-4" />
-                      {item.title}
-                    </LazyNavigation>
-                  ) : (
-                    <Link href={item.url} className="flex items-center gap-2">
-                      <item.icon className="w-4 h-4" />
-                      {item.title}
-                    </Link>
-                  )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+          {menuItems.map((item, index) => (
+  <SidebarMenuItem key={index}>
+    <SidebarMenuButton asChild>
+      <Link href={item.url} className="flex items-center gap-2">
+        <item.icon className="w-4 h-4" />
+        {item.title}
+      </Link>
+    </SidebarMenuButton>
+  </SidebarMenuItem>
+))}
           </SidebarMenu>
         </SidebarGroup>
 
