@@ -1,9 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { Home, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { Loader2 } from 'lucide-react'
 import { CourseCard } from '@/components/attendance/CourseCard'
 import { useSearchParams } from 'next/navigation'
 import { useSubscriptions } from '@/lib/hooks/useSubscriptions'
@@ -458,12 +456,7 @@ function AttendancePageContent() {
           </h1>
         <p className="text-gray-600">Gérez les présences des élèves par cours</p>
         </div>
-        <Link href="/dashboard">
-          <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
-            <Home className="h-4 w-4" />
-            Retour au Dashboard
-          </Button>
-        </Link>
+        
       </div>
 
       <Tabs value={selectedDay} onValueChange={setSelectedDay} className="w-full">

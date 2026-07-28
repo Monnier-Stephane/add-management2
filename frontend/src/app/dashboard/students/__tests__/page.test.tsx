@@ -93,12 +93,13 @@ describe('StudentsPage', () => {
     expect(screen.getByText('Chargement des élèves...')).toBeInTheDocument()
   })
 
-  it('should render back to dashboard button', async () => {
+  it('should render the students page title', async () => {
     mockLoadedStudents()
     render(<StudentsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Retour au Dashboard')).toBeInTheDocument()
+      // Navigation vers le dashboard se fait via la sidebar, plus de bouton "Retour"
+      expect(screen.getByText('Liste des élèves par cours')).toBeInTheDocument()
     })
   })
 

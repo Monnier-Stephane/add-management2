@@ -2,8 +2,6 @@
 
 import dynamic from 'next/dynamic'
 import { useAuth } from '@/lib/auth/AuthContext'
-import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/components/AppSidebar'
 import CoachesList from '@/components/CoachesList'
 
 const StatsDashboard = dynamic(
@@ -42,34 +40,17 @@ export function Dashboard() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <div className="text-sm text-gray-500">
-            Bonjour {userProfile?.prenom || user?.email || 'Utilisateur'}
-            {userRole && <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{userRole}</span>}
-          </div>
-        </header>
-        
-        <main className="p-4">
-          {userProfile?.prenom ? (
-            <>
-              {/* Charger seulement les données essentielles du dashboard */}
-              <StatsDashboard />
-              <CoachesList />
-            </>
-          ) : (
-            <div className="flex items-center justify-center py-12">
-              <div className="flex flex-col items-center gap-4">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                <p className="text-gray-600">Chargement de vos données...</p>
-              </div>
-            </div>
-          )}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <>
+      {userProfile?.prenom ? (
+        <>
+          <StatsDashboard />
+          <CoachesList />
+        </>
+      ) : (
+        <div className="flex items-center justify-center py-12">
+          …
+        </div>
+      )}
+    </>
   )
 }

@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { pageCache } from '@/lib/cache/pageCache'
 
 interface LazyNavigationProps {
   href: string

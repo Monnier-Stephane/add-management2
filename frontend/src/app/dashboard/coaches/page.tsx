@@ -10,7 +10,6 @@ import { SelectNative } from '@/components/ui/select-native';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Edit, Save, X, Home, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
-import Link from 'next/link';
 import { api } from '@/lib/api/api';
 
 interface Coach {
@@ -162,12 +161,7 @@ const [isDeleting, setIsDeleting] = useState(false);
         Ajouter un coach
       </Button>
     )}
-    <Link href="/dashboard">
-      <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
-        <Home className="h-4 w-4" />
-        Retour au Dashboard
-      </Button>
-    </Link>
+    
   </div>
 </div>
 

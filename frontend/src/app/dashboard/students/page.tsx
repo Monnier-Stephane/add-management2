@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Pencil, Trash2, Home, Phone, MapPin, CreditCard, FileText } from "lucide-react";
-import Link from "next/link";
 import { useSubscriptions, useUniqueTarifs, type Subscription } from '@/lib/hooks/useSubscriptions';
 import { api } from '@/lib/api/api';
 
@@ -341,12 +340,7 @@ const StudentsPage = () => {
         <h1 className="text-2xl md:text-3xl font-bold">
           Liste des élèves par cours
         </h1>
-        <Link href="/dashboard">
-          <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto">
-            <Home className="h-4 w-4" />
-            Retour au Dashboard
-          </Button>
-        </Link>
+
       </div>
       
       <div className="mb-6">
