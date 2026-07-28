@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 jest.mock('./auth/firebase-auth.guard', () => ({
   FirebaseAuthGuard: class {
     canActivate() {
