@@ -8,7 +8,7 @@ export default function ImportPage() {
         
       </div>
       <div className="max-w-xl mx-auto mb-6">
-        <h1 className="text-2xl font-bold text-center">Import de données</h1>
+        <h1 className="text-2xl font-bold text-center">Import de données (preview)</h1>
       </div>
       <CsvUploader />
     </div>
