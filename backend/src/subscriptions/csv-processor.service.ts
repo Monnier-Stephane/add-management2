@@ -7,7 +7,7 @@ import {
   Subscription,
   SubscriptionDocument,
 } from './schemas/subscription.schema';
-import * as csv from 'csv-parser';
+import csv from 'csv-parser';
 import * as xlsx from 'node-xlsx';
 import { Readable } from 'stream';
 
@@ -24,7 +24,7 @@ interface CSVRecord {
   remarques?: string;
 }
 
-interface ProcessingResult {
+export interface ProcessingResult {
   totalRecords: number;
   newRecords: number;
   updatedRecords: number;
@@ -47,6 +47,67 @@ interface CleanedData {
   dateInscription: Date;
   statutPaiement: string;
   remarques: string;
+}
+
+interface CourseCount {
+  tarif: string;
+  count: number;
+}
+
+interface StudentImportGroup {
+  nom: string;
+  prenom: string;
+  sample: CleanedData;
+  uniqueCourses: string[];
+  duplicateCourseMessages: string[];
+  needsChoice: boolean;
+}
+
+interface PreviewPersonBase {
+  personKey: string;
+  nom: string;
+  prenom: string;
+  email: string;
+  telephone: string;
+  telephoneUrgence?: string;
+  dateDeNaissance: Date | null;
+  adresse: string;
+  ville: string;
+  codePostal: string;
+  statutPaiement: string;
+  remarques: string;
+  warnings: string[];
+}
+
+interface ReadyToImportPerson extends PreviewPersonBase {
+  courses: string[];
+}
+
+interface NeedsChoicePerson extends PreviewPersonBase {
+  choiceMessage: string;
+  courseOptions: string[];
+}
+
+export interface ExcelPreviewResult {
+  totalRows: number;
+  totalPeople: number;
+  readyToImport: ReadyToImportPerson[];
+  needsChoice: NeedsChoicePerson[];
+}
+
+export type CommitPerson = {
+  nom: string
+  prenom: string
+  email: string
+  telephone?: string
+  telephoneUrgence?: string
+  dateDeNaissance?: Date | string | null
+  adresse?: string
+  ville?: string
+  codePostal?: string
+  statutPaiement?: string
+  remarques?: string
+  courses: string[]
 }
 
 @Injectable()
@@ -89,6 +150,55 @@ export class CsvProcessorService {
 
   private cleanString(str: string): string {
     return str ? str.trim() : '';
+  }
+
+  private analyzeNameCourseConflicts(rows: CleanedData[]): StudentImportGroup[] {
+    const groups = new Map<string, CleanedData[]>();
+  
+    // Regroupement par nom et prénom
+    for (const row of rows) {
+      if (!row.nom || !row.prenom) continue;
+      const key = `${row.nom}|${row.prenom}`;
+      const list = groups.get(key) ?? [];
+      list.push(row);
+      groups.set(key, list);
+    }
+  
+    const result: StudentImportGroup[] = [];
+  
+    // Analyse des cours et détection des doublons
+    for (const [, personRows] of groups) {
+      const sample = personRows[0];
+      const counts = new Map<string, number>();
+  
+      for (const row of personRows) {
+        const course = row.tarif?.trim();
+        if (!course) continue;
+        counts.set(course, (counts.get(course) ?? 0) + 1);
+      }
+  
+      const uniqueCourses = Array.from(counts.keys());
+      const duplicateCourseMessages: string[] = [];
+  
+      for (const [tarif, count] of counts) {
+        if (count >= 2) {
+          duplicateCourseMessages.push(
+            `${sample.prenom} ${sample.nom} : le cours « ${tarif} » apparaît ${count} fois. Il ne sera gardé qu'une fois.`,
+          );
+        }
+      }
+  
+      result.push({
+        nom: sample.nom,
+        prenom: sample.prenom,
+        sample,
+        uniqueCourses,
+        duplicateCourseMessages,
+        needsChoice: uniqueCourses.length >= 2,
+      });
+    }
+  
+    return result;
   }
 
   // ---------- Common helpers ----------
@@ -176,14 +286,16 @@ export class CsvProcessorService {
     return jsonData;
   }
 
+  
+
   private mapExcelRecord(record: Record<string, any>) {
     return {
       nom: this.cleanString(
         String(record['Nom adhérent'] || record['nom adherent'] || record['nomadherent'] || ''),
-      ),
+      ).toUpperCase(),
       prenom: this.cleanString(
         String(record['Prénom adhérent'] || record['prénom adherent'] || record['prenomadherent'] || ''),
-      ),
+      ).toLowerCase(),
       email: this.cleanString(
         String(
           record['Email facilement joignable '] ||
@@ -208,7 +320,11 @@ export class CsvProcessorService {
         ),
       ),
       adresse: this.cleanString(String(record['Adresse'] || record['adresse'] || '')),
-      ville: this.cleanString(String(record['Ville'] || record['ville'] || '')),
+      ville: this.cleanString(String(record['Ville'] || record['ville'] || ''))
+        .replace(/[0-9()]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase(),
       codePostal: this.cleanString(
         String(record['Code Postal'] || record['code postal'] || record['codepostal'] || ''),
       ),
@@ -227,6 +343,106 @@ export class CsvProcessorService {
         ),
       ),
     };
+  }
+
+  async previewExcelFile(fileBuffer: Buffer): Promise<ExcelPreviewResult> {
+    const jsonData = this.parseExcel(fileBuffer);
+    const cleaned = jsonData.map((r) => this.mapExcelRecord(r));
+    const groups = this.analyzeNameCourseConflicts(cleaned);
+  
+    const readyToImport: ReadyToImportPerson[] = [];
+    const needsChoice: NeedsChoicePerson[] = [];
+  
+    for (const g of groups) {
+      const s = g.sample;
+      const base = {
+        personKey: `${g.nom}|${g.prenom}`,
+        nom: g.nom,
+        prenom: g.prenom,
+        email: s.email,
+        telephone: s.telephone,
+        telephoneUrgence: s.telephoneUrgence,
+        dateDeNaissance: s.dateDeNaissance,
+        adresse: s.adresse,
+        ville: s.ville,
+        codePostal: s.codePostal,
+        statutPaiement: s.statutPaiement,
+        remarques: s.remarques,
+        warnings: g.duplicateCourseMessages,
+      };
+  
+      if (g.needsChoice) {
+        needsChoice.push({
+          ...base,
+          choiceMessage: `${g.prenom} ${g.nom} apparaît sur ${g.uniqueCourses.length} cours différents. Assignez-le à 1 cours ou à plusieurs.`,
+          courseOptions: g.uniqueCourses,
+        });
+      } else {
+        readyToImport.push({
+          ...base,
+          courses: g.uniqueCourses,
+        });
+      }
+    }
+  
+    return {
+      totalRows: jsonData.length,
+      totalPeople: groups.length,
+      readyToImport,
+      needsChoice,
+    };
+  }
+
+  async commitExcel(people: CommitPerson[]): Promise<ProcessingResult> {
+    const results = this.initResults()
+    results.totalRecords = people.length
+  
+    for (const person of people) {
+      if (!person.email || !person.nom || !person.prenom) {
+        continue
+      }
+  
+      const uniqueCourses = [
+        ...new Set((person.courses ?? []).map((c) => c.trim()).filter(Boolean)),
+      ]
+  
+      const payload = {
+        nom: person.nom,
+        prenom: person.prenom,
+        email: person.email,
+        telephone: person.telephone ?? '',
+        telephoneUrgence: person.telephoneUrgence ?? '',
+        dateDeNaissance: person.dateDeNaissance ? new Date(person.dateDeNaissance) : null,
+        adresse: person.adresse ?? '',
+        ville: person.ville ?? '',
+        codePostal: person.codePostal ?? '',
+        tarif: uniqueCourses,
+        dateInscription: new Date(),
+        statutPaiement: person.statutPaiement || 'en attente',
+        remarques: person.remarques ?? '',
+      }
+  
+      const existing = await this.subscriptionModel.findOne({
+        nom: payload.nom,
+        prenom: payload.prenom,
+      })
+  
+      if (existing) {
+        await this.subscriptionModel.findByIdAndUpdate(existing._id, payload, { new: true })
+        results.updatedRecords++
+      } else {
+        await this.subscriptionModel.create(payload)
+        results.newRecords++
+        results.newStudents.push({
+          nom: person.nom,
+          prenom: person.prenom,
+          email: person.email,
+        })
+      }
+    }
+  
+    results.summary = this.generateSummary(results)
+    return results
   }
 
   async processExcelFile(fileBuffer: Buffer): Promise<ProcessingResult> {

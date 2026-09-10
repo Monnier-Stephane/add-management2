@@ -11,11 +11,12 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import 'multer';
 import {
   SubscriptionsService,
   SubscriptionStats,
 } from './subscriptions.service';
-import { CsvProcessorService } from './csv-processor.service';
+import { CsvProcessorService, ExcelPreviewResult, CommitPerson } from './csv-processor.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { Roles } from '../auth/roles.decorator';
@@ -99,9 +100,54 @@ export class SubscriptionsController {
   }
 
   // Nouvel endpoint pour Excel
-  @Post('upload-excel')
-  @Roles('admin')
-  @UseInterceptors(FileInterceptor('file'))
+  @Post('preview-excel')
+@Roles('admin')
+@UseInterceptors(FileInterceptor('file'))
+async previewExcel(@UploadedFile() file: Express.Multer.File): Promise<{
+  success: boolean;
+  message: string;
+  data: ExcelPreviewResult;
+}> {
+  if (!file) {
+    throw new BadRequestException('Aucun fichier fourni');
+  }
+
+  const isExcel =
+    file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls');
+
+  if (!isExcel) {
+    throw new BadRequestException('Le fichier doit être au format Excel');
+  }
+
+  try {
+    const result = await this.csvProcessorService.previewExcelFile(file.buffer);
+    return {
+      success: true,
+      message: 'Analyse terminée',
+      data: result,
+    };
+  } catch (error) {
+    throw new BadRequestException(
+      `Erreur lors de l'analyse: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+    );
+  }
+}
+
+@Post('commit-excel')
+@Roles('admin')
+async commitExcel(@Body() body: { people: CommitPerson[] }) {
+  if (!body?.people?.length) {
+    throw new BadRequestException('Aucune personne à importer')
+  }
+
+  const result = await this.csvProcessorService.commitExcel(body.people)
+  return {
+    success: true,
+    message: 'Import terminé',
+    data: result,
+  }
+}
+
   async uploadExcel(@UploadedFile() file: Express.Multer.File): Promise<{
     success: boolean;
     message: string;
