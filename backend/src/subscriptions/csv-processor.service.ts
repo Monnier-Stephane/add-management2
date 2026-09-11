@@ -7,10 +7,19 @@ import {
   Subscription,
   SubscriptionDocument,
 } from './schemas/subscription.schema';
-import csvParser = require('csv-parser');
+import * as csvParserModule from 'csv-parser';
 import * as xlsx from 'node-xlsx';
-import { Readable } from 'stream';
+import { Readable, Transform } from 'stream';
 import { PhotoUploadService } from './photo-upload.service';
+
+type CsvParserFn = (
+  optionsOrHeaders?: unknown,
+) => Transform;
+
+const csvParser: CsvParserFn =
+  typeof csvParserModule === 'function'
+    ? (csvParserModule as CsvParserFn)
+    : (csvParserModule as unknown as { default: CsvParserFn }).default;
 
 interface CSVRecord {
   nom: string;
