@@ -47,6 +47,13 @@ export class Subscription {
 
   @Prop()
   remarques: string;
+  
+  @Prop({
+    type: String,
+    enum: ['fille', 'garçon'],
+  })
+
+  sexe?: string;
 }
 
 export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);

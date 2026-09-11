@@ -18,6 +18,7 @@ export interface Subscription {
   dateInscription?: string
   statutPaiement?: 'payé' | 'en attente' | 'annulé'
   remarques?: string
+  sexe?: 'fille' | 'garçon'
   jour?: string
   lieu?: string
   heure?: string
