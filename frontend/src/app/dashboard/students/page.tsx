@@ -740,13 +740,13 @@ const StudentsPage = () => {
 
       {/* Modal d'informations détaillées */}
       <Dialog open={isInfoModalOpen} onOpenChange={setIsInfoModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[min(90dvh,90vh)] w-[calc(100%-1.5rem)] max-w-2xl flex-col gap-4 overflow-hidden p-4 sm:p-6">
+          <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>Informations de l&apos;élève</DialogTitle>
           </DialogHeader>
 
           {selectedStudent && (
-            <div className="space-y-6">
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain">
               <input
                 ref={fileInputRef}
                 id="student-photo-input"
@@ -822,7 +822,7 @@ const StudentsPage = () => {
               </div>
 
               {/* Informations personnelles */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Nom</Label>
                   <p className="text-lg font-semibold">{selectedStudent.nom}</p>
@@ -851,7 +851,7 @@ const StudentsPage = () => {
               </div>
 
               {/* Téléphones */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                     <Phone className="h-4 w-4" />
@@ -957,7 +957,7 @@ const StudentsPage = () => {
             </div>
           )}
 
-          <div className="flex justify-end gap-2 mt-6">
+          <div className="flex shrink-0 justify-end gap-2 border-t bg-background pt-3">
             <Button variant="outline" onClick={() => setIsInfoModalOpen(false)}>
               Fermer
             </Button>
@@ -967,12 +967,13 @@ const StudentsPage = () => {
 
       {/* Modal d'édition */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[min(90dvh,90vh)] w-[calc(100%-1.5rem)] max-w-2xl flex-col gap-4 overflow-hidden p-4 sm:p-6">
+          <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>Modifier l&apos;élève</DialogTitle>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="nom" className="mb-2 block">Nom</Label>
               <Input
@@ -1046,7 +1047,7 @@ const StudentsPage = () => {
               />
             </div>
 
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <Label htmlFor="tarif" className="mb-2 block">Tarifs (sélection multiple)</Label>
               <div className="border rounded-lg p-4 max-h-60 overflow-y-auto">
                 {tarifsArray.length > 0 ? (
@@ -1085,7 +1086,7 @@ const StudentsPage = () => {
               </div>
             </div>
 
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <Label className="mb-2 block">Statut de paiement</Label>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -1112,7 +1113,7 @@ const StudentsPage = () => {
               </div>
             </div>
 
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <Label className="mb-2 block">Sexe</Label>
               <div className="flex gap-2">
                 <Button
@@ -1141,8 +1142,9 @@ const StudentsPage = () => {
               />
             </div>
           </div>
+          </div>
 
-          <div className="flex justify-end gap-2 mt-6">
+          <div className="flex shrink-0 justify-end gap-2 border-t bg-background pt-3">
             <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
               Annuler
             </Button>
@@ -1153,12 +1155,12 @@ const StudentsPage = () => {
         </DialogContent>
       </Dialog>
       <Dialog open={isCropOpen} onOpenChange={setIsCropOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[min(90dvh,90vh)] w-[calc(100%-1.5rem)] max-w-lg flex-col gap-4 overflow-hidden p-4 sm:p-6">
+          <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>Recadrer la photo</DialogTitle>
           </DialogHeader>
 
-          <div className="relative h-80 w-full bg-black">
+          <div className="relative h-64 w-full shrink-0 bg-black sm:h-80">
             {cropImageSrc && (
               <Cropper
                 image={cropImageSrc}
@@ -1187,7 +1189,7 @@ const StudentsPage = () => {
             />
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex shrink-0 justify-end gap-2 border-t bg-background pt-3">
             <Button type="button" variant="outline" onClick={() => setIsCropOpen(false)}>
               Annuler
             </Button>
