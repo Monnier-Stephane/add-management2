@@ -9,6 +9,7 @@ interface ProcessingResult {
   totalRecords: number;
   newRecords: number;
   updatedRecords: number;
+  deletedRecords: number;
   errors: string[];
   summary: string;
   newStudents: Array<{ nom: string; prenom: string; email: string }>;
@@ -36,6 +37,11 @@ export function CsvUploader() {
 
   const handleUpload = async () => {
     if (!file) return;
+
+    const ok = confirm(
+      'Les élèves absents de ce fichier seront supprimés, photos comprises. Continuer ?',
+    );
+    if (!ok) return;
 
     setIsProcessing(true);
     setError(null);
@@ -122,7 +128,7 @@ if (!token) {
               <p>📊 {result.summary}</p>
               <p>✅ Nouveaux enregistrements: {result.newRecords}</p>
               <p>🔄 Enregistrements mis à jour: {result.updatedRecords}</p>
-              
+              <p>🗑️ Enregistrements supprimés: {result.deletedRecords ?? 0}</p>
               {result.newStudents.length > 0 && (
                 <div className="mt-4">
                   <p className="font-semibold text-green-800 mb-2">🎉 Nouveaux élèves ajoutés ({result.newStudents.length}):</p>

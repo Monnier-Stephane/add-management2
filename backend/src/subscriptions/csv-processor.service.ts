@@ -7,9 +7,19 @@ import {
   Subscription,
   SubscriptionDocument,
 } from './schemas/subscription.schema';
-import * as csv from 'csv-parser';
+import * as csvParserModule from 'csv-parser';
 import * as xlsx from 'node-xlsx';
-import { Readable } from 'stream';
+import { Readable, Transform } from 'stream';
+import { PhotoUploadService } from './photo-upload.service';
+
+type CsvParserFn = (
+  optionsOrHeaders?: unknown,
+) => Transform;
+
+const csvParser: CsvParserFn =
+  typeof csvParserModule === 'function'
+    ? (csvParserModule as CsvParserFn)
+    : (csvParserModule as unknown as { default: CsvParserFn }).default;
 
 interface CSVRecord {
   nom: string;
@@ -31,6 +41,7 @@ interface ProcessingResult {
   errors: string[];
   summary: string;
   newStudents: Array<{ nom: string; prenom: string; email: string }>;
+  deletedRecords: number;
 }
 
 interface CleanedData {
@@ -54,9 +65,13 @@ export class CsvProcessorService {
   constructor(
     @InjectModel(Subscription.name)
     private subscriptionModel: Model<SubscriptionDocument>,
+    private photoUploadService: PhotoUploadService,
   ) {}
 
   // ---------- Utils ----------
+  private studentKey(nom: string, prenom: string): string {
+    return `${nom.trim()}|${prenom.trim()}`;
+  }
   private cleanTarif(tarif: string): string {
     if (!tarif) return '';
     return tarif.replace(/"\s+/g, '"').replace(/\s+"/g, '"').trim();
@@ -100,6 +115,7 @@ export class CsvProcessorService {
       errors: [],
       summary: '',
       newStudents: [],
+      deletedRecords: 0,
     };
   }
 
@@ -126,17 +142,21 @@ export class CsvProcessorService {
   }
 
   private generateSummary(results: ProcessingResult): string {
-    return `Processing completed: ${results.totalRecords} records processed, ${results.newRecords} new, ${results.updatedRecords} updated.`;
+    return `Processing completed: ${results.totalRecords} records processed, ${results.newRecords} new, ${results.updatedRecords} updated, ${results.deletedRecords} deleted.`;
   }
 
   private async handleRecords(
     records: any[],
     mapper: (r: any) => CleanedData,
     results: ProcessingResult,
+    keysInFile: Set<string>,
   ) {
     for (const record of records) {
       try {
         const cleanedData = mapper(record);
+        if (cleanedData.email) {
+          keysInFile.add(this.studentKey(cleanedData.nom, cleanedData.prenom));
+        }
         await this.upsertRecord(cleanedData, results);
       } catch (error) {
         results.errors.push(
@@ -145,6 +165,38 @@ export class CsvProcessorService {
           }`,
         );
       }
+    }
+  }
+
+  private async removeStudentsMissingFromImport(
+    keysInFile: Set<string>,
+    results: ProcessingResult,
+  ): Promise<void> {
+    if (keysInFile.size === 0) {
+      return;
+    }
+  
+    const allStudents = await this.subscriptionModel.find().exec();
+  
+    for (const student of allStudents) {
+      const key = this.studentKey(student.nom, student.prenom);
+      if (keysInFile.has(key)) {
+        continue;
+      }
+  
+      const publicId = (student as { photoPublicId?: string }).photoPublicId;
+      if (publicId) {
+        try {
+          await this.photoUploadService.deleteStudentPhoto(publicId);
+        } catch {
+          results.errors.push(
+            `Photo Cloudinary non supprimée pour ${student.prenom} ${student.nom}`,
+          );
+        }
+      }
+  
+      await this.subscriptionModel.findByIdAndDelete(student._id);
+      results.deletedRecords++;
     }
   }
 
@@ -234,7 +286,9 @@ export class CsvProcessorService {
     try {
       const jsonData = this.parseExcel(fileBuffer);
       results.totalRecords = jsonData.length;
-      await this.handleRecords(jsonData, this.mapExcelRecord.bind(this), results);
+      const keysInFile = new Set<string>();
+      await this.handleRecords(jsonData, this.mapExcelRecord.bind(this), results, keysInFile);
+      await this.removeStudentsMissingFromImport(keysInFile, results);
       results.summary = this.generateSummary(results);
     } catch (error) {
       results.errors.push(`General error: ${String(error)}`);
@@ -248,7 +302,7 @@ export class CsvProcessorService {
     await new Promise<void>((resolve, reject) => {
       const stream = Readable.from(fileBuffer);
       stream
-        .pipe(csv())
+        .pipe(csvParser())
         .on('data', (data: CSVRecord) => csvData.push(data))
         .on('end', () => resolve())
         .on('error', reject);
@@ -279,7 +333,9 @@ export class CsvProcessorService {
     try {
       const csvData = await this.parseCsv(fileBuffer);
       results.totalRecords = csvData.length;
-      await this.handleRecords(csvData, this.mapCsvRecord.bind(this), results);
+      const keysInFile = new Set<string>();
+      await this.handleRecords(csvData, this.mapCsvRecord.bind(this), results, keysInFile);
+      await this.removeStudentsMissingFromImport(keysInFile, results);
       results.summary = this.generateSummary(results);
     } catch (error) {
       results.errors.push(
