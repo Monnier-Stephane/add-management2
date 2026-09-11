@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'add-management-static-v5';
-const DYNAMIC_CACHE = 'add-management-dynamic-v5';
+const STATIC_CACHE = 'add-management-static-v6';
+const DYNAMIC_CACHE = 'add-management-dynamic-v6';
 
 const urlsToCache = [
   '/',
@@ -10,16 +10,16 @@ const urlsToCache = [
 
 // Installation du Service Worker
 self.addEventListener('install', (event) => {
-  console.log('🔄 Service Worker v5 - Installation en cours...');
+  console.log('🔄 Service Worker v6 - Installation en cours...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
     .then((cache) => cache.addAll(urlsToCache))
     .then(() => {
-      console.log('✅ Service Worker v5 - Installation terminée');
+      console.log('✅ Service Worker v6 - Installation terminée');
       self.skipWaiting(); // Forcer l'activation immédiate
     })
     .catch((error) => {
-      console.error('❌ Service Worker v5 - Erreur installation:', error);
+      console.error('❌ Service Worker v6 - Erreur installation:', error);
       self.skipWaiting();
     })
   );
@@ -27,20 +27,19 @@ self.addEventListener('install', (event) => {
 
 // Activation du Service Worker
 self.addEventListener('activate', (event) => {
-  console.log('🔄 Service Worker v5 - Activation en cours...');
+  console.log('🔄 Service Worker v6 - Activation en cours...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          // Supprimer TOUS les anciens caches (v2, v3, v4, etc.)
-          if (!cacheName.includes('v5')) {
+          if (!cacheName.includes('v6')) {
             console.log('🗑️ Suppression du cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      console.log('✅ Service Worker v5 - Activation terminée');
+      console.log('✅ Service Worker v6 - Activation terminée');
       return self.clients.claim(); // Prendre le contrôle immédiatement
     })
   );
@@ -63,26 +62,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Ne pas mettre en cache les appels API - toujours aller au réseau
-  if (request.url.includes('/api/') || 
-      request.url.includes('/subscriptions') || 
-      request.url.includes('/coaches') || 
+  // Ne pas intercepter l'API (Render) : réécrire les en-têtes casse
+  // Authorization / FormData sur Chrome Android.
+  if (request.url.includes('/api/') ||
+      request.url.includes('/subscriptions') ||
+      request.url.includes('/coaches') ||
       request.url.includes('/planning')) {
-    event.respondWith(
-      fetch(request, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      })
-        .catch(() => {
-          return new Response('Ressource non disponible hors ligne', {
-            status: 404
-          });
-        })
-    );
     return;
   }
   

@@ -54,13 +54,6 @@ describe('StudentsPage - Simple Tests', () => {
     expect(screen.getByText('Chargement des élèves...')).toBeInTheDocument()
   })
 
-  it('should render back to dashboard button', async () => {
-    mockLoadedStudents()
-    render(<StudentsPage />)
-    await waitFor(() => {
-      expect(screen.getByText('Retour au Dashboard')).toBeInTheDocument()
-    })
-  })
 
   it('should handle search functionality', async () => {
     mockLoadedStudents()

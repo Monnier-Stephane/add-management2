@@ -86,8 +86,6 @@ export class SubscriptionsService {
     return subscription;
   }
 
-  
-
   async update(
     id: string,
     updateSubscriptionDto: UpdateSubscriptionDto,
@@ -264,20 +262,20 @@ export class SubscriptionsService {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException(`ID invalide: "${id}"`);
     }
-  
+
     await this.subscriptionModel
       .updateOne(
         { _id: new Types.ObjectId(id) },
         { $unset: { photoUrl: 1, photoPublicId: 1 } },
       )
       .exec();
-  
+
     try {
       await this.cacheManager.del('subscriptions:all');
     } catch {
       // cache optionnel
     }
-  
+
     return this.findOne(id);
   }
 
