@@ -21,6 +21,8 @@ export interface Subscription {
   jour?: string
   lieu?: string
   heure?: string
+  photoUrl?: string
+  photoPublicId?: string
 }
 
 export const useSubscriptions = () => {

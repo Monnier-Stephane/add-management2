@@ -14,6 +14,7 @@ interface Student {
   prenom: string
   present: boolean
   isTemporary?: boolean
+  photoUrl?: string
 }
 
 interface Course {

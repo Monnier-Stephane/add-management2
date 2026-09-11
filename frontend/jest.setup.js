@@ -50,3 +50,15 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }))
+
+jest.mock('browser-image-compression', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}))
+
+jest.mock('react-easy-crop', () => ({
+  __esModule: true,
+  default: function MockCropper() {
+    return null
+  },
+}))

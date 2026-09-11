@@ -47,6 +47,12 @@ export class Subscription {
 
   @Prop()
   remarques: string;
+
+  @Prop()
+  photoUrl?: string;
+
+  @Prop()
+  photoPublicId?: string;
 }
 
 export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);

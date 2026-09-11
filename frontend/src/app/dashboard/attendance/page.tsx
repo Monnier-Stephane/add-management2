@@ -12,6 +12,7 @@ interface Student {
   prenom: string
   present: boolean
   isTemporary?: boolean
+  photoUrl?: string
 }
 
 interface Subscription {
@@ -19,6 +20,7 @@ interface Subscription {
   nom: string
   prenom: string
   tarif: string | string[]
+  photoUrl?: string
 }
 
 interface Course {
@@ -248,7 +250,8 @@ const filterStudentsForCourse = (course: CourseData, subscriptions: Subscription
     id: sub._id || `student-${index}`,
     nom: sub.nom || '',
     prenom: sub.prenom || '',
-    present: false
+    present: false,
+    photoUrl: sub.photoUrl,
   })).sort((a: Student, b: Student) => 
     a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })
   )

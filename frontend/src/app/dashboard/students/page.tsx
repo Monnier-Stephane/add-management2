@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, ChangeEvent } from "react";
+import { useState, ChangeEvent, useRef } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,21 @@ import { Loader2 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pencil, Trash2, Home, Phone, MapPin, CreditCard, FileText } from "lucide-react";
+import { Pencil, Trash2, Home, Phone, MapPin, CreditCard, FileText, Camera } from "lucide-react";
 import { useSubscriptions, useUniqueTarifs, type Subscription } from '@/lib/hooks/useSubscriptions';
 import { api } from '@/lib/api/api';
+import imageCompression from 'browser-image-compression';
+import Cropper from 'react-easy-crop';
+import { getCroppedImageFile, type CropArea } from '@/lib/cropImage';
+import { auth } from '@/lib/auth/firebase';
 
 type Student = Subscription;
+
+const cloudinaryThumb = (url: string, size = 80) =>
+  url.replace(
+    '/upload/',
+    `/upload/w_${size},h_${size},c_fill,g_face,f_auto,q_auto/`,
+  );
 
 const StudentsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,7 +34,14 @@ const StudentsPage = () => {
   const [editForm, setEditForm] = useState<Partial<Student>>({});
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
-
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isCropOpen, setIsCropOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<CropArea | null>(null);
   const { userRole } = useAuth()
   const isAdmin = userRole === 'admin'
 
@@ -34,7 +51,7 @@ const StudentsPage = () => {
   // Utiliser les hooks optimisés
   const { data: students, isLoading, error, refetch } = useSubscriptions();
   const { data: uniqueTarifs } = useUniqueTarifs();
-  
+
   // Typage explicite pour éviter les erreurs TypeScript
   const studentsArray: Student[] = Array.isArray(students) ? students : [];
   const tarifsArray = Array.isArray(uniqueTarifs) ? uniqueTarifs : [];
@@ -47,26 +64,26 @@ const StudentsPage = () => {
 
     const today = new Date();
     const birthDate = new Date(dateOfBirth);
-    
+
     // Vérifier si la date est valide
     if (isNaN(birthDate.getTime())) {
-      
+
       return 0; // Retourner 0 pour les dates invalides (sera classé comme enfant)
     }
-    
+
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-    
+
     // Vérifier si l'âge est raisonnable (entre 0 et 120 ans)
     if (age < 0 || age > 120) {
-     
+
       return 0; // Retourner 0 pour les âges invalides
     }
-    
+
     return age;
   };
 
@@ -75,11 +92,11 @@ const StudentsPage = () => {
     // PRIORITÉ 1: Utiliser le tarif qui contient l'information d'âge
     // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
     const tarifs = Array.isArray(student.tarif) ? student.tarif : [student.tarif].filter(Boolean);
-    
+
     // Parcourir tous les tarifs pour trouver la catégorie
     for (const tarif of tarifs) {
       const tarifLower = (tarif || '').toLowerCase();
-      
+
       // Logique basée sur le tarif (plus fiable que les dates corrompues)
       if (tarifLower.includes('enfant') || tarifLower.includes('5 à 8') || tarifLower.includes('9 à 11') || tarifLower.includes('7 à 11')) {
         return 'enfants';
@@ -91,15 +108,15 @@ const StudentsPage = () => {
         return 'adultes';
       }
     }
-    
+
     // FALLBACK: Essayer de calculer l'âge si le tarif n'est pas clair
     const age = calculateAge(student.dateDeNaissance);
-    
-    
+
+
     if (age > 0 && age < 12) return 'enfants';
     if (age >= 12 && age < 18) return 'adolescents';
     if (age >= 18) return 'adultes';
-    
+
     // Dernier recours: par défaut
     return 'enfants';
   };
@@ -114,9 +131,9 @@ const StudentsPage = () => {
 
   const filterStudents = (students: Student[], searchTerm: string) => {
     if (!searchTerm || searchTerm.length < 2) return students;
-    
+
     const term = searchTerm.toLowerCase().trim();
-    return students.filter(student => 
+    return students.filter(student =>
       student.nom.toLowerCase().includes(term) ||
       student.prenom.toLowerCase().includes(term) ||
       student.email.toLowerCase().includes(term)
@@ -129,11 +146,11 @@ const StudentsPage = () => {
 
   // Group filtered students by course, then by age category within each course
   const studentsByCourse: Record<string, { enfants: Student[], adolescents: Student[], adultes: Student[] }> = {};
-  
+
   filteredStudents.forEach(student => {
     const courseKey = getCourseKey(student);
     const ageCategory = categorizeByAge(student);
-    
+
     if (!studentsByCourse[courseKey]) {
       studentsByCourse[courseKey] = {
         enfants: [],
@@ -141,24 +158,24 @@ const StudentsPage = () => {
         adultes: []
       };
     }
-    
+
     studentsByCourse[courseKey][ageCategory as keyof typeof studentsByCourse[typeof courseKey]].push(student);
   });
 
   // Sort each age category alphabetically by first name within each course
   Object.keys(studentsByCourse).forEach(courseKey => {
-    studentsByCourse[courseKey].enfants.sort((a, b) => 
+    studentsByCourse[courseKey].enfants.sort((a, b) =>
       a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })
     );
-    studentsByCourse[courseKey].adolescents.sort((a, b) => 
+    studentsByCourse[courseKey].adolescents.sort((a, b) =>
       a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })
     );
-    studentsByCourse[courseKey].adultes.sort((a, b) => 
+    studentsByCourse[courseKey].adultes.sort((a, b) =>
       a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })
     );
   });
 
-  
+
   // Define age categories for display
   const ageCategories = [
     { key: 'enfants', label: 'Enfants (0-11 ans)', color: 'bg-blue-50 border-blue-200' },
@@ -169,9 +186,9 @@ const StudentsPage = () => {
   // Ajouter la fonction getActiveTabForCourse après la création de studentsByCourse
   const getActiveTabForCourse = (courseKey: string) => {
     if (!searchTerm) return ageCategories[0].key;
-    
+
     const courseStudents = studentsByCourse[courseKey];
-    
+
     // Vérifier dans quel ordre chercher les catégories
     for (const category of ageCategories) {
       const studentsInCategory = courseStudents[category.key as keyof typeof courseStudents];
@@ -179,26 +196,162 @@ const StudentsPage = () => {
         return category.key;
       }
     }
-    
+
     return ageCategories[0].key;
   };
 
   // Fonction pour ouvrir le modal d'informations
   const handleShowInfo = (student: Student) => {
+    resetPhotoSelection();
     setSelectedStudent(student);
     setIsInfoModalOpen(true);
+  };
+
+  const resetPhotoSelection = () => {
+    if (photoPreviewUrl) {
+      URL.revokeObjectURL(photoPreviewUrl);
+    }
+    setPhotoPreviewUrl(null);
+    setPendingPhotoFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handlePhotoButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez choisir un fichier image (jpg, png, webp, etc.).');
+      return;
+    }
+
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    if (cropImageSrc) URL.revokeObjectURL(cropImageSrc);
+
+    const objectUrl = URL.createObjectURL(file);
+    setCropImageSrc(objectUrl);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
+    setIsCropOpen(true);
+  };
+
+  const handleValidateCrop = async () => {
+    if (!cropImageSrc || !croppedAreaPixels) return;
+
+    try {
+      const croppedFile = await getCroppedImageFile(cropImageSrc, croppedAreaPixels);
+      const compressedFile = await imageCompression(croppedFile, {
+        maxSizeMB: 0.3,
+        maxWidthOrHeight: 800,
+        useWebWorker: true,
+        fileType: 'image/jpeg',
+        initialQuality: 0.8,
+      });
+
+      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+      setPendingPhotoFile(compressedFile);
+      setPhotoPreviewUrl(URL.createObjectURL(compressedFile));
+      setIsCropOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert('Impossible de recadrer cette image.');
+    }
+  };
+
+  const handleCancelPhoto = () => {
+    resetPhotoSelection();
+  };
+
+  const handleConfirmPhoto = async () => {
+    if (!pendingPhotoFile || !selectedStudent) return;
+
+    const studentName = `${selectedStudent.prenom} ${selectedStudent.nom}`;
+    const ok = confirm(`Confirmer l'ajout de cette photo pour ${studentName} ?`);
+    if (!ok) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', pendingPhotoFile, 'photo.jpg');
+
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        throw new Error('Vous devez être connecté');
+      }
+
+      const response = await fetch(
+        `http://localhost:3001/subscriptions/${selectedStudent._id}/photo`,
+        {
+          method: 'POST',
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP ${response.status}`);
+      }
+
+      const updated = await response.json();
+      setSelectedStudent(updated);
+      refetch();
+      resetPhotoSelection();
+      alert(`✅ Photo enregistrée pour ${studentName}.`);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Impossible d'enregistrer la photo. Réessaie.");
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    if (!selectedStudent?.photoUrl) return;
+
+    const studentName = `${selectedStudent.prenom} ${selectedStudent.nom}`;
+    if (!confirm(`Supprimer la photo de ${studentName} ?`)) return;
+
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Vous devez être connecté');
+
+      const response = await fetch(
+        `http://localhost:3001/subscriptions/${selectedStudent._id}/photo`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+
+      const updated = await response.json();
+      setSelectedStudent(updated);
+      refetch();
+      resetPhotoSelection();
+      alert('✅ Photo supprimée.');
+    } catch (err) {
+      console.error(err);
+      alert('❌ Impossible de supprimer la photo.');
+    }
   };
 
   // Fonction pour ouvrir le modal d'édition
   const handleEdit = (student: Student) => {
     setEditingStudent(student);
     // Normaliser tarif : convertir string en tableau si nécessaire
-    const normalizedTarif = Array.isArray(student.tarif) 
-      ? student.tarif 
-      : student.tarif 
-        ? [student.tarif] 
+    const normalizedTarif = Array.isArray(student.tarif)
+      ? student.tarif
+      : student.tarif
+        ? [student.tarif]
         : [];
-    
+
     setEditForm({
       nom: student.nom,
       prenom: student.prenom,
@@ -225,7 +378,7 @@ const StudentsPage = () => {
     // Confirmation avant sauvegarde
     const studentName = `${editingStudent.prenom} ${editingStudent.nom}`;
     const confirmMessage = `Êtes-vous sûr de vouloir sauvegarder les modifications pour ${studentName} ?`;
-    
+
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -233,20 +386,20 @@ const StudentsPage = () => {
     try {
       // Préparer les données à envoyer - seulement les champs modifiés
       const updateData: Record<string, string | string[] | undefined> = {};
-      
+
       // Champs à envoyer (seulement ceux qui existent dans editForm)
       const fieldsToCheck: (keyof Student)[] = [
         'nom', 'prenom', 'email', 'telephone', 'telephoneUrgence',
         'adresse', 'ville', 'codePostal', 'tarif', 'statutPaiement', 'remarques'
       ];
-      
+
       fieldsToCheck.forEach((field) => {
         const value = editForm[field];
         if (value !== undefined) {
           updateData[field] = value as string | string[] | undefined;
         }
       });
-      
+
       // Toujours inclure dateDeNaissance si disponible
       if (editForm.dateDeNaissance || editingStudent.dateDeNaissance) {
         updateData.dateDeNaissance = editForm.dateDeNaissance || editingStudent.dateDeNaissance;
@@ -260,13 +413,13 @@ const StudentsPage = () => {
       });
 
       await api.patch(`/subscriptions/${editingStudent._id}`, updateData);
-      
+
       // Rafraîchir les données
       refetch();
-      
+
       // Message de succès
       alert(`✅ Les modifications pour ${studentName} ont été sauvegardées avec succès !`);
-      
+
       setIsEditModalOpen(false);
       setEditingStudent(null);
     } catch (err) {
@@ -282,27 +435,27 @@ const StudentsPage = () => {
     if (!studentToDelete) return;
 
     const studentName = `${studentToDelete.prenom} ${studentToDelete.nom}`;
-    
+
     // Double confirmation pour la suppression
     const firstConfirm = confirm(`⚠️ ATTENTION ⚠️\n\nVous êtes sur le point de supprimer définitivement l'élève :\n${studentName}\n\nCette action est IRRÉVERSIBLE !\n\nVoulez-vous continuer ?`);
-    
+
     if (!firstConfirm) {
       return;
     }
 
     // Deuxième confirmation
     const secondConfirm = confirm(`DERNIÈRE CONFIRMATION\n\nÊtes-vous ABSOLUMENT SÛR de vouloir supprimer ${studentName} ?\n\nToutes les données de cet élève seront perdues définitivement.`);
-    
+
     if (!secondConfirm) {
       return;
     }
 
     try {
       await api.delete(`/subscriptions/${studentId}`);
-      
+
       // Rafraîchir les données
       refetch();
-      
+
       // Message de confirmation
       alert(`✅ L'élève ${studentName} a été supprimé avec succès.`);
     } catch (err) {
@@ -342,7 +495,7 @@ const StudentsPage = () => {
         </h1>
 
       </div>
-      
+
       <div className="mb-6">
         <input
           type="text"
@@ -354,161 +507,192 @@ const StudentsPage = () => {
       </div>
 
       {searchTerm.length === 1 && (
-  <p className="text-sm text-gray-500 mt-2">
-    Tapez au moins 2 lettres pour voir les résultats de recherche
-  </p>
-)}
+        <p className="text-sm text-gray-500 mt-2">
+          Tapez au moins 2 lettres pour voir les résultats de recherche
+        </p>
+      )}
 
       {studentsArray.length > 0 ? (
         <div className="space-y-6">
           {Object.keys(studentsByCourse).length > 0 ? (
             Object.keys(studentsByCourse).map((courseKey) => {
-            const courseStudents = studentsByCourse[courseKey];
-            const activeTab = activeTabs[courseKey] || getActiveTabForCourse(courseKey);
-            const studentsInActiveCategory = courseStudents[activeTab as keyof typeof courseStudents].length;
-            
-            return (
-              <div key={courseKey} className="bg-white rounded-lg shadow-sm border">
-                <div className="p-6">
-                  <div className="flex items-center justify-end mb-6">
-                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                      {studentsInActiveCategory} élève{studentsInActiveCategory > 1 ? 's' : ''} {searchTerm ? 'trouvé' + (studentsInActiveCategory > 1 ? 's' : '') : ''}
-                    </span>
-                  </div>
-                  
-                  <Tabs 
-                    value={activeTabs[courseKey] || getActiveTabForCourse(courseKey)} 
-                    onValueChange={(value: string) => setActiveTabs((prev: Record<string, string>) => ({ ...prev, [courseKey]: value }))}
-                    className="w-full"
-                  >
-                    <TabsList className="flex flex-col sm:grid sm:grid-cols-3 gap-2 mb-12">
+              const courseStudents = studentsByCourse[courseKey];
+              const activeTab = activeTabs[courseKey] || getActiveTabForCourse(courseKey);
+              const studentsInActiveCategory = courseStudents[activeTab as keyof typeof courseStudents].length;
+
+              return (
+                <div key={courseKey} className="bg-white rounded-lg shadow-sm border">
+                  <div className="p-6">
+                    <div className="flex items-center justify-end mb-6">
+                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                        {studentsInActiveCategory} élève{studentsInActiveCategory > 1 ? 's' : ''} {searchTerm ? 'trouvé' + (studentsInActiveCategory > 1 ? 's' : '') : ''}
+                      </span>
+                    </div>
+
+                    <Tabs
+                      value={activeTabs[courseKey] || getActiveTabForCourse(courseKey)}
+                      onValueChange={(value: string) => setActiveTabs((prev: Record<string, string>) => ({ ...prev, [courseKey]: value }))}
+                      className="w-full"
+                    >
+                      <TabsList className="flex flex-col sm:grid sm:grid-cols-3 gap-2 mb-12">
+                        {ageCategories.map((ageCategory) => {
+                          const studentsInCategory = courseStudents[ageCategory.key as keyof typeof courseStudents];
+
+                          return (
+                            <TabsTrigger
+                              key={ageCategory.key}
+                              value={ageCategory.key}
+                              className={`${ageCategory.color} border-2 w-full py-4 px-4 text-center`}
+                            >
+                              {ageCategory.label} ({studentsInCategory.length})
+                            </TabsTrigger>
+                          );
+                        })}
+                      </TabsList>
+
                       {ageCategories.map((ageCategory) => {
                         const studentsInCategory = courseStudents[ageCategory.key as keyof typeof courseStudents];
-                        
+
                         return (
-                          <TabsTrigger 
-                            key={ageCategory.key} 
-                            value={ageCategory.key}
-                            className={`${ageCategory.color} border-2 w-full py-4 px-4 text-center`}
-                          >
-                            {ageCategory.label} ({studentsInCategory.length})
-                          </TabsTrigger>
-                        );
-                      })}
-                    </TabsList>
-                    
-                    {ageCategories.map((ageCategory) => {
-                      const studentsInCategory = courseStudents[ageCategory.key as keyof typeof courseStudents];
-                      
-                      return (
-                        <TabsContent key={ageCategory.key} value={ageCategory.key}>
-                          <div className={`rounded-lg border-2 p-4 mt-16 ${ageCategory.color}`}>
-                            {studentsInCategory.length > 0 ? (
-                              <>
-                                {/* Version desktop - Tableau */}
-                                <div className="hidden md:block">
-                                  <Table>
-                                    <TableHeader>
-                                      <TableRow>
-                                        <TableHead>Nom</TableHead>
-                                        <TableHead>Prénom</TableHead>
-                                        <TableHead>Actions</TableHead>
-                                      </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {studentsInCategory.map((student) => (
-                                        <TableRow key={student._id}>
-                                          <TableCell 
-                                            className="font-medium cursor-pointer hover:text-blue-600 hover:underline"
-                                            onClick={() => handleShowInfo(student)}
-                                          >
-                                            {student.nom.toUpperCase()}
-                                          </TableCell>
-                                          <TableCell 
-                                            className="cursor-pointer hover:text-blue-600 hover:underline"
-                                            onClick={() => handleShowInfo(student)}
-                                          >
-                                            {student.prenom.toLowerCase()}
-                                          </TableCell>
-                                          <TableCell>
-  {isAdmin && (
-    <div className="flex gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => handleEdit(student)}
-      >
-        <Pencil className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => handleDelete(student._id)}
-        className="text-red-600 hover:text-red-700"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+                          <TabsContent key={ageCategory.key} value={ageCategory.key}>
+                            <div className={`rounded-lg border-2 p-4 mt-16 ${ageCategory.color}`}>
+                              {studentsInCategory.length > 0 ? (
+                                <>
+                                  {/* Version desktop - Tableau */}
+                                  <div className="hidden md:block">
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow>
+                                          <TableHead>Nom</TableHead>
+                                          <TableHead>Prénom</TableHead>
+                                          <TableHead>Actions</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {studentsInCategory.map((student) => (
+                                          <TableRow
+                                          key={student._id}
+                                          className="transition-colors hover:bg-white/80"
+                                        >
+                                           <TableCell
+  className="font-medium cursor-pointer hover:text-blue-600 hover:underline"
+  onClick={() => handleShowInfo(student)}
+>
+  <div className="flex items-center gap-3">
+    {student.photoUrl ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={cloudinaryThumb(student.photoUrl)}
+        alt=""
+        loading="lazy"
+        className="h-8 w-8 shrink-0 rounded-full object-cover border bg-gray-100 transition-transform duration-150 hover:scale-110"
+      />
+    ) : (
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-gray-100 text-xs text-gray-500">
+        {student.prenom.charAt(0).toUpperCase()}
+      </div>
+    )}
+    {student.nom.toUpperCase()}
+  </div>
+</TableCell>
+                                            <TableCell
+                                              className="cursor-pointer hover:text-blue-600 hover:underline"
+                                              onClick={() => handleShowInfo(student)}
+                                            >
+                                              {student.prenom.toLowerCase()}
+                                            </TableCell>
+                                            <TableCell>
+                                              {isAdmin && (
+                                                <div className="flex gap-2">
+                                                  <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleEdit(student)}
+                                                  >
+                                                    <Pencil className="h-4 w-4" />
+                                                  </Button>
+                                                  <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleDelete(student._id)}
+                                                    className="text-red-600 hover:text-red-700"
+                                                  >
+                                                    <Trash2 className="h-4 w-4" />
+                                                  </Button>
+                                                </div>
+                                              )}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+
+                                  {/* Version mobile - Cards */}
+                                  <div className="md:hidden space-y-3">
+                                    {studentsInCategory.map((student) => (
+                                      <div
+                                      key={student._id}
+                                      className="bg-white border rounded-lg p-4 shadow-sm transition-transform duration-150 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                                    >
+                                        <div
+  className="flex items-center gap-3 cursor-pointer hover:text-blue-600"
+  onClick={() => handleShowInfo(student)}
+>
+  {student.photoUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={cloudinaryThumb(student.photoUrl)}
+      alt=""
+      loading="lazy"
+      className="h-14 w-14 shrink-0 rounded-full object-cover border bg-gray-100"
+    />
+  ) : (
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-gray-100 text-xs font-medium text-gray-500">
+      {student.prenom.charAt(0).toUpperCase()}
     </div>
   )}
-</TableCell>
-                                        </TableRow>
-                                      ))}
-                                    </TableBody>
-                                  </Table>
-                                </div>
-
-                                {/* Version mobile - Cards */}
-                                <div className="md:hidden space-y-3">
-                                  {studentsInCategory.map((student) => (
-                                    <div 
-                                      key={student._id}
-                                      className="bg-white border rounded-lg p-4 shadow-sm"
-                                    >
-                                      <div 
-                                        className="cursor-pointer hover:text-blue-600"
-                                        onClick={() => handleShowInfo(student)}
-                                      >
-                                        <h4 className="font-semibold text-sm">
-                                          {student.prenom.toLowerCase()} {student.nom.toUpperCase()}
-                                        </h4>
+  <h4 className="font-semibold text-sm min-w-0">
+    {student.prenom.toLowerCase()} {student.nom.toUpperCase()}
+  </h4>
+</div>
+                                        {isAdmin && (
+                                          <div className="flex gap-2 mt-3 justify-end">
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => handleEdit(student)}
+                                            >
+                                              <Pencil className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => handleDelete(student._id)}
+                                              className="text-red-600 hover:text-red-700"
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        )}
                                       </div>
-                                      {isAdmin && (
-  <div className="flex gap-2 mt-3 justify-end">
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => handleEdit(student)}
-    >
-      <Pencil className="h-3 w-3" />
-    </Button>
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => handleDelete(student._id)}
-      className="text-red-600 hover:text-red-700"
-    >
-      <Trash2 className="h-3 w-3" />
-    </Button>
-  </div>
-)}
-                                    </div>
-                                  ))}
+                                    ))}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="text-center py-8 text-gray-500">
+                                  <p>Aucun élève dans cette catégorie</p>
                                 </div>
-                              </>
-                            ) : (
-                              <div className="text-center py-8 text-gray-500">
-                                <p>Aucun élève dans cette catégorie</p>
-                              </div>
-                            )}
-                          </div>
-                        </TabsContent>
-                      );
-                    })}
-                  </Tabs>
+                              )}
+                            </div>
+                          </TabsContent>
+                        );
+                      })}
+                    </Tabs>
+                  </div>
                 </div>
-              </div>
-            );
-          })) : (
+              );
+            })) : (
             <div className="text-center py-16 bg-white rounded-lg shadow-sm border">
               <p className="text-lg text-gray-500">
                 Aucun élève trouvé pour &quot;{searchTerm}&quot;
@@ -530,9 +714,83 @@ const StudentsPage = () => {
           <DialogHeader>
             <DialogTitle>Informations de l&apos;élève</DialogTitle>
           </DialogHeader>
-          
+
           {selectedStudent && (
             <div className="space-y-6">
+              <input
+                ref={fileInputRef}
+                id="student-photo-input"
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={handlePhotoFileChange}
+              />
+
+              <div className="flex flex-col items-center gap-3">
+                <label htmlFor="student-photo-input" className="cursor-pointer">
+                  <div className="h-28 w-28 overflow-hidden rounded-full border bg-gray-100">
+                    {photoPreviewUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={photoPreviewUrl}
+                        alt={`Aperçu de ${selectedStudent.prenom}`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : selectedStudent.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={selectedStudent.photoUrl}
+                        alt={`${selectedStudent.prenom} ${selectedStudent.nom}`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm text-gray-400">
+                        Pas de photo
+                      </div>
+                    )}
+                  </div>
+                </label>
+
+                {!photoPreviewUrl && (
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <label
+                      htmlFor="student-photo-input"
+                      className="inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-gray-50"
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      {selectedStudent.photoUrl ? 'Remplacer la photo' : 'Ajouter une photo'}
+                    </label>
+                    {selectedStudent.photoUrl && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                        onClick={handleDeletePhoto}
+                      >
+                        Supprimer la photo
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {photoPreviewUrl && (
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-sm text-gray-600">
+                      Aperçu — {pendingPhotoFile ? `${(pendingPhotoFile.size / 1024).toFixed(0)} Ko` : ''}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={handleCancelPhoto}>
+                        Annuler
+                      </Button>
+                      <Button type="button" size="sm" onClick={handleConfirmPhoto}>
+                        Confirmer cette photo
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Informations personnelles */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -559,7 +817,7 @@ const StudentsPage = () => {
                     Téléphone
                   </Label>
                   {selectedStudent.telephone ? (
-                    <a 
+                    <a
                       href={`tel:${selectedStudent.telephone}`}
                       className="text-blue-600 hover:text-blue-800 hover:underline"
                     >
@@ -575,7 +833,7 @@ const StudentsPage = () => {
                     Téléphone d&apos;urgence
                   </Label>
                   {selectedStudent.telephoneUrgence ? (
-                    <a 
+                    <a
                       href={`tel:${selectedStudent.telephoneUrgence}`}
                       className="text-blue-600 hover:text-blue-800 hover:underline"
                     >
@@ -625,25 +883,24 @@ const StudentsPage = () => {
 
               {/* Statut de paiement */}
               {/* Statut de paiement - Seulement pour les admins */}
-{isAdmin && (
-  <div>
-    <Label className="text-sm font-medium text-gray-500 flex items-center gap-2">
-      <CreditCard className="h-4 w-4" />
-      Statut de paiement
-    </Label>
-    <div className="flex items-center gap-2 mt-1">
-      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-        selectedStudent.statutPaiement === 'payé' 
-          ? 'bg-green-100 text-green-800' 
-          : selectedStudent.statutPaiement === 'en attente'
-          ? 'bg-yellow-100 text-yellow-800'
-          : 'bg-red-100 text-red-800'
-      }`}>
-        {selectedStudent.statutPaiement}
-      </span>
-    </div>
-  </div>
-)}
+              {isAdmin && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Statut de paiement
+                  </Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${selectedStudent.statutPaiement === 'payé'
+                      ? 'bg-green-100 text-green-800'
+                      : selectedStudent.statutPaiement === 'en attente'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-red-100 text-red-800'
+                      }`}>
+                      {selectedStudent.statutPaiement}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Remarques */}
               {selectedStudent.remarques && (
@@ -659,7 +916,7 @@ const StudentsPage = () => {
               )}
             </div>
           )}
-          
+
           <div className="flex justify-end gap-2 mt-6">
             <Button variant="outline" onClick={() => setIsInfoModalOpen(false)}>
               Fermer
@@ -674,81 +931,81 @@ const StudentsPage = () => {
           <DialogHeader>
             <DialogTitle>Modifier l&apos;élève</DialogTitle>
           </DialogHeader>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="nom" className="mb-2 block">Nom</Label>
               <Input
                 id="nom"
                 value={editForm.nom || ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, nom: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, nom: e.target.value })}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="prenom" className="mb-2 block">Prénom</Label>
               <Input
                 id="prenom"
                 value={editForm.prenom || ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, prenom: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, prenom: e.target.value })}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="email" className="mb-2 block">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={editForm.email || ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, email: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, email: e.target.value })}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="telephone" className="mb-2 block">Téléphone</Label>
               <Input
                 id="telephone"
                 value={editForm.telephone || ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, telephone: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, telephone: e.target.value })}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="telephoneUrgence" className="mb-2 block">Téléphone d&apos;urgence</Label>
               <Input
                 id="telephoneUrgence"
                 value={editForm.telephoneUrgence || ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, telephoneUrgence: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, telephoneUrgence: e.target.value })}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="adresse" className="mb-2 block">Adresse</Label>
               <Input
                 id="adresse"
                 value={editForm.adresse || ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, adresse: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, adresse: e.target.value })}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="ville" className="mb-2 block">Ville</Label>
               <Input
                 id="ville"
                 value={editForm.ville || ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, ville: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, ville: e.target.value })}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="codePostal" className="mb-2 block">Code postal</Label>
               <Input
                 id="codePostal"
                 value={editForm.codePostal || ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, codePostal: e.target.value})}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, codePostal: e.target.value })}
               />
             </div>
-            
+
             <div className="col-span-2">
               <Label htmlFor="tarif" className="mb-2 block">Tarifs (sélection multiple)</Label>
               <div className="border rounded-lg p-4 max-h-60 overflow-y-auto">
@@ -757,7 +1014,7 @@ const StudentsPage = () => {
                     {tarifsArray.map((tarif) => {
                       const selectedTarifs = Array.isArray(editForm.tarif) ? editForm.tarif : editForm.tarif ? [editForm.tarif] : [];
                       const isChecked = selectedTarifs.includes(tarif);
-                      
+
                       return (
                         <div key={tarif} className="flex items-center space-x-2">
                           <Checkbox
@@ -766,9 +1023,9 @@ const StudentsPage = () => {
                             onCheckedChange={(checked) => {
                               const currentTarifs = Array.isArray(editForm.tarif) ? editForm.tarif : editForm.tarif ? [editForm.tarif] : [];
                               if (checked) {
-                                setEditForm({...editForm, tarif: [...currentTarifs, tarif]});
+                                setEditForm({ ...editForm, tarif: [...currentTarifs, tarif] });
                               } else {
-                                setEditForm({...editForm, tarif: currentTarifs.filter(t => t !== tarif)});
+                                setEditForm({ ...editForm, tarif: currentTarifs.filter(t => t !== tarif) });
                               }
                             }}
                           />
@@ -787,12 +1044,12 @@ const StudentsPage = () => {
                 )}
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="statutPaiement" className="mb-2 block">Statut de paiement</Label>
               <Select
                 value={editForm.statutPaiement || ''}
-                onValueChange={(value: string) => setEditForm({...editForm, statutPaiement: value as 'payé' | 'en attente' | 'annulé'})}
+                onValueChange={(value: string) => setEditForm({ ...editForm, statutPaiement: value as 'payé' | 'en attente' | 'annulé' })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un statut" />
@@ -803,24 +1060,69 @@ const StudentsPage = () => {
                   <SelectItem value="annulé">Annulé</SelectItem>
                 </SelectContent>
               </Select>
-          </div>
-          
-          <div className="mt-4">
+            </div>
+
+            <div className="mt-4">
               <Label htmlFor="remarques" className="mb-2 block">Remarques</Label>
-            <Input
-              id="remarques"
-              value={editForm.remarques || ''}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({...editForm, remarques: e.target.value})}
-            />
+              <Input
+                id="remarques"
+                value={editForm.remarques || ''}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, remarques: e.target.value })}
+              />
             </div>
           </div>
-          
+
           <div className="flex justify-end gap-2 mt-6">
             <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
               Annuler
             </Button>
             <Button onClick={handleSave}>
               Sauvegarder
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isCropOpen} onOpenChange={setIsCropOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Recadrer la photo</DialogTitle>
+          </DialogHeader>
+
+          <div className="relative h-80 w-full bg-black">
+            {cropImageSrc && (
+              <Cropper
+                image={cropImageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}
+              />
+            )}
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-600">Zoom</label>
+            <input
+              type="range"
+              min={1}
+              max={3}
+              step={0.1}
+              value={zoom}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setIsCropOpen(false)}>
+              Annuler
+            </Button>
+            <Button type="button" onClick={handleValidateCrop}>
+              Valider le recadrage
             </Button>
           </div>
         </DialogContent>

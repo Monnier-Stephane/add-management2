@@ -33,6 +33,7 @@
     "@types/jest": "^29.5.14",
     "@types/multer": "^2.0.0",
     "cache-manager-redis-store": "^3.0.1",
+    "cloudinary": "^2.11.0",
     "csv-parser": "^3.2.0",
     "dotenv": "^17.2.0",
     "firebase-admin": "^14.0.0",

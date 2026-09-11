@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
 import { CsvProcessorService } from './csv-processor.service';
+import { PhotoUploadService } from './photo-upload.service';
 import { BadRequestException } from '@nestjs/common';
 
 describe('SubscriptionsController', () => {
@@ -15,12 +16,18 @@ describe('SubscriptionsController', () => {
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
+    clearPhoto: jest.fn(),
     getUniqueTarifs: jest.fn(),
   };
 
   const mockCsvProcessorService = {
     processCSVFile: jest.fn(),
     processExcelFile: jest.fn(),
+  };
+
+  const mockPhotoUploadService = {
+    uploadStudentPhoto: jest.fn(),
+    deleteStudentPhoto: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -34,6 +41,10 @@ describe('SubscriptionsController', () => {
         {
           provide: CsvProcessorService,
           useValue: mockCsvProcessorService,
+        },
+        {
+          provide: PhotoUploadService,
+          useValue: mockPhotoUploadService,
         },
       ],
     }).compile();
