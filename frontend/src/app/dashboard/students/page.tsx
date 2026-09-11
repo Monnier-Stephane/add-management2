@@ -24,6 +24,28 @@ type Student = Subscription;
 const apiBase =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? 'http://localhost:3001';
 
+const readApiError = async (response: Response): Promise<string> => {
+  const fallback = `Erreur HTTP ${response.status} (${response.statusText || 'sans détail'})`;
+  try {
+    const body = (await response.json()) as { message?: string | string[] };
+    const message = body?.message;
+    if (Array.isArray(message) && message.length > 0) {
+      return `${fallback} — ${message.join(', ')}`;
+    }
+    if (typeof message === 'string' && message.trim()) {
+      return `${fallback} — ${message}`;
+    }
+  } catch {
+    // corps non JSON
+  }
+  return fallback;
+};
+
+const formatCaughtError = (err: unknown): string => {
+  if (err instanceof Error && err.message) return err.message;
+  return 'Erreur inconnue';
+};
+
 const cloudinaryThumb = (url: string, size = 80) =>
   url.replace(
     '/upload/',
@@ -300,7 +322,7 @@ const StudentsPage = () => {
       );
 
       if (!response.ok) {
-        throw new Error(`Erreur HTTP ${response.status}`);
+        throw new Error(await readApiError(response));
       }
 
       const updated = await response.json();
@@ -310,7 +332,9 @@ const StudentsPage = () => {
       alert(`✅ Photo enregistrée pour ${studentName}.`);
     } catch (err) {
       console.error(err);
-      alert("❌ Impossible d'enregistrer la photo. Réessaie.");
+      alert(
+        `Impossible d'enregistrer la photo.\n\n${formatCaughtError(err)}\n\nAPI : ${apiBase}`,
+      );
     }
   };
 
@@ -332,7 +356,7 @@ const StudentsPage = () => {
         },
       );
 
-      if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+      if (!response.ok) throw new Error(await readApiError(response));
 
       const updated = await response.json();
       setSelectedStudent(updated);
@@ -341,7 +365,9 @@ const StudentsPage = () => {
       alert('✅ Photo supprimée.');
     } catch (err) {
       console.error(err);
-      alert('❌ Impossible de supprimer la photo.');
+      alert(
+        `Impossible de supprimer la photo.\n\n${formatCaughtError(err)}\n\nAPI : ${apiBase}`,
+      );
     }
   };
 
