@@ -13,4 +13,5 @@ export class CreateSubscriptionDto {
   remarques?: string;
   photoUrl?: string;
   photoPublicId?: string;
+  sexe?: string;
 }

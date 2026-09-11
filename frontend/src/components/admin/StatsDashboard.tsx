@@ -22,6 +22,7 @@ interface Student {
   tarif: string | string[];
   email?: string;
   telephone?: string;
+  sexe?: 'fille' | 'garçon';
 }
 
 export default function StatsDashboard() {
@@ -38,6 +39,7 @@ export default function StatsDashboard() {
   const stats = students && Array.isArray(students) ? (() => {
     const total = students.length;
     let attente = 0, paye = 0, enfants = 0, ados = 0, adultes = 0;
+    let filles = 0, garcons = 0, sexeNonRenseigne = 0;
     const pendingList: Student[] = [];
 
     students.forEach((item: Student) => {
@@ -47,6 +49,9 @@ export default function StatsDashboard() {
         pendingList.push(item);
       }
       if (item.statutPaiement === 'payé') paye++;
+      if (item.sexe === 'fille') filles++;
+      else if (item.sexe === 'garçon') garcons++;
+      else sexeNonRenseigne++;
 
       // Categorization by pricing tier
       // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
@@ -60,8 +65,8 @@ export default function StatsDashboard() {
       }
     });
 
-    return { total, attente, paye, enfants, ados, adultes };
-  })() : { total: 0, attente: 0, paye: 0, enfants: 0, ados: 0, adultes: 0 };
+    return { total, attente, paye, enfants, ados, adultes, filles, garcons, sexeNonRenseigne };
+  })() : { total: 0, attente: 0, paye: 0, enfants: 0, ados: 0, adultes: 0, filles: 0, garcons: 0, sexeNonRenseigne: 0 };
 
   // Filtrer les élèves en attente avec vérification supplémentaire
   const pendingStudents = students && Array.isArray(students) ? 
@@ -72,6 +77,14 @@ export default function StatsDashboard() {
     { name: 'En attente', value: stats.attente },
     { name: 'Payé', value: stats.paye },
   ];
+
+  const sexeData = [
+    { name: 'Filles', value: stats.filles },
+    { name: 'Garçons', value: stats.garcons },
+    { name: 'Non renseigné', value: stats.sexeNonRenseigne },
+  ];
+  
+  const COLORS_SEXE = ['#f472b6', '#38bdf8', '#94a3b8'];
 
   const ageData = [
     { name: 'Enfants', value: stats.enfants },
@@ -339,7 +352,7 @@ export default function StatsDashboard() {
 )}
 
       {/* Pie charts */}
-      <div className={`grid gap-6 ${isAdmin ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+      <div className={`grid gap-6 ${isAdmin ? 'md:grid-cols-3' : 'md:grid-cols-1'}`}>
       {isAdmin && (
   <Card>
     <CardHeader>
@@ -368,7 +381,36 @@ export default function StatsDashboard() {
       </ResponsiveContainer>
     </CardContent>
   </Card>
+
 )}
+
+<Card>
+  <CardHeader>
+    <CardTitle>Filles / Garçons</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <ResponsiveContainer width="100%" height={250}>
+      <PieChart>
+        <Pie
+          data={sexeData}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="50%"
+          outerRadius={80}
+          fill="#8884d8"
+          label
+        >
+          {sexeData.map((entry, index) => (
+            <Cell key={`cell-sexe-${index}`} fill={COLORS_SEXE[index]} />
+          ))}
+        </Pie>
+        <Tooltip />
+        <Legend />
+      </PieChart>
+    </ResponsiveContainer>
+  </CardContent>
+</Card>
 
         {/* Répartition par catégorie - Visible pour tous */}
         <Card>

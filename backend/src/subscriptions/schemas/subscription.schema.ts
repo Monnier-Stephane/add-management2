@@ -53,6 +53,12 @@ export class Subscription {
 
   @Prop()
   photoPublicId?: string;
+
+  @Prop({
+    type: String,
+    enum: ['fille', 'garçon'],
+  })
+  sexe?: string;
 }
 
 export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);

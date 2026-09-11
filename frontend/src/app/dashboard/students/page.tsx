@@ -364,6 +364,7 @@ const StudentsPage = () => {
       tarif: normalizedTarif,
       statutPaiement: student.statutPaiement,
       remarques: student.remarques || '',
+      sexe: student.sexe,
       jour: student.jour || '',
       lieu: student.lieu || '',
       heure: student.heure || ''
@@ -390,7 +391,7 @@ const StudentsPage = () => {
       // Champs à envoyer (seulement ceux qui existent dans editForm)
       const fieldsToCheck: (keyof Student)[] = [
         'nom', 'prenom', 'email', 'telephone', 'telephoneUrgence',
-        'adresse', 'ville', 'codePostal', 'tarif', 'statutPaiement', 'remarques'
+        'adresse', 'ville', 'codePostal', 'tarif', 'statutPaiement', 'remarques', 'sexe'
       ];
 
       fieldsToCheck.forEach((field) => {
@@ -803,6 +804,17 @@ const StudentsPage = () => {
                 </div>
               </div>
 
+              <div>
+                <Label className="text-sm font-medium text-gray-500">Sexe</Label>
+                <p className="text-lg font-semibold">
+                  {selectedStudent.sexe === 'fille'
+                    ? 'Fille'
+                    : selectedStudent.sexe === 'garçon'
+                      ? 'Garçon'
+                      : 'Non renseigné'}
+                </p>
+              </div>
+
               {/* Email */}
               <div>
                 <Label className="text-sm font-medium text-gray-500">Email</Label>
@@ -881,7 +893,6 @@ const StudentsPage = () => {
                 </div>
               </div>
 
-              {/* Statut de paiement */}
               {/* Statut de paiement - Seulement pour les admins */}
               {isAdmin && (
                 <div>
@@ -1045,21 +1056,51 @@ const StudentsPage = () => {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="statutPaiement" className="mb-2 block">Statut de paiement</Label>
-              <Select
-                value={editForm.statutPaiement || ''}
-                onValueChange={(value: string) => setEditForm({ ...editForm, statutPaiement: value as 'payé' | 'en attente' | 'annulé' })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="payé">Payé</SelectItem>
-                  <SelectItem value="en attente">En attente</SelectItem>
-                  <SelectItem value="annulé">Annulé</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="col-span-2">
+              <Label className="mb-2 block">Statut de paiement</Label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={editForm.statutPaiement === 'payé' ? 'default' : 'outline'}
+                  onClick={() => setEditForm({ ...editForm, statutPaiement: 'payé' })}
+                >
+                  Payé
+                </Button>
+                <Button
+                  type="button"
+                  variant={editForm.statutPaiement === 'en attente' ? 'default' : 'outline'}
+                  onClick={() => setEditForm({ ...editForm, statutPaiement: 'en attente' })}
+                >
+                  En attente
+                </Button>
+                <Button
+                  type="button"
+                  variant={editForm.statutPaiement === 'annulé' ? 'default' : 'outline'}
+                  onClick={() => setEditForm({ ...editForm, statutPaiement: 'annulé' })}
+                >
+                  Annulé
+                </Button>
+              </div>
+            </div>
+
+            <div className="col-span-2">
+              <Label className="mb-2 block">Sexe</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={editForm.sexe === 'fille' ? 'default' : 'outline'}
+                  onClick={() => setEditForm({ ...editForm, sexe: 'fille' })}
+                >
+                  Fille
+                </Button>
+                <Button
+                  type="button"
+                  variant={editForm.sexe === 'garçon' ? 'default' : 'outline'}
+                  onClick={() => setEditForm({ ...editForm, sexe: 'garçon' })}
+                >
+                  Garçon
+                </Button>
+              </div>
             </div>
 
             <div className="mt-4">

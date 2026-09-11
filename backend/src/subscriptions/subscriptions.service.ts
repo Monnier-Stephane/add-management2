@@ -182,6 +182,22 @@ export class SubscriptionsService {
       if (updateSubscriptionDto.photoPublicId !== undefined) {
         updateData.photoPublicId = updateSubscriptionDto.photoPublicId;
       }
+      if (
+        updateSubscriptionDto.sexe !== undefined &&
+        updateSubscriptionDto.sexe !== ''
+      ) {
+        const sexe = String(updateSubscriptionDto.sexe).trim().toLowerCase();
+        if (sexe === 'fille') {
+          updateData.sexe = 'fille';
+        } else if (sexe === 'garçon' || sexe === 'garcon') {
+          updateData.sexe = 'garçon';
+        } else {
+          throw new BadRequestException(
+            `Sexe invalide: "${updateSubscriptionDto.sexe}". Valeurs acceptées: fille, garçon`,
+          );
+        }
+      }
+
       // Vérifier qu'il y a des données à mettre à jour
       if (Object.keys(updateData).length === 0) {
         throw new BadRequestException('Aucune donnée à mettre à jour');
