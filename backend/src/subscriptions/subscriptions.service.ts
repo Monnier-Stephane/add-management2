@@ -86,6 +86,8 @@ export class SubscriptionsService {
     return subscription;
   }
 
+  
+
   async update(
     id: string,
     updateSubscriptionDto: UpdateSubscriptionDto,
@@ -174,6 +176,12 @@ export class SubscriptionsService {
         updateData.codePostal = updateSubscriptionDto.codePostal;
       if (updateSubscriptionDto.remarques !== undefined)
         updateData.remarques = updateSubscriptionDto.remarques;
+      if (updateSubscriptionDto.photoUrl !== undefined) {
+        updateData.photoUrl = updateSubscriptionDto.photoUrl;
+      }
+      if (updateSubscriptionDto.photoPublicId !== undefined) {
+        updateData.photoPublicId = updateSubscriptionDto.photoPublicId;
+      }
       if (
         updateSubscriptionDto.sexe !== undefined &&
         updateSubscriptionDto.sexe !== ''
@@ -250,6 +258,27 @@ export class SubscriptionsService {
           : 'Erreur lors de la mise à jour',
       );
     }
+  }
+
+  async clearPhoto(id: string): Promise<Subscription> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException(`ID invalide: "${id}"`);
+    }
+  
+    await this.subscriptionModel
+      .updateOne(
+        { _id: new Types.ObjectId(id) },
+        { $unset: { photoUrl: 1, photoPublicId: 1 } },
+      )
+      .exec();
+  
+    try {
+      await this.cacheManager.del('subscriptions:all');
+    } catch {
+      // cache optionnel
+    }
+  
+    return this.findOne(id);
   }
 
   async remove(id: string): Promise<Subscription> {

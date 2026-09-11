@@ -47,12 +47,17 @@ export class Subscription {
 
   @Prop()
   remarques: string;
-  
+
+  @Prop()
+  photoUrl?: string;
+
+  @Prop()
+  photoPublicId?: string;
+
   @Prop({
     type: String,
     enum: ['fille', 'garçon'],
   })
-
   sexe?: string;
 }
 

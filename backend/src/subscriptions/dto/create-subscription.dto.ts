@@ -11,5 +11,7 @@ export class CreateSubscriptionDto {
   tarif: string | string[];
   statutPaiement?: string;
   remarques?: string;
+  photoUrl?: string;
+  photoPublicId?: string;
   sexe?: string;
 }
