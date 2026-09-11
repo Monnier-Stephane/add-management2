@@ -21,6 +21,9 @@ import { auth } from '@/lib/auth/firebase';
 
 type Student = Subscription;
 
+const apiBase =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? 'http://localhost:3001';
+
 const cloudinaryThumb = (url: string, size = 80) =>
   url.replace(
     '/upload/',
@@ -286,7 +289,7 @@ const StudentsPage = () => {
       }
 
       const response = await fetch(
-        `http://localhost:3001/subscriptions/${selectedStudent._id}/photo`,
+        `${apiBase}/subscriptions/${selectedStudent._id}/photo`,
         {
           method: 'POST',
           body: formData,
@@ -322,7 +325,7 @@ const StudentsPage = () => {
       if (!token) throw new Error('Vous devez être connecté');
 
       const response = await fetch(
-        `http://localhost:3001/subscriptions/${selectedStudent._id}/photo`,
+        `${apiBase}/subscriptions/${selectedStudent._id}/photo`,
         {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
