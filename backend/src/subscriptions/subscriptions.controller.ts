@@ -44,36 +44,36 @@ export class SubscriptionsController {
   }
 
   @Post(':id/photo')
-@UseInterceptors(FileInterceptor('file'))
-async uploadPhoto(
-  @Param('id') id: string,
-  @UploadedFile() file: Express.Multer.File,
-) {
-  if (!file) {
-    throw new BadRequestException('Aucun fichier fourni');
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadPhoto(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Aucun fichier fourni');
+    }
+
+    if (!file.mimetype.startsWith('image/')) {
+      throw new BadRequestException('Le fichier doit être une image');
+    }
+
+    const uploaded = await this.photoUploadService.uploadStudentPhoto(file, id);
+
+    return this.subscriptionsService.update(id, {
+      photoUrl: uploaded.secure_url,
+      photoPublicId: uploaded.public_id,
+    });
   }
 
-  if (!file.mimetype.startsWith('image/')) {
-    throw new BadRequestException('Le fichier doit être une image');
+  @Delete(':id/photo')
+  async removePhoto(@Param('id') id: string) {
+    const student = await this.subscriptionsService.findOne(id);
+    const publicId = (student as { photoPublicId?: string }).photoPublicId;
+    if (publicId) {
+      await this.photoUploadService.deleteStudentPhoto(publicId);
+    }
+    return this.subscriptionsService.clearPhoto(id);
   }
-
-  const uploaded = await this.photoUploadService.uploadStudentPhoto(file, id);
-
-  return this.subscriptionsService.update(id, {
-    photoUrl: uploaded.secure_url,
-    photoPublicId: uploaded.public_id,
-  });
-}
-
-@Delete(':id/photo')
-async removePhoto(@Param('id') id: string) {
-  const student = await this.subscriptionsService.findOne(id);
-  const publicId = (student as { photoPublicId?: string }).photoPublicId;
-  if (publicId) {
-    await this.photoUploadService.deleteStudentPhoto(publicId);
-  }
-  return this.subscriptionsService.clearPhoto(id);
-}
 
   @Get()
   findAll() {

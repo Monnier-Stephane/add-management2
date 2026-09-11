@@ -38,7 +38,6 @@ jest.mock('./coaches/coaches.module', () => ({
   CoachesModule: class CoachesModule {},
 }));
 
-
 jest.mock('./auth/auth.module', () => ({
   AuthModule: class AuthModule {},
 }));

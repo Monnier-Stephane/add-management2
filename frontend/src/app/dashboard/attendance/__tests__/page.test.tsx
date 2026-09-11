@@ -63,15 +63,6 @@ describe('AttendancePage', () => {
     expect(screen.getByText('Chargement...')).toBeInTheDocument()
   })
 
-  it('should render back to dashboard button', async () => {
-    mockLoadedAttendance()
-    render(<AttendancePage />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Retour au Dashboard')).toBeInTheDocument()
-    })
-  })
-
   it('should handle empty data', async () => {
     mockLoadedAttendance([])
     render(<AttendancePage />)

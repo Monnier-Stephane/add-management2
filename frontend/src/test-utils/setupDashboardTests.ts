@@ -12,9 +12,9 @@ jest.mock('@/lib/auth/AuthContext', () => ({
 }))
 
 export const mockUseSubscriptions = jest.fn(() => ({
-  data: []as unknown[],
+  data: [] as unknown[] | undefined,
   isLoading: true,
-  error: null,
+  error: null as Error | null,
   refetch: jest.fn(),
 }))
 

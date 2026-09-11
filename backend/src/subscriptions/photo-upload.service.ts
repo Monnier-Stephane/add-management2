@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
-import { Multer } from 'multer';
+import 'multer';
+
 @Injectable()
 export class PhotoUploadService {
   constructor() {
@@ -26,8 +27,9 @@ export class PhotoUploadService {
         (error, result) => {
           if (error || !result) {
             reject(
-              error ??
-                new InternalServerErrorException('Upload Cloudinary échoué'),
+              error instanceof Error
+                ? error
+                : new InternalServerErrorException('Upload Cloudinary échoué'),
             );
             return;
           }
