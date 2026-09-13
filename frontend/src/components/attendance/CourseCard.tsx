@@ -323,9 +323,9 @@ export const CourseCard = ({
             </div>
           </div>
         </div>
-        <Badge variant="outline">
-          {course.eleves.length} élèves
-        </Badge>
+        <Badge variant="outline" className="shrink-0 whitespace-nowrap">
+  {course.eleves.length} élèves
+</Badge>
       </div>
     </CardHeader>
     <CardContent className="px-3 sm:px-6">

@@ -463,13 +463,17 @@ function AttendancePageContent() {
       </div>
 
       <Tabs value={selectedDay} onValueChange={setSelectedDay} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          {Object.keys(coursesByDay).map(day => (
-            <TabsTrigger key={day} value={day}>
-              {day}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      <TabsList className="grid h-auto w-full grid-cols-6 gap-1">
+  {Object.keys(coursesByDay).map(day => (
+    <TabsTrigger
+      key={day}
+      value={day}
+      className="px-1 text-[11px] sm:px-3 sm:text-sm"
+    >
+      {day}
+    </TabsTrigger>
+  ))}
+</TabsList>
 
         {Object.entries(coursesByDay).map(([day, dayCourses]) => (
           <TabsContent key={day} value={day} className="space-y-4">
