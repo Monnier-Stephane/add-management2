@@ -5,6 +5,14 @@ export function ServiceWorker() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
+    if ('serviceWorker' in navigator && process.env.NODE_ENV !== 'production') {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => registration.unregister())
+      })
+      caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)))
+      return
+    }
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
         .then((registration) => {
