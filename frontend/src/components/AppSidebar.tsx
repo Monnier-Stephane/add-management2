@@ -20,7 +20,8 @@ import {
   Shield,
   Upload,
   Home,
-  LogOut
+  LogOut,
+  FolderOpen,
 } from 'lucide-react'
 
 export function AppSidebar() {
@@ -56,6 +57,11 @@ export function AppSidebar() {
       title: "Import CSV",
       url: "/dashboard/import",
       icon: Upload
+    },
+    {
+      title: "Archives d'appel",
+      url: "/dashboard/archives-appel",
+      icon: FolderOpen
     },
   ] : []
 
