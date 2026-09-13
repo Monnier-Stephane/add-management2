@@ -2,7 +2,6 @@
 
 import { useRef, useState } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
 
@@ -63,11 +62,15 @@ export const StudentItem = ({
   return (
     <>
       <div
-        className={`flex items-center justify-between p-3 border rounded-lg ${
-          eleve.isTemporary ? 'bg-orange-50 border-orange-200' : ''
+        className={`flex items-center justify-between rounded-lg border p-3 ${
+          eleve.isTemporary
+            ? 'border-orange-200 bg-orange-50'
+            : eleve.present
+              ? 'border-emerald-200 bg-emerald-50'
+              : ''
         }`}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           {eleve.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -79,10 +82,10 @@ export const StudentItem = ({
               onPointerCancel={endHold}
               onPointerLeave={endHold}
               onContextMenu={(e) => e.preventDefault()}
-              className="h-16 w-16 shrink-0 rounded-full object-cover border bg-gray-100 select-none touch-none"
+              className="h-14 w-14 shrink-0 rounded-full object-cover border bg-gray-100 select-none touch-none"
             />
           ) : (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border bg-gray-100 text-xs font-medium text-gray-500">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border bg-gray-100 text-xs font-medium text-gray-500">
               {eleve.prenom.charAt(0).toUpperCase()}
             </div>
           )}
@@ -94,22 +97,20 @@ export const StudentItem = ({
             }
           />
           <label
-            htmlFor={`${course.id}-${eleve.id}`}
-            className="font-medium cursor-pointer"
-          >
-            {eleve.prenom} {eleve.nom}
-            {eleve.isTemporary && (
-              <span className="ml-2 text-xs text-orange-600 font-normal">
-                (élève en +)
-              </span>
-            )}
-          </label>
+  htmlFor={`${course.id}-${eleve.id}`}
+  className="min-w-0 flex-1 cursor-pointer text-xs font-medium leading-tight sm:text-base"
+>
+  <span className="block truncate sm:whitespace-normal">{eleve.prenom}</span>
+  <span className="block break-words">{eleve.nom}</span>
+  {eleve.isTemporary && (
+    <span className="text-xs font-normal text-orange-600">
+      (élève en +)
+    </span>
+  )}
+</label>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={eleve.present ? 'default' : 'secondary'}>
-            {eleve.present ? 'Présent' : 'Absent'}
-          </Badge>
-          {eleve.isTemporary && (
+        {eleve.isTemporary && (
+          <div className="flex shrink-0 items-center">
             <Button
               variant="ghost"
               size="sm"
@@ -118,8 +119,8 @@ export const StudentItem = ({
             >
               <X className="h-4 w-4" />
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {loupe && eleve.photoUrl && (

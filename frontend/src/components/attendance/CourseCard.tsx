@@ -328,7 +328,7 @@ export const CourseCard = ({
         </Badge>
       </div>
     </CardHeader>
-    <CardContent>
+    <CardContent className="px-3 sm:px-6">
       <div className="space-y-3">
         {course.eleves.map(eleve => (
           <StudentItem 

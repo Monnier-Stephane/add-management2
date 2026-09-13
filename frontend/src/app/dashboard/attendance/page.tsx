@@ -451,7 +451,7 @@ function AttendancePageContent() {
   if (error) return <div className="container mx-auto p-4">Erreur: {error.message}</div>
 
   return (
-    <div className="container mx-auto p-4 lg:max-w-7xl">
+    <div className="container mx-auto px-2 py-4 sm:p-4 lg:max-w-7xl">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">

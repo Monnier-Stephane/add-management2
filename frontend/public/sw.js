@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'add-management-static-v6';
-const DYNAMIC_CACHE = 'add-management-dynamic-v6';
+const STATIC_CACHE = 'add-management-static-v7';
+const DYNAMIC_CACHE = 'add-management-dynamic-v7';
 
 const urlsToCache = [
   '/',
@@ -10,16 +10,16 @@ const urlsToCache = [
 
 // Installation du Service Worker
 self.addEventListener('install', (event) => {
-  console.log('🔄 Service Worker v6 - Installation en cours...');
+  console.log('🔄 Service Worker v7 - Installation en cours...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
     .then((cache) => cache.addAll(urlsToCache))
     .then(() => {
-      console.log('✅ Service Worker v6 - Installation terminée');
+      console.log('✅ Service Worker v7 - Installation terminée');
       self.skipWaiting(); // Forcer l'activation immédiate
     })
     .catch((error) => {
-      console.error('❌ Service Worker v6 - Erreur installation:', error);
+      console.error('❌ Service Worker v7 - Erreur installation:', error);
       self.skipWaiting();
     })
   );
@@ -27,19 +27,19 @@ self.addEventListener('install', (event) => {
 
 // Activation du Service Worker
 self.addEventListener('activate', (event) => {
-  console.log('🔄 Service Worker v6 - Activation en cours...');
+  console.log('🔄 Service Worker v7 - Activation en cours...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (!cacheName.includes('v6')) {
+          if (!cacheName.includes('v7')) {
             console.log('🗑️ Suppression du cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      console.log('✅ Service Worker v6 - Activation terminée');
+      console.log('✅ Service Worker v7 - Activation terminée');
       return self.clients.claim(); // Prendre le contrôle immédiatement
     })
   );

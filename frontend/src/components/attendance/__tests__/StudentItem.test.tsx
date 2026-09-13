@@ -35,8 +35,8 @@ describe('StudentItem', () => {
   it('should render student information', () => {
     render(<StudentItem {...mockProps} />)
     
-    expect(screen.getByText('Jean Dupont')).toBeInTheDocument()
-    expect(screen.getByText('Absent')).toBeInTheDocument()
+    expect(screen.getByText('Jean')).toBeInTheDocument()
+    expect(screen.getByText('Dupont')).toBeInTheDocument()
   })
 
   it('should handle presence change', () => {
@@ -76,7 +76,6 @@ describe('StudentItem', () => {
     
     render(<StudentItem {...props} />)
     
-    expect(screen.getByText('Présent')).toBeInTheDocument()
     const checkbox = screen.getByRole('checkbox')
     expect(checkbox).toBeChecked()
   })
@@ -85,7 +84,7 @@ describe('StudentItem', () => {
     render(<StudentItem {...mockProps} />)
     
     const checkbox = screen.getByRole('checkbox')
-    const label = screen.getByText('Jean Dupont')
+    const label = screen.getByText('Jean').closest('label')
     
     expect(checkbox).toHaveAttribute('id', 'test-course-test-student')
     expect(label).toHaveAttribute('for', 'test-course-test-student')
