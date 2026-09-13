@@ -9,6 +9,7 @@ import {
   SubscriptionSchema,
 } from './schemas/subscription.schema';
 import { PhotoUploadService } from './photo-upload.service';
+import { PdfUploadService } from './pdf-upload.service';
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -19,7 +20,7 @@ import { PhotoUploadService } from './photo-upload.service';
     }),
   ],
   controllers: [SubscriptionsController],
-  providers: [SubscriptionsService, CsvProcessorService, PhotoUploadService],
+  providers: [SubscriptionsService, CsvProcessorService, PhotoUploadService, PdfUploadService],
   exports: [SubscriptionsService, CsvProcessorService],
 })
 export class SubscriptionsModule {}

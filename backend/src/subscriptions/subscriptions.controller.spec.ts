@@ -4,6 +4,7 @@ import { SubscriptionsService } from './subscriptions.service';
 import { CsvProcessorService } from './csv-processor.service';
 import { PhotoUploadService } from './photo-upload.service';
 import { BadRequestException } from '@nestjs/common';
+import { PdfUploadService } from './pdf-upload.service';
 
 describe('SubscriptionsController', () => {
   let controller: SubscriptionsController;
@@ -30,6 +31,11 @@ describe('SubscriptionsController', () => {
     deleteStudentPhoto: jest.fn(),
   };
 
+  const mockPdfUploadService = {
+    uploadAttendancePdf: jest.fn(),
+    listAttendancePdfs: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SubscriptionsController],
@@ -45,6 +51,10 @@ describe('SubscriptionsController', () => {
         {
           provide: PhotoUploadService,
           useValue: mockPhotoUploadService,
+        },
+        {
+          provide: PdfUploadService,
+          useValue: mockPdfUploadService,
         },
       ],
     }).compile();

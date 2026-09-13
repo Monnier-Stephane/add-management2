@@ -20,7 +20,7 @@ import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { Roles } from '../auth/roles.decorator';
 import { PhotoUploadService } from './photo-upload.service';
-
+import { PdfUploadService } from './pdf-upload.service';
 interface ProcessingResult {
   totalRecords: number;
   newRecords: number;
@@ -35,8 +35,50 @@ export class SubscriptionsController {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly csvProcessorService: CsvProcessorService,
     private readonly photoUploadService: PhotoUploadService,
+    private readonly pdfUploadService: PdfUploadService,
+    
   ) {}
 
+
+  @Post('attendance-pdf')
+@UseInterceptors(FileInterceptor('file'))
+async uploadAttendancePdf(
+  @UploadedFile() file: Express.Multer.File,
+  @Body('courseId') courseId: string,
+  @Body('courseDate') courseDate: string,
+) {
+  if (!file) {
+    throw new BadRequestException('Aucun fichier fourni');
+  }
+  if (file.mimetype !== 'application/pdf') {
+    throw new BadRequestException('Le fichier doit être un PDF');
+  }
+  if (!courseId?.trim()) {
+    throw new BadRequestException('courseId manquant');
+  }
+
+  const parsedDate = courseDate ? new Date(courseDate) : new Date();
+  if (Number.isNaN(parsedDate.getTime())) {
+    throw new BadRequestException('courseDate invalide');
+  }
+
+  const uploaded = await this.pdfUploadService.uploadAttendancePdf(
+    file,
+    courseId.trim(),
+    parsedDate,
+  );
+
+  return {
+    url: uploaded.secure_url,
+    publicId: uploaded.public_id,
+  };
+}
+
+@Get('attendance-pdf')
+@Roles('admin')
+async listAttendancePdfs() {
+  return this.pdfUploadService.listAttendancePdfs();
+}
   @Post()
   @Roles('admin')
   create(@Body() createSubscriptionDto: CreateSubscriptionDto) {
