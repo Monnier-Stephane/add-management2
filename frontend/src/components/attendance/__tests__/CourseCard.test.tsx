@@ -49,8 +49,10 @@ describe('CourseCard', () => {
 
   it('should render students list', () => {
     render(<CourseCard {...mockProps} />)
-    expect(screen.getByText('Jean Dupont')).toBeInTheDocument()
-    expect(screen.getByText('Marie Martin')).toBeInTheDocument()
+    expect(screen.getByText('Jean')).toBeInTheDocument()
+expect(screen.getByText('Dupont')).toBeInTheDocument()
+expect(screen.getByText('Marie')).toBeInTheDocument()
+expect(screen.getByText('Martin')).toBeInTheDocument()
   })
 
   it('should show presence count', () => {

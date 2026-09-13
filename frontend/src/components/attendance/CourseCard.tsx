@@ -6,6 +6,7 @@ import { StudentItem } from './StudentItem'
 import { AddStudentDialog } from './AddStudentDialog'
 import { useState } from 'react'
 import { jsPDF } from 'jspdf'
+import { auth } from '@/lib/auth/firebase'
 
 
 interface Student {
@@ -291,8 +292,38 @@ export const CourseCard = ({
           URL.revokeObjectURL(pdfUrl)
         }, 1000)
       } else {
-        // Télécharger directement avec compression
+        const pdfBlob = doc.output('blob')
         doc.save(filename)
+      
+        const apiBase =
+          process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ??
+          'http://localhost:3001'
+        const token = await auth.currentUser?.getIdToken()
+        if (!token) {
+          throw new Error('Vous devez être connecté pour archiver le PDF')
+        }
+      
+        const courseDate = new Date().toISOString().slice(0, 10)
+        const formData = new FormData()
+        formData.append(
+          'file',
+          new File([pdfBlob], filename, { type: 'application/pdf' }),
+        )
+        formData.append('courseId', course.id)
+        formData.append('courseDate', courseDate)
+      
+        const response = await fetch(`${apiBase}/subscriptions/attendance-pdf`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+      
+        if (!response.ok) {
+          const message = await response.text()
+          throw new Error(message || 'Archive Cloudinary impossible')
+        }
       }
     } catch (error) {
       console.error('Erreur lors de la génération du PDF:', error)
