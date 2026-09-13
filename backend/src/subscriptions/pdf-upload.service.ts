@@ -30,7 +30,7 @@ export class PdfUploadService {
     'novembre',
     'decembre',
   ] as const;
-  
+
   private folderFor(date: Date): string {
     const year = date.getFullYear();
     const monthName = this.moisFr[date.getMonth()];
@@ -58,7 +58,9 @@ export class PdfUploadService {
             reject(
               error instanceof Error
                 ? error
-                : new InternalServerErrorException('Upload Cloudinary PDF échoué'),
+                : new InternalServerErrorException(
+                    'Upload Cloudinary PDF échoué',
+                  ),
             );
             return;
           }
@@ -70,23 +72,33 @@ export class PdfUploadService {
   }
 
   async listAttendancePdfs() {
+    type CloudinaryResource = {
+      public_id: string;
+      secure_url: string;
+      created_at: string;
+    };
+
+    type CloudinaryListResponse = {
+      resources?: CloudinaryResource[];
+    };
+
     const [raw, images] = await Promise.all([
       cloudinary.api.resources({
         type: 'upload',
         resource_type: 'raw',
         prefix: 'feuilles-appel/',
         max_results: 500,
-      }),
+      }) as Promise<CloudinaryListResponse>,
       cloudinary.api.resources({
         type: 'upload',
         resource_type: 'image',
         prefix: 'feuilles-appel/',
         max_results: 500,
-      }),
+      }) as Promise<CloudinaryListResponse>,
     ]);
-  
+
     const resources = [...(raw.resources ?? []), ...(images.resources ?? [])];
-  
+
     type PdfItem = {
       publicId: string;
       url: string;
@@ -96,7 +108,7 @@ export class PdfUploadService {
       week: string;
       label: string;
     };
-  
+
     const items: PdfItem[] = resources.map((r) => {
       const parts = r.public_id.split('/');
       // feuilles-appel / 2026 / septembre / semaine-2 / samedi-16h30-2026-09-12
@@ -114,7 +126,7 @@ export class PdfUploadService {
         label: filePart,
       };
     });
-  
+
     return items;
   }
 }
