@@ -6,6 +6,7 @@ import { StudentItem } from './StudentItem'
 import { AddStudentDialog } from './AddStudentDialog'
 import { buildAttendancePdf } from './generateAttendancePdf'
 import { useState } from 'react'
+import { auth } from '@/lib/auth/firebase'
 
 
 interface Student {
