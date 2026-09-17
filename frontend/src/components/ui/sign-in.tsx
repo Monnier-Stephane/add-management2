@@ -3,7 +3,13 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
+import {
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  getMultiFactorResolver,
+  TotpMultiFactorGenerator,
+  type MultiFactorResolver,
+} from 'firebase/auth'
 import { FirebaseError } from 'firebase/app'
 import { auth } from '@/lib/auth/firebase'
 import { Button } from '@/components/ui/button'
@@ -27,12 +33,14 @@ function SignInPage() {
   const [forgotPassword, setForgotPassword] = useState(false)
 const [resetEmail, setResetEmail] = useState('')
 const [resetMessage, setResetMessage] = useState('')
+const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null)
+const [totpCode, setTotpCode] = useState('')
   const router = useRouter()
 
-  const { user, loading: authLoading, profileLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   useEffect(() => {
-    if (user && !authLoading && !profileLoading) {
+    if (user && !authLoading) {
       // Attendre que le profil soit chargé avant de rediriger
       const timer = setTimeout(() => {
         router.push('/dashboard')
@@ -40,13 +48,37 @@ const [resetMessage, setResetMessage] = useState('')
       
       return () => clearTimeout(timer)
     }
-  }, [user, authLoading, profileLoading, router])
+  }, [user, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
   
     if (forgotPassword) {
       await handleForgotPassword(e)
+      return
+    }
+
+    if (mfaResolver) {
+      e.preventDefault()
+      if (totpCode.trim().length < 6) {
+        setError('Entre le code à 6 chiffres de Authenticator.')
+        return
+      }
+      try {
+        setLoading(true)
+        setError('')
+        const hint = mfaResolver.hints[0]
+        const assertion = TotpMultiFactorGenerator.assertionForSignIn(
+          hint.uid,
+          totpCode.trim(),
+        )
+        await mfaResolver.resolveSignIn(assertion)
+        router.push('/dashboard')
+      } catch {
+        setError('Code invalide. Réessaie avec le code actuel.')
+      } finally {
+        setLoading(false)
+      }
       return
     }
   
@@ -68,9 +100,15 @@ const [resetMessage, setResetMessage] = useState('')
       
       router.push('/dashboard')
     } catch (error: unknown) {
-      console.error(error)
-      
+
       if (error instanceof FirebaseError) {
+        if (error.code === 'auth/multi-factor-auth-required') {
+          setMfaResolver(getMultiFactorResolver(auth, error as Parameters<typeof getMultiFactorResolver>[1]))
+          setTotpCode('')
+          setError('')
+          return
+        }
+        console.error(error)
         if (error.code === 'auth/invalid-credential') {
           setError('Email ou mot de passe incorrect.')
         } else if (error.code === 'auth/too-many-requests') {
@@ -154,8 +192,28 @@ const [resetMessage, setResetMessage] = useState('')
           <CardContent className="grid gap-y-4">
   <div className="h-px w-full bg-border" />
 
-  {!forgotPassword ? (
-    // Formulaire de connexion existant
+  {mfaResolver ? (
+    <>
+      <AnimatedFadeIn delay={0.1}>
+        <div className="space-y-2">
+          <Label htmlFor="totp">Code Authenticator</Label>
+          <Input
+            id="totp"
+            value={totpCode}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTotpCode(e.target.value)}
+            inputMode="numeric"
+            maxLength={6}
+            autoFocus
+          />
+        </div>
+      </AnimatedFadeIn>
+      {error && (
+        <AnimatedFadeIn>
+          <p className="text-sm text-red-600 font-medium">{error}</p>
+        </AnimatedFadeIn>
+      )}
+    </>
+  ) : !forgotPassword ? (
     <>
       <AnimatedFadeIn delay={0.1}>
         <div className="space-y-2">
@@ -231,12 +289,31 @@ const [resetMessage, setResetMessage] = useState('')
   <div className="grid w-full gap-y-4 mt-4">
     <AnimatedFadeIn delay={0.3}>
       <Button type="submit" disabled={loading}>
-        {loading ? 'Envoi...' : forgotPassword ? 'Envoyer l\'e-mail' : 'Se connecter'}
+        {loading
+          ? 'Envoi...'
+          : mfaResolver
+            ? 'Valider le code'
+            : forgotPassword
+              ? 'Envoyer l\'e-mail'
+              : 'Se connecter'}
       </Button>
     </AnimatedFadeIn>
     
     <AnimatedFadeIn delay={0.4}>
-      {!forgotPassword ? (
+      {mfaResolver ? (
+        <Button
+          variant="link"
+          size="sm"
+          type="button"
+          onClick={() => {
+            setMfaResolver(null)
+            setTotpCode('')
+            setError('')
+          }}
+        >
+          ← Retour
+        </Button>
+      ) : !forgotPassword ? (
         <div className="space-y-2">
           <Button 
             variant="link" 
