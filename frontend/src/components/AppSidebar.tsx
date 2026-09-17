@@ -22,6 +22,7 @@ import {
   Home,
   LogOut,
   FolderOpen,
+  KeyRound,
 } from 'lucide-react'
 
 export function AppSidebar() {
@@ -43,6 +44,11 @@ export function AppSidebar() {
       title: "Feuilles d'appel",
       url: "/dashboard/attendance",
       icon: ClipboardList
+    },
+    {
+      title: "Sécurité",
+      url: "/dashboard/securite",
+      icon: KeyRound
     },
   ]
 
