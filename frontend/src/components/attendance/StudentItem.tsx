@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
+import type { StudentCategory } from '@/lib/utils/studentCategory'
 
 const cloudinaryThumb = (url: string, size = 96) =>
   url.replace(
@@ -18,6 +19,7 @@ interface Student {
   present: boolean
   isTemporary?: boolean
   photoUrl?: string
+  categorie?: StudentCategory
 }
 
 interface Course {
@@ -62,14 +64,22 @@ export const StudentItem = ({
   return (
     <>
       <div
-        className={`flex items-center justify-between rounded-lg border p-3 ${
-          eleve.isTemporary
-            ? 'border-orange-200 bg-orange-50'
-            : eleve.present
-              ? 'border-emerald-200 bg-emerald-50'
-              : ''
-        }`}
-      >
+  className={`flex items-center justify-between rounded-lg border p-3 ${
+    eleve.isTemporary
+      ? 'border-orange-200 bg-orange-50'
+      : eleve.categorie === 'adolescents'
+        ? eleve.present
+          ? 'border-l-4 border-l-sky-600 border-sky-300 bg-sky-100'
+          : 'border-l-4 border-l-sky-600 border-sky-200 bg-sky-100'
+        : eleve.categorie === 'adultes'
+          ? eleve.present
+            ? 'border-l-4 border-l-purple-700 border-purple-300 bg-purple-100'
+            : 'border-l-4 border-l-purple-700 border-purple-200 bg-purple-100'
+          : eleve.present
+            ? 'border-emerald-200 bg-emerald-50'
+            : ''
+  }`}
+>
         <div className="flex min-w-0 flex-1 items-center gap-3">
           {eleve.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

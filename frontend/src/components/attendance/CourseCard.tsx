@@ -7,6 +7,7 @@ import { AddStudentDialog } from './AddStudentDialog'
 import { buildAttendancePdf } from './generateAttendancePdf'
 import { useState } from 'react'
 import { auth } from '@/lib/auth/firebase'
+import type { StudentCategory } from '@/lib/utils/studentCategory'
 
 
 interface Student {
@@ -16,6 +17,7 @@ interface Student {
   present: boolean
   isTemporary?: boolean
   photoUrl?: string
+  categorie?: StudentCategory
 }
 
 interface Course {
@@ -139,17 +141,54 @@ export const CourseCard = ({
       </div>
     </CardHeader>
     <CardContent className="px-3 sm:px-6">
-      <div className="space-y-3">
-        {course.eleves.map(eleve => (
-          <StudentItem 
-            key={eleve.id} 
-            eleve={eleve} 
-            course={course}
-            onPresenceChange={onPresenceChange}
-            onRemoveTemporaryStudent={onRemoveTemporaryStudent}
-          />
-        ))}
+    <div className="space-y-3">
+  {course.eleves.map((eleve, index) => {
+    const sectionKey = eleve.isTemporary
+      ? 'extra'
+      : (eleve.categorie ?? 'enfants')
+    const previous = course.eleves[index - 1]
+    const previousKey = previous
+      ? previous.isTemporary
+        ? 'extra'
+        : (previous.categorie ?? 'enfants')
+      : null
+    const showHeader = sectionKey !== previousKey
+
+    const sectionLabel =
+      sectionKey === 'adolescents'
+        ? 'Adolescents'
+        : sectionKey === 'adultes'
+          ? 'Adultes'
+          : sectionKey === 'extra'
+            ? 'Élèves en +'
+            : 'Enfants'
+
+    const sectionClass =
+      sectionKey === 'adolescents'
+        ? 'text-sky-700'
+        : sectionKey === 'adultes'
+          ? 'text-purple-700'
+          : sectionKey === 'extra'
+            ? 'text-orange-700'
+            : 'text-gray-500'
+
+    return (
+      <div key={eleve.id}>
+        {showHeader && (
+          <p className={`mb-1.5 text-xs font-semibold uppercase tracking-wide ${sectionClass}`}>
+            {sectionLabel}
+          </p>
+        )}
+        <StudentItem
+          eleve={eleve}
+          course={course}
+          onPresenceChange={onPresenceChange}
+          onRemoveTemporaryStudent={onRemoveTemporaryStudent}
+        />
       </div>
+    )
+  })}
+</div>
       
       {/* Bouton pour ajouter un élève temporaire */}
       <div className="mt-4 pt-4 border-t">
