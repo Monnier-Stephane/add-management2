@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf'
+import { CATEGORY_ORDER, type StudentCategory } from '@/lib/utils/studentCategory'
 
 export interface AttendancePdfStudent {
   id: string
@@ -6,6 +7,7 @@ export interface AttendancePdfStudent {
   prenom: string
   present: boolean
   isTemporary?: boolean
+  categorie?: StudentCategory
 }
 
 export interface AttendancePdfCourse {
@@ -17,6 +19,16 @@ export interface AttendancePdfCourse {
 
 export const isExtraStudent = (eleve: AttendancePdfStudent) =>
   Boolean(eleve.isTemporary) || eleve.id.startsWith('temp-')
+
+const getSectionKey = (eleve: AttendancePdfStudent) =>
+  isExtraStudent(eleve) ? 'extra' : (eleve.categorie ?? 'enfants')
+
+const getSectionLabel = (key: string) => {
+  if (key === 'adolescents') return 'Adolescents'
+  if (key === 'adultes') return 'Adultes'
+  if (key === 'extra') return 'Élèves en +'
+  return 'Enfants'
+}
 
 export async function buildAttendancePdf(course: AttendancePdfCourse) {
   const doc = new jsPDF('p', 'mm', 'a4')
@@ -127,66 +139,96 @@ export async function buildAttendancePdf(course: AttendancePdfCourse) {
     const extraA = isExtraStudent(a) ? 1 : 0
     const extraB = isExtraStudent(b) ? 1 : 0
     if (extraA !== extraB) return extraA - extraB
+  
+    const catA = CATEGORY_ORDER[a.categorie ?? 'enfants']
+    const catB = CATEGORY_ORDER[b.categorie ?? 'enfants']
+    if (catA !== catB) return catA - catB
+  
     return a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })
   })
 
-  sortedStudents.forEach((eleve) => {
-    if (y + rowHeight > pageHeight - 20) {
-      doc.addPage()
-      y = 20
-    }
+  const headerHeight = 8
 
-    currentX = tableStartX
-    const isExtra = isExtraStudent(eleve)
+sortedStudents.forEach((eleve, index) => {
+  const sectionKey = getSectionKey(eleve)
+  const previous = sortedStudents[index - 1]
+  const showHeader = !previous || getSectionKey(previous) !== sectionKey
 
-    const paintCell = (x: number, w: number) => {
-      if (isExtra) {
-        doc.setFillColor('#FFB366')
-        doc.rect(x, y, w, rowHeight, 'F')
-        doc.setDrawColor(0)
-        doc.rect(x, y, w, rowHeight, 'S')
-      } else {
-        drawRect(x, y, w, rowHeight)
-      }
-    }
+  if (y + rowHeight + (showHeader ? headerHeight : 0) > pageHeight - 20) {
+    doc.addPage()
+    y = 20
+  }
 
-    paintCell(currentX, colWidths[0])
+  if (showHeader) {
+    if (sectionKey === 'adolescents') doc.setFillColor(186, 230, 253)
+    else if (sectionKey === 'adultes') doc.setFillColor(233, 213, 255)
+    else if (sectionKey === 'extra') doc.setFillColor(255, 179, 102)
+    else doc.setFillColor(243, 244, 246)
+
+    doc.setDrawColor(0)
+    doc.rect(tableStartX, y, tableWidth, headerHeight, 'FD')
     doc.setFontSize(9)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(isExtra ? '#C2410C' : '#000000')
-
-    const prenomAffiche = eleve.prenom
-    const prenomLines = doc.splitTextToSize(prenomAffiche, colWidths[0] - 4)
-    const prenomY = y + rowHeight / 2 - (prenomLines.length - 1) * 2
-    doc.text(prenomLines, currentX + 2, prenomY)
-    currentX += colWidths[0]
-
-    paintCell(currentX, colWidths[1])
-    const nomLines = doc.splitTextToSize(eleve.nom, colWidths[1] - 4)
-    const nomY = y + rowHeight / 2 - (nomLines.length - 1) * 2
-    doc.text(nomLines, currentX + 2, nomY)
-    currentX += colWidths[1]
-
-    paintCell(currentX, colWidths[2])
-    doc.setFontSize(16)
     doc.setFont('helvetica', 'bold')
-    if (eleve.present) {
-      doc.setTextColor(0, 128, 0)
-      doc.text('O', currentX + colWidths[2] / 2, y + 7, { align: 'center' })
-    }
-    currentX += colWidths[2]
+    doc.setTextColor(0)
+    doc.text(getSectionLabel(sectionKey), tableStartX + 3, y + 5.5)
+    y += headerHeight
+  }
 
-    paintCell(currentX, colWidths[3])
-    doc.setFontSize(16)
-    doc.setFont('helvetica', 'bold')
-    if (!eleve.present) {
-      doc.setTextColor(200, 0, 0)
-      doc.text('X', currentX + colWidths[3] / 2, y + 7, { align: 'center' })
-    }
+  currentX = tableStartX
+  const isExtra = isExtraStudent(eleve)
 
-    doc.setTextColor(0, 0, 0)
-    y += rowHeight
-  })
+  const paintCell = (x: number, w: number) => {
+    if (isExtra) {
+      doc.setFillColor('#FFB366')
+      doc.rect(x, y, w, rowHeight, 'FD')
+    } else if (eleve.categorie === 'adolescents') {
+      doc.setFillColor(224, 242, 254)
+      doc.rect(x, y, w, rowHeight, 'FD')
+    } else if (eleve.categorie === 'adultes') {
+      doc.setFillColor(243, 232, 255)
+      doc.rect(x, y, w, rowHeight, 'FD')
+    } else {
+      drawRect(x, y, w, rowHeight)
+    }
+  }
+
+  paintCell(currentX, colWidths[0])
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(isExtra ? '#C2410C' : '#000000')
+
+  const prenomAffiche = eleve.prenom
+  const prenomLines = doc.splitTextToSize(prenomAffiche, colWidths[0] - 4)
+  const prenomY = y + rowHeight / 2 - (prenomLines.length - 1) * 2
+  doc.text(prenomLines, currentX + 2, prenomY)
+  currentX += colWidths[0]
+
+  paintCell(currentX, colWidths[1])
+  const nomLines = doc.splitTextToSize(eleve.nom, colWidths[1] - 4)
+  const nomY = y + rowHeight / 2 - (nomLines.length - 1) * 2
+  doc.text(nomLines, currentX + 2, nomY)
+  currentX += colWidths[1]
+
+  paintCell(currentX, colWidths[2])
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  if (eleve.present) {
+    doc.setTextColor(0, 128, 0)
+    doc.text('O', currentX + colWidths[2] / 2, y + 7, { align: 'center' })
+  }
+  currentX += colWidths[2]
+
+  paintCell(currentX, colWidths[3])
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  if (!eleve.present) {
+    doc.setTextColor(200, 0, 0)
+    doc.text('X', currentX + colWidths[3] / 2, y + 7, { align: 'center' })
+  }
+
+  doc.setTextColor(0, 0, 0)
+  y += rowHeight
+})
 
   y += 20
 

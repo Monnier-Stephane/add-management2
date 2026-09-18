@@ -5,6 +5,8 @@ import { Loader2 } from 'lucide-react'
 import { CourseCard } from '@/components/attendance/CourseCard'
 import { useSearchParams } from 'next/navigation'
 import { useSubscriptions } from '@/lib/hooks/useSubscriptions'
+import { CATEGORY_ORDER, getStudentCategory, type StudentCategory } from '@/lib/utils/studentCategory'
+
 
 interface Student {
   id: string
@@ -13,6 +15,7 @@ interface Student {
   present: boolean
   isTemporary?: boolean
   photoUrl?: string
+  categorie?: StudentCategory
 }
 
 interface Subscription {
@@ -20,6 +23,7 @@ interface Subscription {
   nom: string
   prenom: string
   tarif: string | string[]
+  dateDeNaissance?: string
   photoUrl?: string
 }
 
@@ -252,9 +256,18 @@ const filterStudentsForCourse = (course: CourseData, subscriptions: Subscription
     prenom: sub.prenom || '',
     present: false,
     photoUrl: sub.photoUrl,
-  })).sort((a: Student, b: Student) => 
-    a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })
-  )
+    categorie: getStudentCategory(sub.tarif, sub.dateDeNaissance),
+  })).sort((a: Student, b: Student) => {
+    const extraA = a.isTemporary ? 1 : 0
+    const extraB = b.isTemporary ? 1 : 0
+    if (extraA !== extraB) return extraA - extraB
+  
+    const catA = CATEGORY_ORDER[a.categorie ?? 'enfants']
+    const catB = CATEGORY_ORDER[b.categorie ?? 'enfants']
+    if (catA !== catB) return catA - catB
+  
+    return a.prenom.localeCompare(b.prenom, 'fr', { sensitivity: 'base' })
+  })
 }
 
 function AttendancePageContent() {
