@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
 import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore'
 import { FirebaseError } from 'firebase/app'
 import { auth } from '@/lib/auth/firebase'
@@ -86,8 +86,9 @@ function SignUpPage() {
       }
       
       // 2. CRÉATION DU COMPTE FIREBASE (seulement si autorisé)
-      await createUserWithEmailAndPassword(auth, email, password)
-      router.push('/dashboard')
+      const cred = await createUserWithEmailAndPassword(auth, email, password)
+await sendEmailVerification(cred.user)
+router.push('/dashboard')
       
     } catch (error: unknown) {
       console.error('Erreur lors de la création du compte:', error)
