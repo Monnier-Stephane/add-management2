@@ -4,6 +4,7 @@ import { useState } from 'react'
 import {
   multiFactor,
   TotpMultiFactorGenerator,
+  sendEmailVerification,
   type TotpSecret,
 } from 'firebase/auth'
 import { useAuth } from '@/lib/auth/AuthContext'
@@ -85,6 +86,36 @@ export default function SecuritePage() {
                 ouvre Authenticator via le lien, ou saisis la clé à la main. Puis
                 entre le code à 6 chiffres.
               </p>
+
+              {user && !user.emailVerified && (
+  <div className="space-y-2 rounded-md border p-3 text-sm">
+    <p>
+      Confirme d’abord ton e-mail ({user.email}) pour pouvoir activer
+      Authenticator.
+    </p>
+    <Button
+      type="button"
+      variant="outline"
+      disabled={loading}
+      onClick={async () => {
+        if (!user) return
+        setLoading(true)
+        setMessage('')
+        try {
+          await sendEmailVerification(user)
+          setMessage('E-mail envoyé. Ouvre le lien, puis recharge cette page.')
+        } catch (e) {
+          console.error(e)
+          setMessage("Impossible d’envoyer l’e-mail. Réessaie dans quelques minutes.")
+        } finally {
+          setLoading(false)
+        }
+      }}
+    >
+      Envoyer l’e-mail de confirmation
+    </Button>
+  </div>
+)}
               <Button onClick={demarrerQr} disabled={loading}>
                 Afficher le QR code
               </Button>
