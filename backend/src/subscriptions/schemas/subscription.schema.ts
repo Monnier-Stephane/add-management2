@@ -6,47 +6,47 @@ export type SubscriptionDocument = Subscription & Document;
 @Schema()
 export class Subscription {
   @Prop()
-  nom: string;
+  nom!: string;
 
   @Prop()
-  prenom: string;
+  prenom!: string;
 
   @Prop()
-  email: string;
+  email!: string;
 
   @Prop()
-  telephone: string;
+  telephone!: string;
 
   @Prop()
-  telephoneUrgence: string;
+  telephoneUrgence!: string;
 
   @Prop()
-  dateDeNaissance: Date;
+  dateDeNaissance!: Date;
 
   @Prop()
-  adresse: string;
+  adresse!: string;
 
   @Prop()
-  ville: string;
+  ville!: string;
 
   @Prop()
-  codePostal: string;
+  codePostal!: string;
 
   @Prop({ type: [String], default: [] })
-  tarif: string[];
+  tarif!: string[];
 
   @Prop({ default: Date.now })
-  dateInscription: Date;
+  dateInscription!: Date;
 
   @Prop({
     type: String,
     enum: ['payé', 'en attente', 'annulé'],
     default: 'en attente',
   })
-  statutPaiement: string;
+  statutPaiement!: string;
 
   @Prop()
-  remarques: string;
+  remarques!: string;
 
   @Prop()
   photoUrl?: string;
@@ -59,6 +59,12 @@ export class Subscription {
     enum: ['fille', 'garçon'],
   })
   sexe?: string;
+
+  @Prop()
+  tailleTshirt?: string;
+
+  @Prop()
+  dejaInscrit?: boolean;
 }
 
 export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);

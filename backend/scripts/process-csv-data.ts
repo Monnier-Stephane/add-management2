@@ -74,6 +74,29 @@ function normalizeKey(key: string): string {
     .replace(/[\u0300-\u036f]/g, ''); // retire les accents
 }
 
+
+function isPaidOrderStatus(raw: string | undefined): boolean {
+  const s = String(raw || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const negatives = [
+    'non valide',
+    'pas valide',
+    'a valider',
+    'invalide',
+    'invalid',
+  ];
+  if (negatives.some((n) => s.includes(n))) {
+    return false;
+  }
+
+  return /(^|[^a-z])valid(e|ee|es|er)?([^a-z]|$)/.test(s);
+}
+
 // Fonction pour traiter le fichier CSV
 async function processCSVFile(csvFilePath: string) {
   const client = new MongoClient(url);
@@ -109,11 +132,11 @@ async function processCSVFile(csvFilePath: string) {
             prenomPayeur: cleanString(normalizedData['prenompayeur']),
             emailPayeur: cleanString(normalizedData['emailpayeur']),
             dateInscription: new Date(),
-            statutPaiement:
-              normalizedData['statutdelacommande'] &&
-              normalizedData['statutdelacommande'].toLowerCase() === 'validé'
-                ? 'payé'
-                : 'en attente',
+            statutPaiement: isPaidOrderStatus(
+              normalizedData['statutdelacommande'],
+            )
+              ? 'payé'
+              : 'en attente',
             remarques: cleanString(
               normalizedData['commentaireshorsligne'] || '',
             ),
