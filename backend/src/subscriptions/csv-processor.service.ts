@@ -41,6 +41,18 @@ interface ProcessingResult {
   errors: string[];
   summary: string;
   newStudents: Array<{ nom: string; prenom: string; email: string }>;
+  adultesSansDeuxCours: Array<{
+    _id: string;
+    nom: string;
+    prenom: string;
+    email: string;
+  }>;
+  jeunesAdultesSansCours: Array<{
+    _id: string;
+    nom: string;
+    prenom: string;
+    email: string;
+  }>;
   deletedRecords: number;
 }
 
@@ -54,13 +66,39 @@ interface CleanedData {
   adresse: string;
   ville: string;
   codePostal: string;
-  tarif: string;
+  tarif: string[];
   dateInscription: Date;
   statutPaiement: string;
   remarques: string;
+  tailleTshirt?: string;
+  dejaInscrit?: boolean;
 }
 
+const AF_COURS_VERS_TARIF: Record<string, string> = {
+  'lundi 19h30': 'LUNDI 19h30 Bercy ADULTES',
+  'jeudi 19h30': 'JEUDI 19h30 Paris Châtelet ADULTES',
+  'sam 10h': 'SAMEDI 10h00 Paris Châtelet ADULTES',
+  'samedi 10h': 'SAMEDI 10h00 Paris Châtelet ADULTES',
+  'sam 16h30': 'SAMEDI 16h30 Choisy le Roi ADULTES',
+  'samedi 16h30': 'SAMEDI 16h30 Choisy le Roi ADULTES',
+  'sam 17h45': 'SAMEDI 17h45 Choisy le Roi ADULTES',
+  'samedi 17h45': 'SAMEDI 17h45 Choisy le Roi ADULTES',
+  'dim 10h': 'DIMANCHE 10h00 Choisy le Roi ADULTES',
+  'dimanche 10h': 'DIMANCHE 10h00 Choisy le Roi ADULTES',
+  'dim 11h30': 'DIMANCHE 11h30 Choisy le Roi ADULTES',
+  'dimanche 11h30': 'DIMANCHE 11h30 Choisy le Roi ADULTES',
+};
+
+
+const TARIFS_JEUNES_ADULTES_CHOISY_WEEKEND = [
+  'SAMEDI 16h30 Choisy le Roi ADULTES',
+  'SAMEDI 17h45 Choisy le Roi ADULTES',
+  'DIMANCHE 10h00 Choisy le Roi ADULTES',
+  'DIMANCHE 11h30 Choisy le Roi ADULTES',
+];
+
 @Injectable()
+
 export class CsvProcessorService {
   constructor(
     @InjectModel(Subscription.name)
@@ -75,6 +113,144 @@ export class CsvProcessorService {
   private cleanTarif(tarif: string): string {
     if (!tarif) return '';
     return tarif.replace(/"\s+/g, '"').replace(/\s+"/g, '"').trim();
+  }
+
+  private toTarifArray(tarif: string): string[] {
+    const t = tarif.trim();
+    return t ? [t] : [];
+  }
+  
+  private mergeTarifs(
+    existing: string[] | string | undefined,
+    incoming: string[],
+  ): string[] {
+    const prev = Array.isArray(existing)
+      ? existing
+      : existing
+        ? [existing]
+        : [];
+    const merged = [...prev, ...incoming]
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return [...new Set(merged)];
+  }
+
+  private normaliserCoursAf(raw: string): string {
+    return raw
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/h00/g, 'h')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  
+  private parseCoursAf(cellule: string): string[] {
+    return cellule
+      .split(/[,;]+/)
+      .map((part) => AF_COURS_VERS_TARIF[this.normaliserCoursAf(part)])
+      .filter((tarif): tarif is string => Boolean(tarif));
+  }
+
+  private estForfaitJeunesAdultesChoisyWeekend(tarif: string): boolean {
+    const s = this.normaliserCoursAf(tarif);
+    const jeunes =
+      s.includes('jeunes adultes') || s.includes('jeune adulte');
+    const weekendChoisy =
+      s.includes('choisy') &&
+      (s.includes('sam') || s.includes('samedi')) &&
+      (s.includes('dim') || s.includes('dimanche')) &&
+      (s.includes('apres-midi') ||
+        s.includes('aprem') ||
+        s.includes('matin'));
+    return jeunes && weekendChoisy;
+  }
+
+  private getCelluleAf(record: Record<string, any>): string {
+    const key = Object.keys(record).find((k) =>
+      String(k).toLowerCase().includes('2 cours aux choix'),
+    );
+    return key ? String(record[key] || '') : '';
+  }
+
+  private getCelluleCoursJeunesAdultes(record: Record<string, any>): string {
+    const key = Object.keys(record).find((k) =>
+      String(k)
+        .toLowerCase()
+        .includes('indiquer quel cours est choisi'),
+    );
+    return key ? String(record[key] || '') : '';
+  }
+  
+  private resolveTarifsExcel(record: Record<string, any>): string[] {
+    const brut = this.cleanTarif(
+      String(record['Tarif'] || record['tarif'] || ''),
+    );
+    const depuisExcel = this.toTarifArray(brut);
+  
+    if (this.estForfaitJeunesAdultesChoisyWeekend(brut)) {
+      const choisis = this.parseCoursAf(
+        this.getCelluleCoursJeunesAdultes(record),
+      );
+      if (choisis.length > 0) {
+        return [...new Set(choisis)];
+      }
+      return depuisExcel;
+    }
+  
+    if (!brut.toUpperCase().includes('ADULTES 2 COURS/SEMAINE')) {
+      return depuisExcel;
+    }
+    const depuisAf = this.parseCoursAf(this.getCelluleAf(record));
+    if (depuisAf.length >= 2) {
+      return [...new Set(depuisAf)];
+    }
+    return depuisExcel;
+  }
+
+  private doitRemplacerTarifs(incoming: string[]): boolean {
+    if (incoming.length < 2) return false;
+    if (incoming.some((t) => t.toUpperCase().includes('ADULTES 2 COURS/SEMAINE'))) {
+      return false;
+    }
+    const canoniques = new Set(Object.values(AF_COURS_VERS_TARIF));
+    return incoming.every((t) => canoniques.has(t));
+  }
+
+  private estUniquementCoursChoisyWeekend(incoming: string[]): boolean {
+    if (incoming.length === 0) return false;
+    const choisy = new Set(TARIFS_JEUNES_ADULTES_CHOISY_WEEKEND);
+    return incoming.every((t) => choisy.has(t));
+  }
+
+  private estForfait2CoursSeul(incoming: string[]): boolean {
+    return (
+      incoming.length === 1 &&
+      incoming[0].toUpperCase().includes('ADULTES 2 COURS/SEMAINE')
+    );
+  }
+  
+  private coursAdultesPrecis(
+    tarifs: string[] | string | undefined,
+  ): string[] {
+    const canoniques = new Set(Object.values(AF_COURS_VERS_TARIF));
+    const prev = Array.isArray(tarifs) ? tarifs : tarifs ? [tarifs] : [];
+    return prev.filter((t) => canoniques.has(t));
+  }
+
+  private estForfaitJeunesAdultesSeul(incoming: string[]): boolean {
+    return (
+      incoming.length === 1 &&
+      this.estForfaitJeunesAdultesChoisyWeekend(incoming[0])
+    );
+  }
+  
+  private coursChoisyWeekendPrecis(
+    tarifs: string[] | string | undefined,
+  ): string[] {
+    const choisy = new Set(TARIFS_JEUNES_ADULTES_CHOISY_WEEKEND);
+    const prev = Array.isArray(tarifs) ? tarifs : tarifs ? [tarifs] : [];
+    return prev.filter((t) => choisy.has(t));
   }
 
   private cleanTelephone(telephone: string): string {
@@ -106,6 +282,37 @@ export class CsvProcessorService {
     return str ? str.trim() : '';
   }
 
+  private isPaidOrderStatus(raw: string | undefined): boolean {
+    const s = String(raw || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  
+    const negatives = [
+      'non valide',
+      'pas valide',
+      'a valider',
+      'invalide',
+      'invalid',
+    ];
+    if (negatives.some((n) => s.includes(n))) {
+      return false;
+    }
+  
+    return /(^|[^a-z])valid(e|ee|es|er)?([^a-z]|$)/.test(s);  
+  }
+
+  private parseOuiNon(raw: string): boolean | undefined {
+    const v = String(raw || '')
+      .trim()
+      .toLowerCase();
+    if (v === 'oui') return true;
+    if (v === 'non') return false;
+    return undefined;
+  }
+
   // ---------- Common helpers ----------
   private initResults(): ProcessingResult {
     return {
@@ -116,11 +323,16 @@ export class CsvProcessorService {
       summary: '',
       newStudents: [],
       deletedRecords: 0,
+      adultesSansDeuxCours: [],
+      jeunesAdultesSansCours: [],
     };
   }
 
-  private async upsertRecord(cleanedData: CleanedData, results: ProcessingResult) {
-    if (!cleanedData.email) return;
+  private async upsertRecord(
+    cleanedData: CleanedData,
+    results: ProcessingResult,
+  ): Promise<string | undefined> {
+    if (!cleanedData.email) return undefined;
 
     const existingRecord = await this.subscriptionModel.findOne({
       nom: cleanedData.nom,
@@ -128,17 +340,37 @@ export class CsvProcessorService {
     });
 
     if (existingRecord) {
-      await this.subscriptionModel.findByIdAndUpdate(existingRecord._id, cleanedData, { new: true });
+      const { dateInscription: _ignore, tarif, ...rest } = cleanedData;
+      const updateData = {
+        ...rest,
+        tarif: this.doitRemplacerTarifs(tarif) ||
+  this.estUniquementCoursChoisyWeekend(tarif)
+  ? tarif
+  : this.estForfait2CoursSeul(tarif) &&
+      this.coursAdultesPrecis(existingRecord.tarif).length >= 2
+    ? this.coursAdultesPrecis(existingRecord.tarif)
+    : this.estForfaitJeunesAdultesSeul(tarif) &&
+        this.coursChoisyWeekendPrecis(existingRecord.tarif).length >= 1
+      ? this.coursChoisyWeekendPrecis(existingRecord.tarif)
+      : this.mergeTarifs(existingRecord.tarif, tarif),
+      };
+      await this.subscriptionModel.findByIdAndUpdate(
+        existingRecord._id,
+        updateData,
+        { new: true },
+      );
       results.updatedRecords++;
-    } else {
-      await this.subscriptionModel.create(cleanedData);
-      results.newRecords++;
-      results.newStudents.push({
-        nom: cleanedData.nom,
-        prenom: cleanedData.prenom,
-        email: cleanedData.email,
-      });
+      return String(existingRecord._id);
     }
+
+    const created = await this.subscriptionModel.create(cleanedData);
+    results.newRecords++;
+    results.newStudents.push({
+      nom: cleanedData.nom,
+      prenom: cleanedData.prenom,
+      email: cleanedData.email,
+    });
+    return String(created._id);
   }
 
   private generateSummary(results: ProcessingResult): string {
@@ -157,7 +389,40 @@ export class CsvProcessorService {
         if (cleanedData.email) {
           keysInFile.add(this.studentKey(cleanedData.nom, cleanedData.prenom));
         }
-        await this.upsertRecord(cleanedData, results);
+        const subscriptionId = await this.upsertRecord(cleanedData, results);
+        if (subscriptionId && this.estForfait2CoursSeul(cleanedData.tarif)) {
+          const fiche = await this.subscriptionModel.findById(subscriptionId);
+          const dejaEnBase =
+            this.coursAdultesPrecis(fiche?.tarif).length >= 2;
+          const dejaListe = results.adultesSansDeuxCours.some(
+            (s) => s.nom === cleanedData.nom && s.prenom === cleanedData.prenom,
+          );
+          if (!dejaEnBase && !dejaListe) {
+            results.adultesSansDeuxCours.push({
+              _id: subscriptionId,
+              nom: cleanedData.nom,
+              prenom: cleanedData.prenom,
+              email: cleanedData.email,
+            });
+          }
+        }
+
+        if (subscriptionId && this.estForfaitJeunesAdultesSeul(cleanedData.tarif)) {
+          const ficheJa = await this.subscriptionModel.findById(subscriptionId);
+          const dejaEnBaseJa =
+            this.coursChoisyWeekendPrecis(ficheJa?.tarif).length >= 1;
+          const dejaListeJa = results.jeunesAdultesSansCours.some(
+            (s) => s.nom === cleanedData.nom && s.prenom === cleanedData.prenom,
+          );
+          if (!dejaEnBaseJa && !dejaListeJa) {
+            results.jeunesAdultesSansCours.push({
+              _id: subscriptionId,
+              nom: cleanedData.nom,
+              prenom: cleanedData.prenom,
+              email: cleanedData.email,
+            });
+          }
+        }
       } catch (error) {
         results.errors.push(
           `Error processing record: ${
@@ -250,7 +515,7 @@ export class CsvProcessorService {
       telephoneUrgence: this.cleanTelephone(
         String(record['TELEPHONE URGENCE '] || record['telephone urgence'] || record['telephoneurgence'] || ''),
       ),
-      tarif: this.cleanTarif(String(record['Tarif'] || record['tarif'] || '')),
+      tarif: this.resolveTarifsExcel(record),
       dateDeNaissance: this.cleanDate(
         String(
           record['Date de naissance du pratiquants'] ||
@@ -265,16 +530,31 @@ export class CsvProcessorService {
         String(record['Code Postal'] || record['code postal'] || record['codepostal'] || ''),
       ),
       dateInscription: new Date(),
-      statutPaiement:
-        String(record['Statut de la commande'] || record['statut de la commande'] || '').toLowerCase() ===
-        'validé'
-          ? 'payé'
-          : 'en attente',
+      statutPaiement: this.isPaidOrderStatus(
+        String(record['Statut de la commande'] || record['statut de la commande'] || ''),
+      )
+        ? 'payé'
+        : 'en attente',
       remarques: this.cleanString(
         String(
           record['Commentaires (Hors ligne)'] ||
             record['commentaires hors ligne'] ||
             record['commentaireshorsligne'] ||
+            '',
+        ),
+      ),
+      tailleTshirt: this.cleanString(
+        String(
+          record['Taille t-shirt'] ||
+            record['taille t-shirt'] ||
+            record['tailletshirt'] ||
+            '',
+        ),
+      ),
+      dejaInscrit: this.parseOuiNon(
+        String(
+          record['Etes vous déjà inscrit à Add academy Paris/Choisy'] ||
+            record['etes vous déjà inscrit à add academy paris/choisy'] ||
             '',
         ),
       ),
@@ -288,7 +568,6 @@ export class CsvProcessorService {
       results.totalRecords = jsonData.length;
       const keysInFile = new Set<string>();
       await this.handleRecords(jsonData, this.mapExcelRecord.bind(this), results, keysInFile);
-      await this.removeStudentsMissingFromImport(keysInFile, results);
       results.summary = this.generateSummary(results);
     } catch (error) {
       results.errors.push(`General error: ${String(error)}`);
@@ -317,7 +596,7 @@ export class CsvProcessorService {
       email: this.cleanString(record['email facilement joignable']),
       telephone: this.cleanTelephone(record['telephone']),
       telephoneUrgence: this.cleanTelephone(record['telephone urgence']),
-      tarif: this.cleanTarif(record['tarif']),
+      tarif: this.toTarifArray(this.cleanTarif(record['tarif'])),
       dateDeNaissance: null,
       adresse: '',
       ville: '',
@@ -335,7 +614,6 @@ export class CsvProcessorService {
       results.totalRecords = csvData.length;
       const keysInFile = new Set<string>();
       await this.handleRecords(csvData, this.mapCsvRecord.bind(this), results, keysInFile);
-      await this.removeStudentsMissingFromImport(keysInFile, results);
       results.summary = this.generateSummary(results);
     } catch (error) {
       results.errors.push(

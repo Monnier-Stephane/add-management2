@@ -19,6 +19,8 @@ export interface Subscription {
   statutPaiement?: 'payé' | 'en attente' | 'annulé'
   remarques?: string
   sexe?: 'fille' | 'garçon'
+  tailleTshirt?: string
+  dejaInscrit?: boolean
   jour?: string
   lieu?: string
   heure?: string

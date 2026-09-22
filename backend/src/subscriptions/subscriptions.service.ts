@@ -196,6 +196,11 @@ export class SubscriptionsService {
         }
       }
 
+      if (updateSubscriptionDto.tailleTshirt !== undefined)
+        updateData.tailleTshirt = updateSubscriptionDto.tailleTshirt;
+      if (updateSubscriptionDto.dejaInscrit !== undefined)
+        updateData.dejaInscrit = updateSubscriptionDto.dejaInscrit;
+
       // Vérifier qu'il y a des données à mettre à jour
       if (Object.keys(updateData).length === 0) {
         throw new BadRequestException('Aucune donnée à mettre à jour');

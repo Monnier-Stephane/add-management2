@@ -394,6 +394,8 @@ const StudentsPage = () => {
       statutPaiement: student.statutPaiement,
       remarques: student.remarques || '',
       sexe: student.sexe,
+      tailleTshirt: student.tailleTshirt || '',
+   dejaInscrit: student.dejaInscrit,
       jour: student.jour || '',
       lieu: student.lieu || '',
       heure: student.heure || ''
@@ -415,18 +417,19 @@ const StudentsPage = () => {
 
     try {
       // Préparer les données à envoyer - seulement les champs modifiés
-      const updateData: Record<string, string | string[] | undefined> = {};
+      const updateData: Record<string, string | string[] | boolean | undefined> = {};
 
       // Champs à envoyer (seulement ceux qui existent dans editForm)
       const fieldsToCheck: (keyof Student)[] = [
         'nom', 'prenom', 'email', 'telephone', 'telephoneUrgence',
-        'adresse', 'ville', 'codePostal', 'tarif', 'statutPaiement', 'remarques', 'sexe'
+        'adresse', 'ville', 'codePostal', 'tarif', 'statutPaiement', 'remarques', 'sexe', 
+        'tailleTshirt', 'dejaInscrit'
       ];
 
       fieldsToCheck.forEach((field) => {
         const value = editForm[field];
         if (value !== undefined) {
-          updateData[field] = value as string | string[] | undefined;
+          updateData[field] = value as string | string[] | boolean | undefined;
         }
       });
 
@@ -844,6 +847,26 @@ const StudentsPage = () => {
                 </p>
               </div>
 
+              <div>
+  <Label className="text-sm font-medium text-gray-500">Taille t-shirt</Label>
+  <p className="text-lg font-semibold">
+    {selectedStudent.tailleTshirt || 'Non renseigné'}
+  </p>
+</div>
+
+<div>
+  <Label className="text-sm font-medium text-gray-500">
+    Déjà inscrit à Add Academy Paris/Choisy
+  </Label>
+  <p className="text-lg font-semibold">
+    {selectedStudent.dejaInscrit === true
+      ? 'Oui'
+      : selectedStudent.dejaInscrit === false
+        ? 'Non'
+        : 'Non renseigné'}
+  </p>
+</div>
+
               {/* Email */}
               <div>
                 <Label className="text-sm font-medium text-gray-500">Email</Label>
@@ -1133,6 +1156,36 @@ const StudentsPage = () => {
               </div>
             </div>
 
+            <div>
+  <Label htmlFor="tailleTshirt" className="mb-2 block">Taille t-shirt</Label>
+  <Input
+    id="tailleTshirt"
+    value={editForm.tailleTshirt || ''}
+    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+      setEditForm({ ...editForm, tailleTshirt: e.target.value })
+    }
+  />
+</div>
+
+<div className="sm:col-span-2">
+  <Label className="mb-2 block">Déjà inscrit à Add Academy Paris/Choisy</Label>
+  <div className="flex gap-2">
+    <Button
+      type="button"
+      variant={editForm.dejaInscrit === true ? 'default' : 'outline'}
+      onClick={() => setEditForm({ ...editForm, dejaInscrit: true })}
+    >
+      Oui
+    </Button>
+    <Button
+      type="button"
+      variant={editForm.dejaInscrit === false ? 'default' : 'outline'}
+      onClick={() => setEditForm({ ...editForm, dejaInscrit: false })}
+    >
+      Non
+    </Button>
+  </div>
+</div>
             <div className="mt-4">
               <Label htmlFor="remarques" className="mb-2 block">Remarques</Label>
               <Input

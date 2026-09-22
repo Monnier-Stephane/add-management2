@@ -14,4 +14,6 @@ export class CreateSubscriptionDto {
   photoUrl?: string;
   photoPublicId?: string;
   sexe?: string;
+  tailleTshirt?: string;
+  dejaInscrit?: boolean;
 }

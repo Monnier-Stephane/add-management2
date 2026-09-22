@@ -41,7 +41,14 @@ export default function SecuritePage() {
       )
     } catch (e) {
       console.error(e)
-      setMessage('Impossible de générer le QR. Es-tu bien connecté ?')
+      const code = e && typeof e === 'object' && 'code' in e ? String((e as { code: string }).code) : ''
+      if (code === 'auth/unverified-email') {
+        setMessage('E-mail non confirmé. Envoie le lien ci-dessus, clique-le, puis recharge.')
+      } else if (code === 'auth/requires-recent-login') {
+        setMessage('Reconnecte-toi, puis réessaie.')
+      } else {
+        setMessage('Impossible de générer le QR. Es-tu bien connecté ?')
+      }
     } finally {
       setLoading(false)
     }
@@ -116,9 +123,9 @@ export default function SecuritePage() {
     </Button>
   </div>
 )}
-              <Button onClick={demarrerQr} disabled={loading}>
-                Afficher le QR code
-              </Button>
+              <Button onClick={demarrerQr} disabled={loading || !user?.emailVerified}>
+  Afficher le QR code
+</Button>
               {qrUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={qrUrl} alt="QR Authenticator" width={220} height={220} />
