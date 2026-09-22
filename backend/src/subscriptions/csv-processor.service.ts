@@ -340,19 +340,21 @@ export class CsvProcessorService {
     });
 
     if (existingRecord) {
-      const { dateInscription: _ignore, tarif, ...rest } = cleanedData;
+      const { tarif, ...rest } = cleanedData;
       const updateData = {
         ...rest,
-        tarif: this.doitRemplacerTarifs(tarif) ||
-  this.estUniquementCoursChoisyWeekend(tarif)
-  ? tarif
-  : this.estForfait2CoursSeul(tarif) &&
-      this.coursAdultesPrecis(existingRecord.tarif).length >= 2
-    ? this.coursAdultesPrecis(existingRecord.tarif)
-    : this.estForfaitJeunesAdultesSeul(tarif) &&
-        this.coursChoisyWeekendPrecis(existingRecord.tarif).length >= 1
-      ? this.coursChoisyWeekendPrecis(existingRecord.tarif)
-      : this.mergeTarifs(existingRecord.tarif, tarif),
+        dateInscription: existingRecord.dateInscription,
+        tarif:
+          this.doitRemplacerTarifs(tarif) ||
+          this.estUniquementCoursChoisyWeekend(tarif)
+            ? tarif
+            : this.estForfait2CoursSeul(tarif) &&
+                this.coursAdultesPrecis(existingRecord.tarif).length >= 2
+              ? this.coursAdultesPrecis(existingRecord.tarif)
+              : this.estForfaitJeunesAdultesSeul(tarif) &&
+                  this.coursChoisyWeekendPrecis(existingRecord.tarif).length >= 1
+                ? this.coursChoisyWeekendPrecis(existingRecord.tarif)
+                : this.mergeTarifs(existingRecord.tarif, tarif),
       };
       await this.subscriptionModel.findByIdAndUpdate(
         existingRecord._id,
