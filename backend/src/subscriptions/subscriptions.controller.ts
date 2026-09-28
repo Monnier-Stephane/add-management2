@@ -18,6 +18,7 @@ import {
 import { CsvProcessorService } from './csv-processor.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import { Subscription } from './schemas/subscription.schema';
 import { Roles } from '../auth/roles.decorator';
 import { PhotoUploadService } from './photo-upload.service';
 import { PdfUploadService } from './pdf-upload.service';
@@ -118,9 +119,22 @@ async listAttendancePdfs() {
   }
 
   @Get()
-  findAll() {
-    return this.subscriptionsService.findAll();
-  }
+async findAll() {
+  const students = await this.subscriptionsService.findAll();
+
+  return students.map((student) => {
+    const plain = JSON.parse(JSON.stringify(student)) as Subscription;
+
+    if (!plain.photoPublicId) {
+      return plain;
+    }
+
+    return {
+      ...plain,
+      photoUrl: this.photoUploadService.signedPhotoUrl(plain.photoPublicId),
+    };
+  });
+}
 
   @Get(':id')
   findOne(@Param('id') id: string) {

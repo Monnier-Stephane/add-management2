@@ -64,7 +64,7 @@ export const StudentItem = ({
   return (
     <>
       <div
-  className={`flex items-center justify-between rounded-lg border p-3 ${
+  className={`student-row relative flex items-center justify-between rounded-lg border p-3 ${
     eleve.isTemporary
       ? 'border-orange-200 bg-orange-50'
       : eleve.categorie === 'adolescents'

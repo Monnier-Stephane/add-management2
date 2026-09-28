@@ -154,14 +154,20 @@ const StudentsPage = () => {
     return `${jour} - ${lieu} - ${heure}`;
   };
 
+  const fold = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  
   const filterStudents = (students: Student[], searchTerm: string) => {
     if (!searchTerm || searchTerm.length < 2) return students;
-
-    const term = searchTerm.toLowerCase().trim();
+  
+    const term = fold(searchTerm.trim());
     return students.filter(student =>
-      student.nom.toLowerCase().includes(term) ||
-      student.prenom.toLowerCase().includes(term) ||
-      student.email.toLowerCase().includes(term)
+      fold(student.nom).includes(term) ||
+      fold(student.prenom).includes(term) ||
+      fold(student.email || '').includes(term)
     );
   };
 

@@ -23,6 +23,7 @@ export class PhotoUploadService {
           public_id: studentId,
           overwrite: true,
           resource_type: 'image',
+          type: 'authenticated',
         },
         (error, result) => {
           if (error || !result) {
@@ -40,6 +41,27 @@ export class PhotoUploadService {
     });
   }
   async deleteStudentPhoto(publicId: string): Promise<void> {
-    await cloudinary.uploader.destroy(publicId);
+    await cloudinary.uploader.destroy(publicId, { type: 'authenticated' });
+  }
+
+  signedPhotoUrl(publicId: string, size = 400): string {
+    const expiresAt = Math.floor(Date.now() / 1000) + 3 * 60 * 60;
+  
+    return cloudinary.url(publicId, {
+      type: 'authenticated',
+      sign_url: true,
+      secure: true,
+      expires_at: expiresAt,
+      transformation: [
+        {
+          width: size,
+          height: size,
+          crop: 'fill',
+          gravity: 'face',
+          fetch_format: 'auto',
+          quality: 'auto',
+        },
+      ],
+    });
   }
 }
