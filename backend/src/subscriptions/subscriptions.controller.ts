@@ -129,10 +129,17 @@ async findAll() {
       return plain;
     }
 
-    return {
-      ...plain,
-      photoUrl: this.photoUploadService.signedPhotoUrl(plain.photoPublicId),
-    };
+    const versionMatch = plain.photoUrl?.match(/\/v(\d+)\//);
+const version = versionMatch ? Number(versionMatch[1]) : undefined;
+
+return {
+  ...plain,
+  photoUrl: this.photoUploadService.signedPhotoUrl(
+    plain.photoPublicId,
+    400,
+    version,
+  ),
+};
   });
 }
 

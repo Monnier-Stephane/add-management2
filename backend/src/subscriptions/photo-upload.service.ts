@@ -44,7 +44,7 @@ export class PhotoUploadService {
     await cloudinary.uploader.destroy(publicId, { type: 'authenticated' });
   }
 
-  signedPhotoUrl(publicId: string, size = 400): string {
+  signedPhotoUrl(publicId: string, size = 400, version?: number): string {
     const expiresAt = Math.floor(Date.now() / 1000) + 3 * 60 * 60;
   
     return cloudinary.url(publicId, {
@@ -52,6 +52,7 @@ export class PhotoUploadService {
       sign_url: true,
       secure: true,
       expires_at: expiresAt,
+      version,
       transformation: [
         {
           width: size,
