@@ -268,15 +268,43 @@ export class CsvProcessorService {
     return cleaned;
   }
 
-  private cleanDate(dateString: string): Date {
-    if (!dateString) return new Date();
-    try {
-      const date = new Date(dateString);
-      return isNaN(date.getTime()) ? new Date() : date;
-    } catch {
-      return new Date();
+  private cleanDate(dateString: string): Date | null {
+  const texte = (dateString || '').trim();
+  if (!texte) return null;
+
+  const francais = texte.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+  if (francais) {
+    const jour = Number(francais[1]);
+    const mois = Number(francais[2]);
+    const annee = Number(francais[3]);
+    const date = new Date(annee, mois - 1, jour);
+    if (
+      date.getFullYear() === annee &&
+      date.getMonth() === mois - 1 &&
+      date.getDate() === jour &&
+      annee >= 1990 &&
+      annee <= new Date().getFullYear()
+    ) {
+      return date;
     }
+    return null;
   }
+
+  if (/^\d{4,5}$/.test(texte)) {
+    const serial = Number(texte);
+    const date = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+    const annee = date.getUTCFullYear();
+    if (annee >= 1990 && annee <= new Date().getUTCFullYear()) return date;
+    return null;
+  }
+
+  const iso = new Date(texte);
+  if (!isNaN(iso.getTime())) {
+    const annee = iso.getFullYear();
+    if (annee >= 1990 && annee <= new Date().getFullYear()) return iso;
+  }
+  return null;
+}
 
   private cleanString(str: string): string {
     return str ? str.trim() : '';

@@ -155,6 +155,36 @@ describe('CsvProcessorService', () => {
         expect(result.errors).toHaveLength(0);
       });
     });
+    it('should read a birth date without inventing one', () => {
+      const lire = (valeur: string) =>
+        (service as unknown as { cleanDate: (v: string) => Date | null }).cleanDate(valeur);
+    
+      const francaise = lire('15/03/2016');
+      expect(francaise?.getFullYear()).toBe(2016);
+      expect(francaise?.getMonth()).toBe(2);
+      expect(francaise?.getDate()).toBe(15);
+    
+      const serieExcel = lire('42835');
+      expect(serieExcel?.toISOString().slice(0, 10)).toBe('2017-04-10');
+    
+      expect(lire('')).toBeNull();
+      expect(lire('31/02/2016')).toBeNull();
+    });
+    it('should read a birth date without inventing one', () => {
+      const lire = (valeur: string) =>
+        (service as unknown as { cleanDate: (v: string) => Date | null }).cleanDate(valeur);
+    
+      const francaise = lire('15/03/2016');
+      expect(francaise?.getFullYear()).toBe(2016);
+      expect(francaise?.getMonth()).toBe(2);
+      expect(francaise?.getDate()).toBe(15);
+    
+      const serieExcel = lire('42835');
+      expect(serieExcel?.toISOString().slice(0, 10)).toBe('2017-04-10');
+    
+      expect(lire('')).toBeNull();
+      expect(lire('31/02/2016')).toBeNull();
+    });
 
     it('should clean phone numbers correctly', () => {
       const csvData =
