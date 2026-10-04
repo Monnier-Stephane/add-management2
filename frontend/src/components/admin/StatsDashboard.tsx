@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -11,8 +12,34 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { useSubscriptions } from '@/lib/hooks/useSubscriptions';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/api'
+import { calculateAge } from '@/lib/utils/studentCategory';
+
 
 const COLORS = ['#4ade80', '#60a5fa', '#fbbf24', '#f87171', '#a78bfa'];
+
+const ORDRE_TRANCHES = [
+  'Moins de 5 ans',
+  '5 à 8 ans',
+  '9 à 11 ans',
+  '12 à 17 ans',
+  '18 à 20 ans',
+  '21 ans et plus',
+  'Date manquante',
+];
+function trancheDepuisAge(dateDeNaissance?: string): string {
+  const age = calculateAge(dateDeNaissance);
+  if (age <= 0) return 'Date manquante';
+  if (age < 5) return 'Moins de 5 ans';
+  if (age <= 8) return '5 à 8 ans';
+  if (age <= 11) return '9 à 11 ans';
+  if (age <= 17) return '12 à 17 ans';
+  if (age <= 20) return '18 à 20 ans';
+  return '21 ans et plus';
+}
+
+function ajouter(compte: Record<string, number>, tranche: string) {
+  compte[tranche] = (compte[tranche] ?? 0) + 1;
+}
 
 interface Student {
   _id: string;
@@ -23,6 +50,7 @@ interface Student {
   email?: string;
   telephone?: string;
   sexe?: 'fille' | 'garçon';
+  dateDeNaissance?: string;
 }
 
 export default function StatsDashboard() {
@@ -41,6 +69,9 @@ export default function StatsDashboard() {
     let attente = 0, paye = 0, enfants = 0, ados = 0, adultes = 0;
     let filles = 0, garcons = 0, sexeNonRenseigne = 0;
     const pendingList: Student[] = [];
+    const parAge: Record<string, number> = {};
+    const paris: Record<string, number> = {};
+    const choisy: Record<string, number> = {};
 
     students.forEach((item: Student) => {
       // Payment status
@@ -56,6 +87,27 @@ export default function StatsDashboard() {
       // Categorization by pricing tier
       // Gérer les tarifs comme tableau ou string (rétrocompatibilité)
       const tarifs = Array.isArray(item.tarif) ? item.tarif : [item.tarif].filter(Boolean);
+      const vuesGlobal = new Set<string>();
+      const vuesParis = new Set<string>();
+      const vuesChoisy = new Set<string>();
+
+      for (const tarif of tarifs) {
+        const texte = (tarif || '').toLowerCase();
+        const tranche = trancheDepuisAge(item.dateDeNaissance);
+vuesGlobal.add(tranche);
+for (const tarif of tarifs) {
+  const texte = (tarif || '').toLowerCase();
+  if (texte.includes('paris')) vuesParis.add(tranche);
+  if (texte.includes('choisy')) vuesChoisy.add(tranche);
+}
+        if (texte.includes('paris')) vuesParis.add(tranche);
+        if (texte.includes('choisy')) vuesChoisy.add(tranche);
+      }
+
+      vuesGlobal.forEach((tranche) => ajouter(parAge, tranche));
+      vuesParis.forEach((tranche) => ajouter(paris, tranche));
+      vuesChoisy.forEach((tranche) => ajouter(choisy, tranche));
+
       const principalTarif = tarifs.length > 0 ? (tarifs[0] || '').trim() : '';
       if (principalTarif) {
         const tarifLower = principalTarif.toLowerCase();
@@ -65,8 +117,13 @@ export default function StatsDashboard() {
       }
     });
 
-    return { total, attente, paye, enfants, ados, adultes, filles, garcons, sexeNonRenseigne };
-  })() : { total: 0, attente: 0, paye: 0, enfants: 0, ados: 0, adultes: 0, filles: 0, garcons: 0, sexeNonRenseigne: 0 };
+    return { total, attente, paye, enfants, ados, adultes, filles, garcons, sexeNonRenseigne, parAge, paris, choisy };
+  })() : {
+    total: 0, attente: 0, paye: 0, enfants: 0, ados: 0, adultes: 0, filles: 0, garcons: 0, sexeNonRenseigne: 0,
+    parAge: {},
+    paris: {},
+    choisy: {},
+  };
 
   // Filtrer les élèves en attente avec vérification supplémentaire
   const pendingStudents = students && Array.isArray(students) ? 
@@ -201,6 +258,44 @@ export default function StatsDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {isAdmin && (
+  <Card>
+    <CardHeader>
+      <CardTitle>Tranches d&apos;âge</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Tranche</TableHead>
+            <TableHead className="text-right">Paris + Choisy</TableHead>
+            <TableHead className="text-right">Paris</TableHead>
+            <TableHead className="text-right">Choisy</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {ORDRE_TRANCHES.filter(
+            (tranche) => stats.parAge[tranche] || stats.paris[tranche] || stats.choisy[tranche],
+          ).map((tranche) => (
+            <TableRow key={tranche}>
+              <TableCell>{tranche}</TableCell>
+              <TableCell className="text-right">
+                <Badge variant="outline">{stats.parAge[tranche] ?? 0}</Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <Badge variant="outline">{stats.paris[tranche] ?? 0}</Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <Badge variant="outline">{stats.choisy[tranche] ?? 0}</Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </CardContent>
+  </Card>
+)}
 
       {/* Pending payments section - Seulement pour les admins */}
 {isAdmin && stats.attente > 0 && (
