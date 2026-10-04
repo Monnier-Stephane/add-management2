@@ -1,11 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Clock, MapPin, Users, Download, Eye } from 'lucide-react'
+import { Clock, MapPin, Users, Download } from 'lucide-react'
 import { StudentItem } from './StudentItem'
 import { AddStudentDialog } from './AddStudentDialog'
 import { buildAttendancePdf } from './generateAttendancePdf'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { auth } from '@/lib/auth/firebase'
 import type { StudentCategory } from '@/lib/utils/studentCategory'
 
@@ -47,72 +47,92 @@ export const CourseCard = ({
 }: CourseCardProps) => {
   
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
-  
-  const generatePDF = async (action: 'preview' | 'download' = 'download') => {
-    if (isGeneratingPDF) return // Éviter les clics multiples
-    
-    setIsGeneratingPDF(true)
-    
-    try {
-      const doc = await buildAttendancePdf(course)
+
+  const [readyPdf, setReadyPdf] = useState<{ blob: Blob; filename: string } | null>(null)
+
+useEffect(() => {
+  let cancelled = false
+  setReadyPdf(null)
+
+  buildAttendancePdf(course)
+    .then((doc) => {
+      if (cancelled) return
       const filename = `feuille-appel-${course.nom.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`
-      
-      if (action === 'preview') {
-        // Pour la visualisation, utiliser bloburl au lieu de dataurlnewwindow
-        const pdfBlob = doc.output('blob')
-        const pdfUrl = URL.createObjectURL(pdfBlob)
-        
-        // Ouvrir dans un nouvel onglet
-        const newWindow = window.open(pdfUrl, '_blank')
-        if (!newWindow) {
-          alert('Veuillez autoriser les popups pour visualiser le PDF')
-        }
-        
-        // Nettoyer l'URL après un délai
-        setTimeout(() => {
-          URL.revokeObjectURL(pdfUrl)
-        }, 1000)
-      } else {
-        const pdfBlob = doc.output('blob')
-        doc.save(filename)
-      
-        const apiBase =
-          process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ??
-          'http://localhost:3001'
-        const token = await auth.currentUser?.getIdToken()
-        if (!token) {
-          throw new Error('Vous devez être connecté pour archiver le PDF')
-        }
-      
-        const courseDate = new Date().toISOString().slice(0, 10)
-        const formData = new FormData()
-        formData.append(
-          'file',
-          new File([pdfBlob], filename, { type: 'application/pdf' }),
-        )
-        formData.append('courseId', course.id)
-        formData.append('courseDate', courseDate)
-      
-        const response = await fetch(`${apiBase}/subscriptions/attendance-pdf`, {
-          method: 'POST',
-          body: formData,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-      
-        if (!response.ok) {
-          const message = await response.text()
-          throw new Error(message || 'Archive Cloudinary impossible')
-        }
-      }
-    } catch (error) {
-      console.error('Erreur lors de la génération du PDF:', error)
-      alert('Erreur lors de la génération du PDF. Veuillez réessayer.')
-    } finally {
-      setIsGeneratingPDF(false)
-    }
+      setReadyPdf({ blob: doc.output('blob'), filename })
+    })
+    .catch((error) => {
+      console.error('Erreur lors de la préparation du PDF:', error)
+    })
+
+  return () => {
+    cancelled = true
   }
+}, [course])
+  
+const generatePDF = async () => {
+  if (!readyPdf || isGeneratingPDF) return
+
+  const { blob, filename } = readyPdf
+  const file = new File([blob], filename, { type: 'application/pdf' })
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
+  try {
+    if (
+      isIos &&
+      typeof navigator.share === 'function' &&
+      navigator.canShare?.({ files: [file] })
+    ) {
+      await navigator.share({ files: [file], title: course.nom })
+    } else {
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      link.click()
+setTimeout(() => URL.revokeObjectURL(url), 1000)
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') return
+    console.error('Erreur lors de la remise du PDF:', error)
+    alert('Erreur lors de la génération du PDF. Veuillez réessayer.')
+    return
+  }
+
+  setIsGeneratingPDF(true)
+  try {
+    const apiBase =
+      process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ??
+      'http://localhost:3001'
+    const token = await auth.currentUser?.getIdToken()
+    if (!token) {
+      throw new Error('Vous devez être connecté pour archiver le PDF')
+    }
+
+    const courseDate = new Date().toISOString().slice(0, 10)
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('courseId', course.id)
+    formData.append('courseDate', courseDate)
+
+    const response = await fetch(`${apiBase}/subscriptions/attendance-pdf`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const message = await response.text()
+      throw new Error(message || 'Archive Cloudinary impossible')
+    }
+  } catch (archiveError) {
+    console.error('Archive du PDF impossible:', archiveError)
+    alert('PDF téléchargé, mais l’archive n’a pas pu être enregistrée.')
+  } finally {
+    setIsGeneratingPDF(false)
+  }
+}
 
 
   return (
@@ -203,24 +223,15 @@ export const CourseCard = ({
           {course.eleves.filter(e => e.present).length} / {course.eleves.length} présents
         </div>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+           
             <Button 
-              onClick={() => generatePDF('preview')} 
+              onClick={() => generatePDF()} 
               size="sm" 
-              variant="outline"
-              disabled={isGeneratingPDF}
-              className="flex items-center justify-center gap-2 w-full sm:w-auto"
-            >
-              <Eye className="h-4 w-4" />
-              {isGeneratingPDF ? 'Génération...' : 'Visualiser'}
-            </Button>
-            <Button 
-              onClick={() => generatePDF('download')} 
-              size="sm" 
-              disabled={isGeneratingPDF}
+              disabled={!readyPdf ||isGeneratingPDF}
               className="flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <Download className="h-4 w-4" />
-              {isGeneratingPDF ? 'Génération...' : 'Télécharger'}
+              {!readyPdf ? 'Préparation...' : 'Télécharger'}
             </Button>
           </div>
       </div>

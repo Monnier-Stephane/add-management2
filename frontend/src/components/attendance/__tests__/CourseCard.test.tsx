@@ -2,6 +2,12 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { CourseCard } from '../CourseCard'
 
+jest.mock('../generateAttendancePdf', () => ({
+  buildAttendancePdf: jest.fn().mockResolvedValue({
+    output: () => new Blob(['pdf'], { type: 'application/pdf' }),
+  }),
+}))
+
 const mockCourse = {
   id: 'test-course',
   nom: 'Test Course',
@@ -81,10 +87,11 @@ expect(screen.getByText('Martin')).toBeInTheDocument()
     expect(screen.getByText('Ajouter un élève temporaire')).toBeInTheDocument()
   })
 
-  it('should render PDF action buttons', () => {
+  it('should render PDF action buttons', async () => {
     render(<CourseCard {...mockProps} />)
-    expect(screen.getByText('Visualiser')).toBeInTheDocument()
-    expect(screen.getByText('Télécharger')).toBeInTheDocument()
+    expect(screen.queryByText('Visualiser')).not.toBeInTheDocument()
+    expect(screen.getByText('Préparation...')).toBeInTheDocument()
+    expect(await screen.findByText('Télécharger')).toBeInTheDocument()
   })
 
   it('should handle empty students list', () => {
