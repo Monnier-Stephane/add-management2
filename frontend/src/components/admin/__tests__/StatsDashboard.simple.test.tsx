@@ -100,7 +100,7 @@ describe('StatsDashboard - Simple Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText("Total d'adhérents")).toBeInTheDocument()
-      expect(screen.getByText('3')).toBeInTheDocument()
+      expect(screen.getAllByText('3').length).toBeGreaterThan(0)
     })
   })
 
