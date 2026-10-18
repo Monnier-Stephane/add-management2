@@ -58,6 +58,7 @@ export default function StatsDashboard() {
   const queryClient = useQueryClient();
   const { data: students, isLoading, error, refetch } = useSubscriptions();
   const [showPendingDetails, setShowPendingDetails] = useState(false);
+  const [voirSansSexe, setVoirSansSexe] = useState(false);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -128,6 +129,9 @@ for (const tarif of tarifs) {
   // Filtrer les élèves en attente avec vérification supplémentaire
   const pendingStudents = students && Array.isArray(students) ? 
     students.filter((item: Student) => item.statutPaiement === 'en attente') : [];
+    const elevesSansSexe = students && Array.isArray(students)
+  ? students.filter((item: Student) => item.sexe !== 'fille' && item.sexe !== 'garçon')
+  : [];
   
 
   const paiementData = [
@@ -269,20 +273,16 @@ for (const tarif of tarifs) {
         <TableHeader>
           <TableRow>
             <TableHead>Tranche</TableHead>
-            <TableHead className="text-right">Paris + Choisy</TableHead>
             <TableHead className="text-right">Paris</TableHead>
             <TableHead className="text-right">Choisy</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {ORDRE_TRANCHES.filter(
-            (tranche) => stats.parAge[tranche] || stats.paris[tranche] || stats.choisy[tranche],
-          ).map((tranche) => (
+        {ORDRE_TRANCHES.filter(
+  (tranche) => stats.paris[tranche] || stats.choisy[tranche],
+).map((tranche) => (
             <TableRow key={tranche}>
               <TableCell>{tranche}</TableCell>
-              <TableCell className="text-right">
-                <Badge variant="outline">{stats.parAge[tranche] ?? 0}</Badge>
-              </TableCell>
               <TableCell className="text-right">
                 <Badge variant="outline">{stats.paris[tranche] ?? 0}</Badge>
               </TableCell>
@@ -486,24 +486,54 @@ for (const tarif of tarifs) {
   <CardContent>
     <ResponsiveContainer width="100%" height={250}>
       <PieChart>
-        <Pie
-          data={sexeData}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="50%"
-          outerRadius={80}
-          fill="#8884d8"
-          label
-        >
+        
+      <Pie
+  data={sexeData}
+  dataKey="value"
+  nameKey="name"
+  cx="50%"
+  cy="50%"
+  outerRadius={80}
+  fill="#8884d8"
+  label
+  onClick={(_part, index) => {
+    if (sexeData[index]?.name === 'Non renseigné') {
+      setVoirSansSexe((ouvert) => !ouvert);
+    }
+  }}
+>
           {sexeData.map((entry, index) => (
             <Cell key={`cell-sexe-${index}`} fill={COLORS_SEXE[index]} />
           ))}
         </Pie>
         <Tooltip />
-        <Legend />
+        <Legend
+  onClick={(_entree, index) => {
+    if (sexeData[index]?.name === 'Non renseigné') {
+      setVoirSansSexe((ouvert) => !ouvert);
+    }
+  }}
+/>
       </PieChart>
     </ResponsiveContainer>
+    <Button
+  variant="outline"
+  size="sm"
+  onClick={() => setVoirSansSexe((ouvert) => !ouvert)}
+  className="mt-4 flex w-full items-center justify-center gap-2"
+>
+  {voirSansSexe ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+  {voirSansSexe ? 'Masquer' : `Genre non renseigné (${elevesSansSexe.length})`}
+</Button>
+{voirSansSexe && (
+  <div className="mt-3 space-y-2">
+    {elevesSansSexe.map((eleve) => (
+      <div key={eleve._id} className="rounded-lg border bg-white p-3 font-medium text-gray-900">
+        {eleve.prenom} {eleve.nom}
+      </div>
+    ))}
+  </div>
+)}
   </CardContent>
 </Card>
 
