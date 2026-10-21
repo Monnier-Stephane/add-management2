@@ -61,21 +61,7 @@ export class SubscriptionsService {
   }
 
   async findAll(): Promise<Subscription[]> {
-    const cacheKey = 'subscriptions:all';
-
-    // Vérifier le cache
-    const cached = await this.cacheManager.get<Subscription[]>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    // Récupérer depuis MongoDB
-    const data = await this.subscriptionModel.find().exec();
-
-    // Mettre en cache (5 minutes)
-    await this.cacheManager.set(cacheKey, data, 300);
-
-    return data;
+    return this.subscriptionModel.find().exec();
   }
 
   async findOne(id: string): Promise<Subscription> {
@@ -198,6 +184,8 @@ export class SubscriptionsService {
 
       if (updateSubscriptionDto.tailleTshirt !== undefined)
         updateData.tailleTshirt = updateSubscriptionDto.tailleTshirt;
+      if (updateSubscriptionDto.tshirtDistribue !== undefined)
+        updateData.tshirtDistribue = updateSubscriptionDto.tshirtDistribue;
       if (updateSubscriptionDto.dejaInscrit !== undefined)
         updateData.dejaInscrit = updateSubscriptionDto.dejaInscrit;
 

@@ -63,6 +63,9 @@ export class Subscription {
   @Prop()
   tailleTshirt?: string;
 
+  @Prop({ type: Boolean, default: false })
+  tshirtDistribue?: boolean;
+
   @Prop()
   dejaInscrit?: boolean;
 }

@@ -1,19 +1,20 @@
 export class CreateSubscriptionDto {
-  nom: string;
-  prenom: string;
-  email: string;
-  telephone: string;
+  nom!: string;
+  prenom!: string;
+  email!: string;
+  telephone!: string;
   telephoneUrgence?: string;
-  dateDeNaissance: Date;
-  adresse: string;
-  ville: string;
-  codePostal: string;
-  tarif: string | string[];
+  dateDeNaissance!: Date;
+  adresse!: string;
+  ville!: string;
+  codePostal!: string;
+  tarif!: string | string[];
   statutPaiement?: string;
   remarques?: string;
   photoUrl?: string;
   photoPublicId?: string;
   sexe?: string;
   tailleTshirt?: string;
+  tshirtDistribue?: boolean;
   dejaInscrit?: boolean;
 }

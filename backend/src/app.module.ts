@@ -11,6 +11,7 @@ import * as redisStore from 'cache-manager-redis-store';
 import { FirebaseAuthGuard } from './auth/firebase-auth.guard';
 import { AuthModule } from './auth/auth.module';
 import { RolesGuard } from './auth/roles.guard';
+import { TshirtsModule } from './tshirts/tshirts.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { RolesGuard } from './auth/roles.guard';
     }),
     DatabaseModule,
     SubscriptionsModule,
+    TshirtsModule,
     CoachesModule,
     AuthModule,
   ],

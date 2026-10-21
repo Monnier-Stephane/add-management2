@@ -148,6 +148,17 @@ return {
     return this.subscriptionsService.findOne(id);
   }
 
+  @Patch(':id/tshirt')
+  async updateTshirt(
+    @Param('id') id: string,
+    @Body() body: { tailleTshirt?: string; tshirtDistribue?: boolean },
+  ) {
+    return this.subscriptionsService.update(id, {
+      tailleTshirt: body.tailleTshirt,
+      tshirtDistribue: body.tshirtDistribue,
+    });
+  }
+
   @Patch(':id')
   @Roles('admin')
   async update(

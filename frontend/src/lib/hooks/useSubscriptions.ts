@@ -20,6 +20,7 @@ export interface Subscription {
   remarques?: string
   sexe?: 'fille' | 'garçon'
   tailleTshirt?: string
+  tshirtDistribue?: boolean
   dejaInscrit?: boolean
   jour?: string
   lieu?: string

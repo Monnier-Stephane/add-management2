@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { LazyNavigation, usePrefetchPageData } from './LazyNavigation'
 import {
   Users,
+  Shirt,
   Calendar,
   ClipboardList,
   Shield,
@@ -44,6 +45,11 @@ export function AppSidebar() {
       title: "Feuilles d'appel",
       url: "/dashboard/attendance",
       icon: ClipboardList
+    },
+    {
+      title: "Tee-shirts",
+      url: "/dashboard/tshirts",
+      icon: Shirt
     },
     {
       title: "Sécurité",

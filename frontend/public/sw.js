@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'add-management-static-v7';
-const DYNAMIC_CACHE = 'add-management-dynamic-v7';
+const STATIC_CACHE = 'add-management-static-v8';
+const DYNAMIC_CACHE = 'add-management-dynamic-v8';
 
 const urlsToCache = [
   '/',
@@ -32,7 +32,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (!cacheName.includes('v7')) {
+          if (!cacheName.includes('v8')) {
             console.log('🗑️ Suppression du cache:', cacheName);
             return caches.delete(cacheName);
           }
@@ -67,7 +67,8 @@ self.addEventListener('fetch', (event) => {
   if (request.url.includes('/api/') ||
       request.url.includes('/subscriptions') ||
       request.url.includes('/coaches') ||
-      request.url.includes('/planning')) {
+      request.url.includes('/planning') ||
+      request.url.includes('/dashboard')) {
     return;
   }
   

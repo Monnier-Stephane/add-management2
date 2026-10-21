@@ -129,6 +129,13 @@ class ApiService {
     })
   }
 
+  async put<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.fetchWithRetry<T>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
   async delete<T>(endpoint: string): Promise<T> {
     return this.fetchWithRetry<T>(endpoint, {
       method: 'DELETE',
