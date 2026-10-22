@@ -36,6 +36,7 @@ interface CourseCardProps {
   onRemoveTemporaryStudent: (courseId: string, studentId: string) => void
   onAddTemporaryStudent: (courseId: string, nom: string, prenom: string) => void
   isHighlighted?: boolean
+  tousLesCours?: { id: string; nom: string; eleves: { id: string; nom: string; prenom: string }[] }[]
 }
 
 export const CourseCard = ({ 
@@ -43,10 +44,12 @@ export const CourseCard = ({
   onPresenceChange, 
   onRemoveTemporaryStudent, 
   onAddTemporaryStudent,
-  isHighlighted = false 
+  isHighlighted = false,
+  tousLesCours = [],
 }: CourseCardProps) => {
   
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [recherche, setRecherche] = useState('')
 
   const [readyPdf, setReadyPdf] = useState<{ blob: Blob; filename: string } | null>(null)
 
@@ -134,6 +137,36 @@ setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 }
 
+  const fold = (value: string) =>
+    value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+  const terme = fold(recherche.trim())
+  const correspond = (eleve: { nom: string; prenom: string }) =>
+    fold(eleve.prenom).includes(terme) || fold(eleve.nom).includes(terme)
+
+  const elevesVisibles = terme.length < 2 ? course.eleves : course.eleves.filter(correspond)
+
+  const ailleursParEleve = new Map<string, { id: string; prenom: string; nom: string; cours: string[] }>()
+  if (terme.length >= 2 && elevesVisibles.length === 0) {
+    for (const autre of tousLesCours) {
+      if (autre.id === course.id) continue
+      for (const eleve of autre.eleves) {
+        if (!correspond(eleve)) continue
+        const deja = ailleursParEleve.get(eleve.id)
+        if (deja) {
+          if (!deja.cours.includes(autre.nom)) deja.cours.push(autre.nom)
+        } else {
+          ailleursParEleve.set(eleve.id, {
+            id: eleve.id,
+            prenom: eleve.prenom,
+            nom: eleve.nom,
+            cours: [autre.nom],
+          })
+        }
+      }
+    }
+  }
+  const ailleurs = Array.from(ailleursParEleve.values())
 
   return (
     <Card className={`w-full ${isHighlighted ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}>
@@ -161,12 +194,37 @@ setTimeout(() => URL.revokeObjectURL(url), 1000)
       </div>
     </CardHeader>
     <CardContent className="px-3 sm:px-6">
+      <div className="sticky top-14 z-20 -mx-3 mb-4 bg-white px-3 py-2 sm:-mx-6 sm:px-6">
+        <input
+          type="search"
+          value={recherche}
+          onChange={(event) => setRecherche(event.target.value)}
+          placeholder="Rechercher un élève"
+          className="w-full rounded px-3 py-2 text-sm"
+          style={{ border: '1px solid #6b7280' }}
+        />
+
+        {terme.length >= 2 && elevesVisibles.length === 0 && (
+          <div className="mt-2 space-y-2 text-sm text-gray-700">
+            {ailleurs.length === 0 ? (
+              <p>Aucun élève ne correspond à « {recherche.trim()} ».</p>
+            ) : (
+              ailleurs.map((eleve) => (
+                <p key={eleve.id}>
+                  {eleve.prenom} {eleve.nom} n&apos;est pas dans ce cours. Inscrit à : {eleve.cours.join(', ')}.
+                </p>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
     <div className="space-y-3">
-  {course.eleves.map((eleve, index) => {
+  {elevesVisibles.map((eleve, index) => {
     const sectionKey = eleve.isTemporary
       ? 'extra'
       : (eleve.categorie ?? 'enfants')
-    const previous = course.eleves[index - 1]
+    const previous = elevesVisibles[index - 1]
     const previousKey = previous
       ? previous.isTemporary
         ? 'extra'

@@ -33,12 +33,20 @@ interface Course {
 function AttendancePageContent() {
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedDay, setSelectedDay] = useState<string>('')
-  
+  const [selectedCourseId, setSelectedCourseId] = useState('')
+  const [titreColle, setTitreColle] = useState(false)
   const searchParams = useSearchParams()
   const courseParam = searchParams.get('course')
   
   // Utiliser les hooks optimisés
   const { data: subscriptions, isLoading, error } = useSubscriptions()
+
+  useEffect(() => {
+    const onScroll = () => setTitreColle(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   // Fonction pour mapper le titre du cours du planning vers l'ID de la page d'attendance
   const mapCourseTitleToId = (courseTitle: string): string => {
@@ -135,6 +143,10 @@ function AttendancePageContent() {
         if (course) {
           setSelectedDay(course.jour)
         }
+        if (course) {
+          setSelectedDay(course.jour)
+          setSelectedCourseId(course.id)
+        }
       }
     } else if (courses.length > 0 && !selectedDay) {
       // Seulement définir le jour par défaut si aucun jour n'est sélectionné
@@ -225,15 +237,11 @@ function AttendancePageContent() {
 
   return (
     <div className="container mx-auto px-2 py-4 sm:p-4 lg:max-w-7xl">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">
-            Feuilles d&apos;appel
-          </h1>
-        <p className="text-gray-600">Gérez les présences des élèves par cours</p>
-        </div>
-        
-      </div>
+    <div className={`sticky top-0 z-30 -mx-2 mb-4 bg-white px-3 py-3 ${titreColle ? 'border-b border-blue-200 bg-blue-50' : ''}`}>
+  <h1 className={`text-2xl font-bold md:text-3xl ${titreColle ? 'text-blue-900' : ''}`}>
+    Feuilles d&apos;appel
+  </h1>
+</div>
 
       <Tabs value={selectedDay} onValueChange={setSelectedDay} className="w-full">
       <TabsList className="grid h-auto w-full grid-cols-6 gap-1">
@@ -248,26 +256,61 @@ function AttendancePageContent() {
   ))}
 </TabsList>
 
-        {Object.entries(coursesByDay).map(([day, dayCourses]) => (
-          <TabsContent key={day} value={day} className="space-y-4">
-            {dayCourses.map(course => {
-              const courseTitle = courseParam ? courseParam.split('-').slice(0, -1).join('-') : ''
-              const mappedId = courseParam ? mapCourseTitleToId(courseTitle) : ''
-              const isHighlighted = Boolean(courseParam && course.id === mappedId)
-              
-              return (
-                <CourseCard 
-                  key={course.id} 
+{Object.entries(coursesByDay).map(([day, dayCourses]) => {
+  const coursOuvert = dayCourses.some((course) => course.id === selectedCourseId)
+    ? selectedCourseId
+    : dayCourses[0]?.id ?? ''
+
+  return (
+    <TabsContent key={day} value={day} className="space-y-4">
+      {dayCourses.length > 1 ? (
+        <Tabs value={coursOuvert} onValueChange={setSelectedCourseId}>
+          <TabsList className="mb-4 flex h-auto w-full flex-wrap gap-1">
+            {dayCourses.map((course) => (
+              <TabsTrigger key={course.id} value={course.id} className="text-xs sm:text-sm">
+                {course.heure} — {course.lieu}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {dayCourses.map((course) => {
+            const courseTitle = courseParam ? courseParam.split('-').slice(0, -1).join('-') : ''
+            const mappedId = courseParam ? mapCourseTitleToId(courseTitle) : ''
+            const isHighlighted = Boolean(courseParam && course.id === mappedId)
+            return (
+              <TabsContent key={course.id} value={course.id}>
+                <CourseCard
                   course={course}
+                  tousLesCours={courses}
                   onPresenceChange={handlePresenceChange}
                   onRemoveTemporaryStudent={handleRemoveTemporaryStudent}
                   onAddTemporaryStudent={handleAddTemporaryStudent}
                   isHighlighted={isHighlighted}
                 />
-              )
-            })}
-          </TabsContent>
-        ))}
+              </TabsContent>
+            )
+          })}
+        </Tabs>
+      ) : (
+        dayCourses.map((course) => {
+          const courseTitle = courseParam ? courseParam.split('-').slice(0, -1).join('-') : ''
+          const mappedId = courseParam ? mapCourseTitleToId(courseTitle) : ''
+          const isHighlighted = Boolean(courseParam && course.id === mappedId)
+          return (
+            <CourseCard
+              key={course.id}
+              course={course}
+              tousLesCours={courses}
+              onPresenceChange={handlePresenceChange}
+              onRemoveTemporaryStudent={handleRemoveTemporaryStudent}
+              onAddTemporaryStudent={handleAddTemporaryStudent}
+              isHighlighted={isHighlighted}
+            />
+          )
+        })
+      )}
+    </TabsContent>
+  )
+})}
       </Tabs>
     </div>
   )
