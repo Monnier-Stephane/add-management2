@@ -63,7 +63,7 @@ describe('StudentItem', () => {
     
     render(<StudentItem {...props} />)
     
-    const removeButton = screen.getByRole('button')
+    const removeButton = screen.getByRole('button', { name: "Retirer l'élève" })
     expect(removeButton).toBeInTheDocument()
     
     fireEvent.click(removeButton)

@@ -1,12 +1,13 @@
 'use client'
 
-import {  useEffect,useRef,useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/lib/api/api'
 import { useSubscriptions, type Subscription } from '@/lib/hooks/useSubscriptions'
 import { coursesStructure, filterStudentsForCourse } from '@/lib/utils/courseGroups'
+import { EleveFicheDialog, type EleveFiche } from '@/components/eleve/EleveFicheDialog'
 
 const cloudinaryThumb = (url: string, size = 96) =>
   url.replace(
@@ -38,21 +39,7 @@ const enregistrerStock = async (taille: string, quantiteRecue: number) => {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [titreColle, setTitreColle] = useState(false)
-  const [loupeId, setLoupeId] = useState<string | null>(null)
-const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-const startHold = (id: string, photoUrl?: string) => {
-  if (!photoUrl) return
-  holdTimer.current = setTimeout(() => setLoupeId(id), 400)
-}
-
-const endHold = () => {
-  if (holdTimer.current) {
-    clearTimeout(holdTimer.current)
-    holdTimer.current = null
-  }
-  setLoupeId(null)
-}
+  const [fiche, setFiche] = useState<EleveFiche | null>(null)
 
 
 useEffect(() => {
@@ -227,34 +214,37 @@ useEffect(() => {
             }`}
           >
 
-{eleve.photoUrl ? (
-  // eslint-disable-next-line @next/next/no-img-element
-  <img
-    src={cloudinaryThumb(eleve.photoUrl)}
-    alt=""
-    loading="lazy"
-    onPointerDown={() => startHold(eleve.id, eleve.photoUrl)}
-    onPointerUp={endHold}
-    onPointerCancel={endHold}
-    onPointerLeave={endHold}
-    onContextMenu={(event) => event.preventDefault()}
-    className="h-14 w-14 shrink-0 rounded-full object-cover border bg-gray-100 select-none touch-none"
-  />
-) : (
-  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border bg-gray-100 text-xs font-medium text-gray-500">
-    {eleve.prenom.charAt(0).toUpperCase()}
-  </div>
-)}
-{loupeId === eleve.id && eleve.photoUrl && (
-  <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-    {/* eslint-disable-next-line @next/next/no-img-element */}
+<button
+  type="button"
+  onClick={() => {
+    const noms = cours
+      .filter((autre) => autre.eleves.some((item) => item.id === eleve.id))
+      .map((autre) => autre.nom)
+    setFiche({
+      prenom: eleve.prenom,
+      nom: eleve.nom,
+      photoUrl: eleve.photoUrl,
+      categorie: eleve.categorie,
+      cours: noms.length > 0 ? noms : [course.nom],
+    })
+  }}
+  className="shrink-0 rounded-full"
+  aria-label={`Voir la fiche de ${eleve.prenom} ${eleve.nom}`}
+>
+  {eleve.photoUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={cloudinaryThumb(eleve.photoUrl, 400)}
-      alt={eleve.prenom}
-      className="h-48 w-48 rounded-full border-4 border-white object-cover shadow-xl"
+      src={cloudinaryThumb(eleve.photoUrl)}
+      alt=""
+      loading="lazy"
+      className="h-14 w-14 rounded-full border bg-gray-100 object-cover"
     />
-  </div>
-)}
+  ) : (
+    <span className="flex h-14 w-14 items-center justify-center rounded-full border bg-gray-100 text-xs font-medium text-gray-500">
+      {eleve.prenom.charAt(0).toUpperCase()}
+    </span>
+  )}
+</button>
             <input
               type="checkbox"
               checked={Boolean(eleve.tshirtDistribue)}
@@ -324,6 +314,7 @@ useEffect(() => {
   )
 })}
       </Tabs>
+      <EleveFicheDialog eleve={fiche} onClose={() => setFiche(null)} />
     </div>
   )
 }

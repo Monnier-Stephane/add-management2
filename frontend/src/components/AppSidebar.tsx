@@ -75,6 +75,11 @@ export function AppSidebar() {
       url: "/dashboard/archives-appel",
       icon: FolderOpen
     },
+    {
+      title: "Bilan des présences",
+      url: "/dashboard/bilan-presences",
+      icon: Calendar,
+    },
   ] : []
 
   return (

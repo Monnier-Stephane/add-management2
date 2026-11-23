@@ -13,7 +13,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
-        <header className="flex h-16 items-center gap-2 border-b px-4">
+        <header className="z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4 max-md:sticky max-md:top-0">
   <SidebarTrigger className="-ml-1" />
   <div className="text-sm text-gray-500">
     Bonjour {userProfile?.prenom || user?.email || 'Utilisateur'}
