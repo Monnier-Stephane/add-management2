@@ -121,7 +121,10 @@ export function AppSidebar() {
             <SidebarMenu>
               {adminItems.map((item, index) => (
                 <SidebarMenuItem key={index}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton
+                    asChild
+                    className={item.url === '/dashboard/bilan-presences' ? 'bg-sky-100 hover:bg-sky-200' : undefined}
+                  >
                     {item.prefetch ? (
                       <LazyNavigation 
                         href={item.url} 
