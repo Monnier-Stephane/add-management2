@@ -8,6 +8,10 @@ jest.mock('./auth/firebase-auth.guard', () => ({
   },
 }));
 
+jest.mock('./tshirts/tshirts.module', () => ({
+  TshirtsModule: class TshirtsModule {},
+}));
+
 jest.mock('./auth/roles.guard', () => ({
   RolesGuard: class {
     canActivate() {

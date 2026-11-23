@@ -1,6 +1,16 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf';
+import * as path from 'path';
+pdfjs.GlobalWorkerOptions.workerSrc = require.resolve(
+  'pdfjs-dist/legacy/build/pdf.worker.js',
+);
 import 'multer';
+const policesPdf =
+  path.join(
+    path.dirname(require.resolve('pdfjs-dist/package.json')),
+    'standard_fonts',
+  ) + path.sep;
 
 @Injectable()
 export class PdfUploadService {
@@ -128,5 +138,140 @@ export class PdfUploadService {
     });
 
     return items;
+  }
+  pdfsDuMois(
+    year: string,
+    month: string,
+  ): Promise<Awaited<ReturnType<PdfUploadService['listAttendancePdfs']>>> {
+    return this.listAttendancePdfs().then((items) =>
+      items.filter((item) => item.year === year && item.month === month),
+    );
+  }
+  lignesDappel(
+    marques: { texte: string; x: number; y: number; page: number }[],
+  ) {
+    const lignes: { texte: string; x: number; y: number; page: number }[][] =
+      [];
+    const tries = marques
+      .filter((marque) => marque.texte.trim())
+      .sort((a, b) => a.page - b.page || b.y - a.y);
+
+    for (const marque of tries) {
+      const derniere = lignes.at(-1);
+      const memePage = derniere && derniere[0].page === marque.page;
+      if (memePage && Math.abs(derniere[0].y - marque.y) <= 8) {
+        derniere.push({ ...marque, texte: marque.texte.trim() });
+      } else {
+        lignes.push([{ ...marque, texte: marque.texte.trim() }]);
+      }
+    }
+
+    const eleves: {
+      prenom: string;
+      nom: string;
+      present: boolean;
+      enPlus: boolean;
+    }[] = [];
+    let enPlus = false;
+    for (const ligne of lignes) {
+      const textes = ligne
+        .sort((a, b) => a.x - b.x)
+        .map((marque) => marque.texte);
+      const present = textes.includes('O');
+      const absent = textes.includes('X');
+      if (!present && !absent) {
+        const titre = textes
+          .join(' ')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (titre.includes('eleves en')) enPlus = true;
+        else if (
+          titre === 'enfants' ||
+          titre === 'adolescents' ||
+          titre === 'adultes'
+        )
+          enPlus = false;
+        continue;
+      }
+      const noms = textes.filter((texte) => texte !== 'O' && texte !== 'X');
+      if (noms.length < 2) continue;
+      eleves.push({
+        prenom: noms[0],
+        nom: noms.slice(1).join(' '),
+        present,
+        enPlus,
+      });
+    }
+    return eleves;
+  }
+  async marquesDepuisPdf(buffer: Buffer) {
+    const doc = await pdfjs.getDocument({
+      data: new Uint8Array(buffer),
+      standardFontDataUrl: policesPdf,
+    }).promise;
+
+    const lireMarque = (
+      item: unknown,
+    ): { str: string; x: number; y: number } | null => {
+      if (typeof item !== 'object' || item === null) return null;
+      if (
+        !('str' in item) ||
+        typeof item.str !== 'string' ||
+        !item.str.trim()
+      ) {
+        return null;
+      }
+      if (!('transform' in item) || !Array.isArray(item.transform)) return null;
+      const x: unknown = item.transform[4];
+      const y: unknown = item.transform[5];
+      if (typeof x !== 'number' || typeof y !== 'number') return null;
+      return { str: item.str, x, y };
+    };
+
+    const marques: { texte: string; x: number; y: number; page: number }[] = [];
+    for (let page = 1; page <= doc.numPages; page++) {
+      const contenu = await (await doc.getPage(page)).getTextContent();
+      for (const item of contenu.items) {
+        const marque = lireMarque(item);
+        if (!marque) continue;
+        marques.push({
+          texte: marque.str,
+          x: marque.x,
+          y: marque.y,
+          page,
+        });
+      }
+    }
+    return marques;
+  }
+  async elevesDuMois(year: string, month: string) {
+    const pdfs = await this.pdfsDuMois(year, month);
+    const dejaLu = new Set<string>();
+    const eleves: {
+      prenom: string;
+      nom: string;
+      present: boolean;
+      enPlus: boolean;
+      cours: string;
+    }[] = [];
+
+    for (const pdf of pdfs) {
+      if (dejaLu.has(pdf.label)) continue;
+      dejaLu.add(pdf.label);
+
+      const reponse = await fetch(pdf.url);
+      if (!reponse.ok) continue;
+
+      const buffer = Buffer.from(await reponse.arrayBuffer());
+      const marques = await this.marquesDepuisPdf(buffer);
+      for (const eleve of this.lignesDappel(marques)) {
+        eleves.push({ ...eleve, cours: pdf.label });
+      }
+    }
+
+    return eleves;
   }
 }

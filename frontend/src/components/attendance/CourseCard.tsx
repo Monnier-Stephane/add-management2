@@ -260,6 +260,7 @@ setTimeout(() => URL.revokeObjectURL(url), 1000)
         <StudentItem
           eleve={eleve}
           course={course}
+          tousLesCours={tousLesCours}
           onPresenceChange={onPresenceChange}
           onRemoveTemporaryStudent={onRemoveTemporaryStudent}
         />

@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -79,6 +80,25 @@ async uploadAttendancePdf(
 @Roles('admin')
 async listAttendancePdfs() {
   return this.pdfUploadService.listAttendancePdfs();
+}
+@Get('attendance-pdf/bilan')
+@Roles('admin')
+async bilanMois(
+  @Query('year') year: string,
+  @Query('month') month: string,
+) {
+  if (!year?.trim() || !month?.trim()) {
+    throw new BadRequestException('year et month sont requis')
+  }
+  const eleves = await this.pdfUploadService.elevesDuMois(
+    year.trim(),
+    month.trim(),
+  )
+  return {
+    feuilles: new Set(eleves.map((eleve) => eleve.cours)).size,
+    presents: eleves.filter((eleve) => eleve.present).length,
+    eleves,
+  }
 }
   @Post()
   @Roles('admin')
