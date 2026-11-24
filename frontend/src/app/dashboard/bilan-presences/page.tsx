@@ -9,6 +9,7 @@ import { coursesStructure } from '@/lib/utils/courseGroups'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const mois = [
   'janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin',
@@ -41,11 +42,49 @@ const groupes: {
   },
   {
     id: 'inconnu',
-    titre: 'Non retrouvés',
+    titre: 'Élèves à l’unité',
     onglet: 'border-gray-200 bg-gray-50 data-[state=active]:border-gray-500 data-[state=active]:bg-gray-100',
     panneau: 'border-gray-200 bg-gray-50',
   },
 ]
+
+const COULEURS_BILAN = { presents: '#22c55e', absents: '#f87171' }
+
+function labelPourcentage({
+  cx = 0,
+  cy = 0,
+  midAngle = 0,
+  innerRadius = 0,
+  outerRadius = 0,
+  value = 0,
+}: {
+  cx?: number
+  cy?: number
+  midAngle?: number
+  innerRadius?: number
+  outerRadius?: number
+  value?: number
+}) {
+  const rayon = innerRadius + (outerRadius - innerRadius) * 0.5
+  const x = cx + rayon * Math.cos(-midAngle * (Math.PI / 180))
+  const y = cy + rayon * Math.sin(-midAngle * (Math.PI / 180))
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#111"
+      fontSize={16}
+      fontWeight={700}
+      textAnchor="middle"
+      dominantBaseline="central"
+      stroke="#fff"
+      strokeWidth={4}
+      paintOrder="stroke"
+    >
+      {`${value} %`}
+    </text>
+  )
+}
 
 type Tri = 'prenom' | 'taux-asc' | 'taux-desc'
 
@@ -106,20 +145,31 @@ function jourInscription(valeur?: string) {
   return date.toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' })
 }
 
-function phrasePassage(eleve: BilanEleve) {
-  if (!eleve.vuEnPlus || !eleve.vuOfficiel) return null
-  const seuil = jourInscription(eleve.dateInscription)
-  if (!seuil) return null
-  const unite = eleve.presences.filter((presence) => presence.iso < seuil).length
-  const inscrit = eleve.presences.filter((presence) => presence.iso >= seuil).length
-  const total = unite + inscrit
-  if (total === 0) return null
-  const date = new Date(`${seuil}T12:00:00`).toLocaleDateString('fr-FR', {
+function dateCourte(iso: string) {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   })
-  return `${eleve.prenom} ${eleve.nom} a fait ${total} cours : ${unite} à l'unité et ${inscrit} cours à partir de son inscription, le ${date}.`
+}
+
+function listerDates(dates: string[]) {
+  const lisibles = dates.map(dateCourte)
+  if (lisibles.length <= 1) return `le ${lisibles[0] ?? ''}`
+  return `le ${lisibles.slice(0, -1).join(', le ')} et le ${lisibles.at(-1)}`
+}
+
+function phrasePassage(eleve: BilanEleve) {
+  if (!eleve.vuEnPlus || !eleve.vuOfficiel) return null
+  const seuil = jourInscription(eleve.dateInscription)
+  if (!seuil) return null
+  const unite = eleve.presences.filter((presence) => presence.iso < seuil).map((presence) => presence.iso)
+  const inscrit = eleve.presences.filter((presence) => presence.iso >= seuil).map((presence) => presence.iso)
+  if (unite.length === 0 || inscrit.length === 0) return null
+  const total = unite.length + inscrit.length
+  const present = eleve.sexe === 'fille' ? 'présente' : 'présent'
+  const inscritMot = eleve.sexe === 'fille' ? 'elle s’est inscrite' : 'il s’est inscrit'
+  return `${eleve.prenom} ${eleve.nom} était ${present} à ${total} cours ce mois-ci, dont ${unite.length} ${listerDates(unite)} à l'unité et ${inscrit.length} ${listerDates(inscrit)}, car ${inscritMot} le ${dateCourte(seuil)}.`
 }
 
 function fold(value: string) {
@@ -150,15 +200,26 @@ function phrase(eleve: BilanEleve) {
   return `${nomComplet} : ${fois} ce mois-ci, ${manque}.`
 }
 
-function elevesDuBilan(bilan: Bilan, inscriptions: Subscription[]): BilanEleve[] {
-  const parCle = new Map<string, Subscription[]>()
-  for (const inscription of inscriptions) {
-    const cle = fold(`${inscription.prenom} ${inscription.nom}`)
-    const deja = parCle.get(cle) ?? []
-    deja.push(inscription)
-    parCle.set(cle, deja)
-  }
+function nomsProches(court: string, long: string) {
+  if (court === long) return true
+  const [petit, grand] = court.length <= long.length ? [court, long] : [long, court]
+  return grand.startsWith(`${petit} `)
+}
 
+function ficheDe(prenom: string, nom: string, inscriptions: Subscription[]) {
+  const prenomPli = fold(prenom)
+  const nomPli = fold(nom)
+  const exactes = inscriptions.filter(
+    (inscription) => fold(inscription.prenom) === prenomPli && fold(inscription.nom) === nomPli,
+  )
+  if (exactes.length > 0) return exactes.find((inscription) => inscription.photoUrl) ?? exactes[0]
+  const proches = inscriptions.filter(
+    (inscription) => fold(inscription.prenom) === prenomPli && nomsProches(nomPli, fold(inscription.nom)),
+  )
+  return proches.length === 1 ? proches[0] : undefined
+}
+
+function elevesDuBilan(bilan: Bilan, inscriptions: Subscription[]): BilanEleve[] {
   const parNom = new Map<string, {
     prenom: string
     nom: string
@@ -167,17 +228,20 @@ function elevesDuBilan(bilan: Bilan, inscriptions: Subscription[]): BilanEleve[]
     presences: Presence[]
     vuEnPlus: boolean
     vuOfficiel: boolean
+    fiche?: Subscription
   }>()
   for (const eleve of bilan.eleves) {
-    const cle = fold(`${eleve.prenom} ${eleve.nom}`)
+    const fiche = ficheDe(eleve.prenom, eleve.nom, inscriptions)
+    const cle = fiche?._id ?? fold(`${eleve.prenom} ${eleve.nom}`)
     const deja = parNom.get(cle) ?? {
-      prenom: eleve.prenom,
-      nom: eleve.nom,
+      prenom: fiche?.prenom || eleve.prenom,
+      nom: fiche?.nom || eleve.nom,
       presents: 0,
       total: 0,
       presences: [],
       vuEnPlus: false,
       vuOfficiel: false,
+      fiche,
     }
     deja.total += 1
     if (eleve.enPlus) deja.vuEnPlus = true
@@ -193,16 +257,15 @@ function elevesDuBilan(bilan: Bilan, inscriptions: Subscription[]): BilanEleve[]
     parNom.set(cle, deja)
   }
 
-  return [...parNom.entries()].map(([cle, compte]): BilanEleve => {
-    const fiches = parCle.get(cle) ?? []
-    const fiche = fiches.find((item) => item.photoUrl) ?? fiches[0]
+  return [...parNom.values()].map((compte): BilanEleve => {
+    const fiche = compte.fiche
     return {
       prenom: fiche?.prenom || compte.prenom,
       nom: fiche?.nom || compte.nom,
       presents: compte.presents,
       total: compte.total,
       photoUrl: fiche?.photoUrl,
-      sexe: fiches.find((item) => item.sexe)?.sexe,
+      sexe: fiche?.sexe,
       categorie: fiche
         ? getStudentCategory(fiche.tarif, fiche.dateDeNaissance)
         : 'inconnu',
@@ -218,6 +281,16 @@ function elevesDuBilan(bilan: Bilan, inscriptions: Subscription[]): BilanEleve[]
 
 function taux(eleve: BilanEleve) {
   return eleve.total === 0 ? 0 : eleve.presents / eleve.total
+}
+
+function detailTaux(eleve: BilanEleve) {
+  const venus = eleve.presents
+  const cours = eleve.total
+  if (venus === cours) {
+    const present = eleve.sexe === 'fille' ? 'présente' : 'présent'
+    return `${venus} cours sur ${cours} · ${present} à chaque fois`
+  }
+  return `${venus} cours sur ${cours} · ${Math.round(taux(eleve) * 100)} % de présence`
 }
 
 function trier(lignes: BilanEleve[], tri: Tri) {
@@ -264,6 +337,18 @@ export default function BilanPresencesPage() {
     () => (bilan ? elevesDuBilan(bilan, inscriptions ?? []) : []),
     [bilan, inscriptions],
   )
+  const parts = bilan
+    ? (() => {
+        const absents = bilan.eleves.length - bilan.presents
+        const total = bilan.presents + absents
+        if (total <= 0) return []
+        const presents = Math.round((bilan.presents / total) * 100)
+        return [
+          { name: 'Présents', value: presents, fill: COULEURS_BILAN.presents },
+          { name: 'Absents', value: 100 - presents, fill: COULEURS_BILAN.absents },
+        ].filter((part) => part.value > 0)
+      })()
+    : []
 
   const terme = fold(recherche)
   const visibles = terme.length === 0
@@ -308,10 +393,30 @@ export default function BilanPresencesPage() {
         </button>
       </div>
       {error && <p className="text-red-600">{error}</p>}
-      {bilan && (
-        <p className="mb-4 text-lg">
-          {bilan.presents} présents, {bilan.eleves.length - bilan.presents} absents, sur {bilan.feuilles} feuilles
-        </p>
+      {bilan && parts.length > 0 && (
+        <div className="mb-4 h-72 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={parts}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={90}
+                isAnimationActive={false}
+                labelLine={false}
+                label={labelPourcentage}
+              >
+                {parts.map((part) => (
+                  <Cell key={part.name} fill={part.fill} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => `${value} %`} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
       )}
       {bilan && (
         <div className="mb-4 flex flex-col gap-2 sm:flex-row">
@@ -339,14 +444,14 @@ export default function BilanPresencesPage() {
       )}
       {bilan && ongletsVisibles.length > 0 && (
         <Tabs value={ongletActif} onValueChange={setOnglet}>
-          <TabsList className="mb-3 grid h-auto w-full grid-cols-3 gap-2 bg-transparent p-0">
+          <TabsList className="mb-3 grid h-auto w-full grid-cols-3 items-stretch gap-2 bg-transparent p-0">
             {ongletsVisibles.map((groupe) => {
               const nombre = visibles.filter((eleve) => eleve.categorie === groupe.id).length
               return (
                 <TabsTrigger
                   key={groupe.id}
                   value={groupe.id}
-                  className={`${groupe.onglet} h-auto w-full whitespace-normal border-2 px-2 py-3 text-center text-xs leading-tight sm:text-sm`}
+                  className={`${groupe.onglet} h-full w-full whitespace-normal border-2 px-2 py-3 text-center text-xs leading-tight sm:text-sm`}
                 >
                   {groupe.titre} ({nombre})
                 </TabsTrigger>
@@ -381,11 +486,12 @@ export default function BilanPresencesPage() {
                           </span>
                         )}
                         <p className="min-w-0 flex-1 font-medium">{eleve.prenom} {eleve.nom}</p>
-                        <p className="shrink-0 text-base font-semibold">
-                          {Math.round(taux(eleve) * 100)} %
-                        </p>
                       </div>
-                      <p className="mt-3 text-sm leading-relaxed text-gray-700">{phrase(eleve)}</p>
+                      <p className="mt-3 text-sm font-medium text-gray-900">{detailTaux(eleve)}</p>
+                      {eleve.categorie === 'inconnu' && (
+                        <p className="mt-3 text-sm font-medium text-gray-800">Élève à l’unité</p>
+                      )}
+                      <p className="mt-3 text-sm leading-relaxed text-gray-700">{phrasePassage(eleve) ?? phrase(eleve)}</p>
                       <p className="mt-2 text-xs font-medium text-blue-600">Voir les dates</p>
                     </button>
                   ))}
@@ -415,7 +521,10 @@ export default function BilanPresencesPage() {
               </CardContent>
               <CardHeader>
                 <CardTitle>{eleveOuvert.prenom} {eleveOuvert.nom}</CardTitle>
-                <CardDescription>{phrase(eleveOuvert)}</CardDescription>
+                <CardDescription>
+                  {eleveOuvert.categorie === 'inconnu' ? 'Élève à l’unité. ' : ''}
+                  {phrasePassage(eleveOuvert) ?? phrase(eleveOuvert)}
+                </CardDescription>
               </CardHeader>
               <div className="space-y-3 px-6 pb-6">
                 {phrasePassage(eleveOuvert) && (
