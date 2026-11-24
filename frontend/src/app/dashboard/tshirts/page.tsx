@@ -8,6 +8,7 @@ import { api } from '@/lib/api/api'
 import { useSubscriptions, type Subscription } from '@/lib/hooks/useSubscriptions'
 import { coursesStructure, filterStudentsForCourse } from '@/lib/utils/courseGroups'
 import { EleveFicheDialog, type EleveFiche } from '@/components/eleve/EleveFicheDialog'
+import { ChevronDown } from 'lucide-react'
 
 const cloudinaryThumb = (url: string, size = 96) =>
   url.replace(
@@ -40,6 +41,7 @@ const enregistrerStock = async (taille: string, quantiteRecue: number) => {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [titreColle, setTitreColle] = useState(false)
   const [fiche, setFiche] = useState<EleveFiche | null>(null)
+  const [voirSansTshirt, setVoirSansTshirt] = useState(false)
 
 
 useEffect(() => {
@@ -124,6 +126,34 @@ useEffect(() => {
     return acc
   }, {})
 
+  const sansTshirt = new Map<string, {
+    id: string
+    prenom: string
+    nom: string
+    taille?: string
+    cours: string[]
+  }>()
+  for (const course of cours) {
+    for (const eleve of course.eleves) {
+      if (eleve.tshirtDistribue) continue
+      const deja = sansTshirt.get(eleve.id)
+      if (deja) {
+        deja.cours.push(course.nom)
+      } else {
+        sansTshirt.set(eleve.id, {
+          id: eleve.id,
+          prenom: eleve.prenom,
+          nom: eleve.nom,
+          taille: eleve.tailleTshirt,
+          cours: [course.nom],
+        })
+      }
+    }
+  }
+  const manquants = [...sansTshirt.values()].sort(
+    (a, b) => a.prenom.localeCompare(b.prenom, 'fr') || a.nom.localeCompare(b.nom, 'fr'),
+  )
+
   return (
     <div className="container mx-auto px-2 py-4">
       <div className={`sticky top-0 z-30 -mx-2 mb-4 bg-white px-3 py-3 ${titreColle ? 'border-b border-emerald-200 bg-emerald-50' : ''}`}>
@@ -131,9 +161,34 @@ useEffect(() => {
     Distribution des tee-shirts
   </h1>
 </div>
-      <p className="mb-6 text-gray-600">
+      <p className="mb-2 text-gray-600">
         {donnes} donné{donnes > 1 ? 's' : ''} sur {liste.length}
       </p>
+      <button
+        type="button"
+        aria-expanded={voirSansTshirt}
+        onClick={() => setVoirSansTshirt((ouvert) => !ouvert)}
+        className="mb-6 inline-flex cursor-pointer items-center gap-2 rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-900 hover:bg-emerald-100"
+        style={{ border: '1px solid #059669' }}
+      >
+        <ChevronDown className={`size-4 ${voirSansTshirt ? 'rotate-180' : ''}`} />
+        {voirSansTshirt ? 'Masquer' : 'Pas encore reçu'} ({manquants.length})
+      </button>
+      {voirSansTshirt && (
+        <ul className="mb-6 max-h-52 overflow-y-auto rounded border text-sm">
+          {manquants.length === 0 ? (
+            <li className="px-3 py-2 text-gray-600">Tout le monde a reçu son tee-shirt.</li>
+          ) : (
+            manquants.map((eleve) => (
+              <li key={eleve.id} className="border-b px-3 py-2 last:border-b-0">
+                <span className="font-medium">{eleve.prenom} {eleve.nom}</span>
+                <span className="text-gray-600"> — {eleve.cours.join(', ')}</span>
+                {eleve.taille ? <span className="text-gray-600"> · {eleve.taille}</span> : null}
+              </li>
+            ))
+          )}
+        </ul>
+      )}
       {saveError && <p className="mb-4 text-sm text-red-600">{saveError}</p>}
 
       <table className="mb-8 w-full max-w-lg text-sm">
