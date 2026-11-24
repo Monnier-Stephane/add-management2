@@ -9,6 +9,8 @@ import { coursesStructure } from '@/lib/utils/courseGroups'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const mois = [
@@ -383,14 +385,20 @@ export default function BilanPresencesPage() {
             <option key={nom} value={nom}>{nom}</option>
           ))}
         </select>
-        <button
-          type="button"
-          onClick={charger}
-          disabled={loading}
-          className="rounded bg-blue-600 px-3 py-1 text-white"
-        >
-          {loading ? 'Lecture des PDF…' : 'Calculer'}
-        </button>
+        {loading ? (
+          <Button type="button" disabled className="gap-2">
+            <Spinner />
+            Lecture des PDF…
+          </Button>
+        ) : (
+          <button
+            type="button"
+            onClick={charger}
+            className="rounded bg-blue-600 px-3 py-1 text-white"
+          >
+            Calculer
+          </button>
+        )}
       </div>
       {error && <p className="text-red-600">{error}</p>}
       {bilan && parts.length > 0 && (

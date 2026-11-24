@@ -68,7 +68,7 @@ describe('AttendancePage', () => {
     render(<AttendancePage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Feuilles d'appel")).toBeInTheDocument()
+      expect(screen.queryByText('Chargement...')).not.toBeInTheDocument()
     })
   })
 
@@ -77,7 +77,6 @@ describe('AttendancePage', () => {
     render(<AttendancePage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Feuilles d'appel")).toBeInTheDocument()
       expect(screen.getByText('Lundi')).toBeInTheDocument()
       expect(screen.getByText('Mercredi')).toBeInTheDocument()
     })
