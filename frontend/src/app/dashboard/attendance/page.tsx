@@ -34,19 +34,11 @@ function AttendancePageContent() {
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedDay, setSelectedDay] = useState<string>('')
   const [selectedCourseId, setSelectedCourseId] = useState('')
-  const [titreColle, setTitreColle] = useState(false)
   const searchParams = useSearchParams()
   const courseParam = searchParams.get('course')
   
   // Utiliser les hooks optimisés
   const { data: subscriptions, isLoading, error } = useSubscriptions()
-
-  useEffect(() => {
-    const onScroll = () => setTitreColle(window.scrollY > 8)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
 
   // Fonction pour mapper le titre du cours du planning vers l'ID de la page d'attendance
   const mapCourseTitleToId = (courseTitle: string): string => {
@@ -237,12 +229,6 @@ function AttendancePageContent() {
 
   return (
     <div className="container mx-auto px-2 py-4 sm:p-4 lg:max-w-7xl">
-    <div className={`sticky top-0 z-30 -mx-2 mb-4 bg-white px-3 py-3 ${titreColle ? 'border-b border-blue-200 bg-blue-50' : ''}`}>
-  <h1 className={`text-2xl font-bold md:text-3xl ${titreColle ? 'text-blue-900' : ''}`}>
-    Feuilles d&apos;appel
-  </h1>
-</div>
-
       <Tabs value={selectedDay} onValueChange={setSelectedDay} className="w-full">
       <TabsList className="grid h-auto w-full grid-cols-6 gap-1">
   {Object.keys(coursesByDay).map(day => (

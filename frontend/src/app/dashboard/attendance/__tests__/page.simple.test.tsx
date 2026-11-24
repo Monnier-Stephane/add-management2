@@ -44,7 +44,7 @@ describe('AttendancePage - Simple Tests', () => {
     mockLoadedAttendance([])
     render(<AttendancePage />)
     await waitFor(() => {
-      expect(screen.getByText("Feuilles d'appel")).toBeInTheDocument()
+      expect(screen.queryByText('Chargement...')).not.toBeInTheDocument()
     })
   })
 })

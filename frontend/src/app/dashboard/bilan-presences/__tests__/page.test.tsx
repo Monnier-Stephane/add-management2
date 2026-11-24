@@ -152,6 +152,21 @@ describe('Bilan des présences', () => {
     expect(screen.getByText('feuille-inconnue')).toBeInTheDocument()
   })
 
+  it('affiche le spinner pendant la lecture des PDF', async () => {
+    let finir: (bilan: unknown) => void = () => {}
+    ;(api.get as jest.Mock).mockReturnValue(new Promise((resolve) => {
+      finir = resolve
+    }))
+    const user = userEvent.setup()
+    render(<BilanPresencesPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Calculer' }))
+
+    expect(screen.getByRole('button', { name: /Lecture des PDF/ })).toBeDisabled()
+    expect(screen.getByRole('status', { name: 'Chargement' })).toBeInTheDocument()
+    finir(bilan)
+  })
+
   it('affiche l’erreur quand le calcul échoue', async () => {
     ;(api.get as jest.Mock).mockRejectedValue(new Error('PDF illisible'))
     const user = userEvent.setup()

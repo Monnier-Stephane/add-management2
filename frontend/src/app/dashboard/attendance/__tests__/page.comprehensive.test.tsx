@@ -54,7 +54,6 @@ describe('AttendancePage - Comprehensive Tests', () => {
     mockLoadedAttendance()
     render(<AttendancePage />)
     await waitFor(() => {
-      expect(screen.getByText("Feuilles d'appel")).toBeInTheDocument()
       expect(screen.getByText('Lundi')).toBeInTheDocument()
     })
   })
@@ -84,7 +83,7 @@ describe('AttendancePage - Comprehensive Tests', () => {
     mockLoadedAttendance([])
     render(<AttendancePage />)
     await waitFor(() => {
-      expect(screen.getByText("Feuilles d'appel")).toBeInTheDocument()
+      expect(screen.queryByText('Chargement...')).not.toBeInTheDocument()
     })
   })
 })
